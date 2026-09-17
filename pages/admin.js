@@ -59,6 +59,15 @@ export default function Admin() {
     });
   }
 
+  async function markPaid(id, paid) {
+    setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, paid } : o)));
+    await fetch('/api/orders', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, paid }),
+    });
+  }
+
   async function enablePush() {
     if (!window.OneSignal) return;
     await window.OneSignal.Notifications.requestPermission();
@@ -139,11 +148,21 @@ export default function Admin() {
                 {o.customer_name}{o.notes ? ` — ${o.notes}` : ''}
               </div>
               <div className="meta">{new Date(o.created_at).toLocaleString()}</div>
-              {o.status !== 'done' ? (
-                <button className="status-btn" onClick={() => markStatus(o.id, 'done')}>Mark ready / done</button>
-              ) : (
-                <button className="status-btn" onClick={() => markStatus(o.id, 'new')}>Reopen</button>
-              )}
+              <div className="meta">
+                {o.paid ? '✅ Paid' : o.customer_confirmed_payment ? '💸 Customer said they sent it — not yet confirmed' : '⏳ Payment not confirmed'}
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+                {o.status !== 'done' ? (
+                  <button className="status-btn" onClick={() => markStatus(o.id, 'done')}>Mark ready / done</button>
+                ) : (
+                  <button className="status-btn" onClick={() => markStatus(o.id, 'new')}>Reopen</button>
+                )}
+                {!o.paid ? (
+                  <button className="status-btn" onClick={() => markPaid(o.id, true)}>Mark as paid</button>
+                ) : (
+                  <button className="status-btn" onClick={() => markPaid(o.id, false)}>Undo paid</button>
+                )}
+              </div>
             </div>
           ))}
         </div>

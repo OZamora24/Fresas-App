@@ -35,7 +35,7 @@ export default async function handler(req, res) {
   const supabase = getSupabaseAdmin();
 
   if (req.method === 'POST') {
-    const { base, toppings, syrups, qty, pickup_time, customer_name, notes, total } = req.body || {};
+    const { base, toppings, syrups, qty, pickup_time, customer_name, notes, total, payment_method, payment_confirmed } = req.body || {};
 
     if (!base || !pickup_time || !customer_name || typeof total !== 'number') {
       return res.status(400).json({ error: 'Missing required order fields.' });
@@ -53,6 +53,9 @@ export default async function handler(req, res) {
         notes: notes || '',
         total,
         status: 'new',
+        payment_method: payment_method || 'zelle',
+        customer_confirmed_payment: !!payment_confirmed,
+        paid: false,
       })
       .select()
       .single();
@@ -87,10 +90,16 @@ export default async function handler(req, res) {
     if (!isValidSession(req)) {
       return res.status(401).json({ error: 'Not authorized.' });
     }
-    const { id, status } = req.body || {};
-    if (!id || !status) return res.status(400).json({ error: 'Missing id or status.' });
+    const { id, status, paid } = req.body || {};
+    if (!id || (status === undefined && paid === undefined)) {
+      return res.status(400).json({ error: 'Missing id or a field to update.' });
+    }
 
-    const { error } = await supabase.from('orders').update({ status }).eq('id', id);
+    const updates = {};
+    if (status !== undefined) updates.status = status;
+    if (paid !== undefined) updates.paid = paid;
+
+    const { error } = await supabase.from('orders').update(updates).eq('id', id);
     if (error) {
       console.error(error);
       return res.status(500).json({ error: 'Could not update order.' });

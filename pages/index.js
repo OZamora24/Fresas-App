@@ -17,6 +17,7 @@ const TOPPINGS = [
 
 const SYRUPS = ['Chocolate', 'Caramel', 'Lechera', 'Nutella', 'Strawberry'];
 const PICKUP_ADDRESS = '1526 W Bonnie View Dr, Rialto, CA 92376';
+const ZELLE_PHONE = '(909) 725-2384';
 
 function buildPickupTimes() {
   const times = [];
@@ -52,6 +53,7 @@ export default function Home() {
   const [name, setName] = useState('');
   const [notes, setNotes] = useState('');
   const [showSheet, setShowSheet] = useState(false);
+  const [paymentConfirmed, setPaymentConfirmed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -88,6 +90,8 @@ export default function Home() {
           customer_name: name,
           notes,
           total,
+          payment_method: 'zelle',
+          payment_confirmed: paymentConfirmed,
         }),
       });
       if (!res.ok) throw new Error('Order failed');
@@ -107,6 +111,9 @@ export default function Home() {
         <p>We got your order for pickup at <strong>{pickup}</strong>. See you soon!</p>
         <p style={{ color: 'var(--ink-soft)', fontWeight: 700 }}>
           Pickup location:<br />{PICKUP_ADDRESS}
+        </p>
+        <p style={{ color: 'var(--ink-soft)', fontSize: '0.9rem' }}>
+          We'll confirm once your ${total.toFixed(2)} Zelle payment to {ZELLE_PHONE} comes through.
         </p>
       </div>
     );
@@ -229,10 +236,26 @@ export default function Home() {
           <p style={{ color: 'var(--ink-soft)', fontSize: '0.85rem', fontWeight: 700, marginTop: 4 }}>
             Pickup location: {PICKUP_ADDRESS}
           </p>
+
+          <div className="field" style={{ marginTop: 18 }}>
+            <label>Payment — Zelle</label>
+            <p style={{ margin: '0 0 10px', fontSize: '0.9rem' }}>
+              Send <strong>${total.toFixed(2)}</strong> via Zelle to <strong>{ZELLE_PHONE}</strong>, and include your name ({name || 'your name'}) in the Zelle note so we can match it to your order.
+            </p>
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontWeight: 700, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                style={{ width: 18, height: 18, marginTop: 2, flexShrink: 0 }}
+                checked={paymentConfirmed}
+                onChange={(e) => setPaymentConfirmed(e.target.checked)}
+              />
+              I've sent ${total.toFixed(2)} via Zelle to {ZELLE_PHONE}
+            </label>
+          </div>
           {errorMsg && <p className="login-box error" style={{ margin: '10px 0' }}>{errorMsg}</p>}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16 }}>
-            <button className="btn-primary" onClick={placeOrder} disabled={submitting}>
-              {submitting ? 'Sending…' : 'Place order'}
+            <button className="btn-primary" onClick={placeOrder} disabled={submitting || !paymentConfirmed}>
+              {submitting ? 'Sending…' : paymentConfirmed ? 'Place order' : 'Confirm payment above to continue'}
             </button>
             <button className="status-btn" onClick={() => setShowSheet(false)}>Keep editing</button>
           </div>

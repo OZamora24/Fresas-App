@@ -16,6 +16,7 @@ const TOPPINGS = [
 ];
 
 const SYRUPS = ['Chocolate', 'Caramel', 'Lechera', 'Nutella', 'Strawberry'];
+const PICKUP_ADDRESS = '1526 W Bonnie View Dr, Rialto, CA 92376';
 
 function buildPickupTimes() {
   const times = [];
@@ -104,6 +105,9 @@ export default function Home() {
         <Head><title>Order sent — Fresas con Crema</title></Head>
         <h1 style={{ color: 'var(--maroon)' }}>🍓 Order sent!</h1>
         <p>We got your order for pickup at <strong>{pickup}</strong>. See you soon!</p>
+        <p style={{ color: 'var(--ink-soft)', fontWeight: 700 }}>
+          Pickup location:<br />{PICKUP_ADDRESS}
+        </p>
       </div>
     );
   }
@@ -222,6 +226,9 @@ export default function Home() {
           <div className="line"><span>Name</span><strong>{name || '—'}</strong></div>
           {notes && <div className="line"><span>Notes</span><strong>{notes}</strong></div>}
           <div className="grand"><span>Total</span><span>${total.toFixed(2)}</span></div>
+          <p style={{ color: 'var(--ink-soft)', fontSize: '0.85rem', fontWeight: 700, marginTop: 4 }}>
+            Pickup location: {PICKUP_ADDRESS}
+          </p>
           {errorMsg && <p className="login-box error" style={{ margin: '10px 0' }}>{errorMsg}</p>}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16 }}>
             <button className="btn-primary" onClick={placeOrder} disabled={submitting}>

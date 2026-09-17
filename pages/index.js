@@ -19,7 +19,7 @@ const SYRUPS = ['Chocolate', 'Caramel', 'Lechera', 'Nutella', 'Strawberry'];
 
 function buildPickupTimes() {
   const times = [];
-  const start = 17 * 60 + 30; // 5:30 PM
+  const start = 17 * 60; // 5:00 PM
   const end = 21 * 60; // 9:00 PM
   for (let mins = start; mins <= end; mins += 15) {
     const h = Math.floor(mins / 60);
@@ -177,7 +177,7 @@ export default function Home() {
 
         <div className="section">
           <h2>Pickup time</h2>
-          <p className="hint">Today's pickup window: 5:30 – 9:00 PM</p>
+          <p className="hint">Today's pickup window: 5:00 – 9:00 PM</p>
           <div className="field">
             <select value={pickup} onChange={(e) => setPickup(e.target.value)}>
               {PICKUP_TIMES.map((t) => <option key={t} value={t}>{t}</option>)}

@@ -94,12 +94,14 @@ export default async function handler(req, res) {
     }
   });
 
-  // Total row
-  const lastDataRow = sheet.rowCount;
+  // Total row — computed directly rather than as a formula, so it
+  // displays immediately in every spreadsheet app without needing a
+  // manual recalculation.
+  const totalSum = orders.reduce((sum, o) => sum + Number(o.total || 0), 0);
   const totalRow = sheet.addRow({});
   totalRow.getCell('paymentMethod').value = 'TOTAL';
   totalRow.getCell('paymentMethod').font = { bold: true };
-  totalRow.getCell('total').value = { formula: `SUM(M2:M${lastDataRow})` };
+  totalRow.getCell('total').value = totalSum;
   totalRow.getCell('total').numFmt = '$#,##0.00';
   totalRow.eachCell((cell) => {
     cell.font = { ...(cell.font || {}), bold: true };

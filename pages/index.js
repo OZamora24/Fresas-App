@@ -19,6 +19,14 @@ const BASE_DESC = {
     en: 'Ferrero Rocher fresas con crema',
     es: 'Fresas con crema estilo Ferrero Rocher',
   },
+  bananapudding: {
+    en: 'Banana pudding fresas con crema',
+    es: 'Fresas con crema con pudín de plátano',
+  },
+  gansito: {
+    en: 'Gansito fresas con crema',
+    es: 'Fresas con crema estilo Gansito',
+  },
 };
 
 const TOPPING_LABELS = {

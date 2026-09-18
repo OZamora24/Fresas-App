@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import Head from 'next/head';
 import Script from 'next/script';
+import { BASES, PRICES, TOPPINGS, SYRUPS, orderTotal, buildPickupTimes, baseIdFromName } from '../lib/menu';
 
 const ONESIGNAL_APP_ID = process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID;
+const PICKUP_TIMES = buildPickupTimes();
 
 export default function Admin() {
   const [authed, setAuthed] = useState(false);
@@ -11,6 +13,9 @@ export default function Admin() {
   const [loginError, setLoginError] = useState('');
   const [orders, setOrders] = useState([]);
   const [pushEnabled, setPushEnabled] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState(null);
+  const [savingEdit, setSavingEdit] = useState(false);
   const pollRef = useRef(null);
 
   async function fetchOrders() {
@@ -66,6 +71,70 @@ export default function Admin() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, paid }),
     });
+  }
+
+  function openEdit(o) {
+    setEditingId(o.id);
+    setEditForm({
+      base: baseIdFromName(o.base),
+      cupSize: (o.cup_size || '12 oz').startsWith('24') ? '24' : '12',
+      toppings: o.toppings || [],
+      syrups: o.syrups || [],
+      qty: o.qty || 1,
+      pickup_time: o.pickup_time,
+      customer_name: o.customer_name || '',
+      customer_phone: o.customer_phone || '',
+      notes: o.notes || '',
+    });
+  }
+
+  function closeEdit() {
+    setEditingId(null);
+    setEditForm(null);
+  }
+
+  function toggleEditTopping(name) {
+    setEditForm((f) => ({
+      ...f,
+      toppings: f.toppings.includes(name) ? f.toppings.filter((x) => x !== name) : [...f.toppings, name],
+    }));
+  }
+  function toggleEditSyrup(name) {
+    setEditForm((f) => ({
+      ...f,
+      syrups: f.syrups.includes(name) ? f.syrups.filter((x) => x !== name) : [...f.syrups, name],
+    }));
+  }
+
+  async function saveEdit() {
+    if (!editForm) return;
+    setSavingEdit(true);
+    const activeBase = BASES.find((b) => b.id === editForm.base);
+    const newTotal = orderTotal(editForm.base, editForm.cupSize, editForm.toppings, editForm.qty);
+
+    const payload = {
+      id: editingId,
+      base: activeBase.name,
+      cup_size: `${editForm.cupSize} oz`,
+      toppings: editForm.toppings,
+      syrups: editForm.syrups,
+      qty: editForm.qty,
+      pickup_time: editForm.pickup_time,
+      customer_name: editForm.customer_name,
+      customer_phone: editForm.customer_phone,
+      notes: editForm.notes,
+      total: newTotal,
+    };
+
+    await fetch('/api/orders', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    setOrders((prev) => prev.map((o) => (o.id === editingId ? { ...o, ...payload } : o)));
+    setSavingEdit(false);
+    closeEdit();
   }
 
   async function enablePush() {
@@ -176,11 +245,107 @@ export default function Admin() {
                 ) : (
                   <button className="status-btn" onClick={() => markPaid(o.id, false)}>Undo paid</button>
                 )}
+                <button className="status-btn" onClick={() => openEdit(o)}>✏️ Edit order</button>
               </div>
             </div>
           ))}
         </div>
       </div>
+
+      {editForm && (
+        <div className="overlay open" onClick={(e) => e.target === e.currentTarget && closeEdit()}>
+          <div className="sheet">
+            <h3>Edit order</h3>
+
+            <div className="field">
+              <label>Base</label>
+              <select value={editForm.base} onChange={(e) => setEditForm((f) => ({ ...f, base: e.target.value }))}>
+                {BASES.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name} — ${PRICES[editForm.cupSize][b.id].toFixed(2)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="field">
+              <label>Cup size</label>
+              <select value={editForm.cupSize} onChange={(e) => setEditForm((f) => ({ ...f, cupSize: e.target.value }))}>
+                <option value="12">12 oz</option>
+                <option value="24">24 oz</option>
+              </select>
+            </div>
+
+            <div className="field">
+              <label>Toppings</label>
+              <div className="chip-grid">
+                {TOPPINGS.map((tp) => (
+                  <label key={tp.name} className={`chip${editForm.toppings.includes(tp.name) ? ' checked' : ''}`}>
+                    <input type="checkbox" style={{ display: 'none' }} checked={editForm.toppings.includes(tp.name)} onChange={() => toggleEditTopping(tp.name)} />
+                    <span>{tp.name}</span>
+                    {tp.alwaysExtra && <span className="badge">+$1</span>}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="field">
+              <label>Syrup</label>
+              <div className="chip-grid">
+                {SYRUPS.map((s) => (
+                  <label key={s} className={`chip${editForm.syrups.includes(s) ? ' checked' : ''}`}>
+                    <input type="checkbox" style={{ display: 'none' }} checked={editForm.syrups.includes(s)} onChange={() => toggleEditSyrup(s)} />
+                    <span>{s}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="field">
+              <label>Quantity</label>
+              <div className="stepper">
+                <button type="button" onClick={() => setEditForm((f) => ({ ...f, qty: Math.max(1, f.qty - 1) }))}>−</button>
+                <span>{editForm.qty}</span>
+                <button type="button" onClick={() => setEditForm((f) => ({ ...f, qty: Math.min(20, f.qty + 1) }))}>+</button>
+              </div>
+            </div>
+
+            <div className="field">
+              <label>Pickup time</label>
+              <select value={editForm.pickup_time} onChange={(e) => setEditForm((f) => ({ ...f, pickup_time: e.target.value }))}>
+                {PICKUP_TIMES.map((tm) => <option key={tm} value={tm}>{tm}</option>)}
+              </select>
+            </div>
+
+            <div className="field">
+              <label>Name</label>
+              <input type="text" value={editForm.customer_name} onChange={(e) => setEditForm((f) => ({ ...f, customer_name: e.target.value }))} />
+            </div>
+
+            <div className="field">
+              <label>Phone</label>
+              <input type="tel" value={editForm.customer_phone} onChange={(e) => setEditForm((f) => ({ ...f, customer_phone: e.target.value }))} />
+            </div>
+
+            <div className="field">
+              <label>Notes</label>
+              <textarea value={editForm.notes} onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))} />
+            </div>
+
+            <div className="grand">
+              <span>New total</span>
+              <span>${orderTotal(editForm.base, editForm.cupSize, editForm.toppings, editForm.qty).toFixed(2)}</span>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16 }}>
+              <button className="btn-primary" onClick={saveEdit} disabled={savingEdit}>
+                {savingEdit ? 'Saving…' : 'Save changes'}
+              </button>
+              <button className="status-btn" onClick={closeEdit}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

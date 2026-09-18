@@ -92,14 +92,20 @@ export default async function handler(req, res) {
     if (!isValidSession(req)) {
       return res.status(401).json({ error: 'Not authorized.' });
     }
-    const { id, status, paid } = req.body || {};
-    if (!id || (status === undefined && paid === undefined)) {
-      return res.status(400).json({ error: 'Missing id or a field to update.' });
-    }
+    const { id } = req.body || {};
+    if (!id) return res.status(400).json({ error: 'Missing id.' });
 
+    const allowedFields = [
+      'status', 'paid', 'base', 'cup_size', 'toppings', 'syrups', 'qty',
+      'pickup_time', 'customer_name', 'customer_phone', 'notes', 'total',
+    ];
     const updates = {};
-    if (status !== undefined) updates.status = status;
-    if (paid !== undefined) updates.paid = paid;
+    for (const field of allowedFields) {
+      if (req.body[field] !== undefined) updates[field] = req.body[field];
+    }
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ error: 'No valid fields to update.' });
+    }
 
     const { error } = await supabase.from('orders').update(updates).eq('id', id);
     if (error) {

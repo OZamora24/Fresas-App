@@ -1,17 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import Head from 'next/head';
-
-const BASES = [
-  { id: 'regular', name: 'Regular Fresas', freeToppings: 3 },
-  { id: 'raffaello', name: 'Fresas Raffaello', freeToppings: 0 },
-  { id: 'biscoff', name: 'Biscoff Cookie Butter', freeToppings: 0 },
-  { id: 'ferrero', name: 'Ferrero Rocher', freeToppings: 0 },
-];
-
-const PRICES = {
-  '12': { regular: 7.0, raffaello: 8.0, biscoff: 8.0, ferrero: 9.0 },
-  '24': { regular: 12.0, raffaello: 15.0, biscoff: 15.0, ferrero: 17.0 },
-};
+import { BASES, PRICES, TOPPINGS, SYRUPS, toppingsCost, buildPickupTimes } from '../lib/menu';
 
 const BASE_DESC = {
   regular: {
@@ -32,13 +21,6 @@ const BASE_DESC = {
   },
 };
 
-const TOPPINGS = [
-  { name: 'Whipped Cream' }, { name: 'Fruity Pebbles' }, { name: 'Wafer Cookie' },
-  { name: 'Almonds' }, { name: 'Granola' }, { name: 'Oreo' },
-  { name: 'Coconut Flakes' }, { name: 'Mini Marshmallows' },
-  { name: 'Cheesecake', alwaysExtra: true }, { name: 'Ice Cream', alwaysExtra: true },
-];
-
 const TOPPING_LABELS = {
   'Whipped Cream': { en: 'Whipped Cream', es: 'Crema Batida' },
   'Fruity Pebbles': { en: 'Fruity Pebbles', es: 'Fruity Pebbles' },
@@ -52,7 +34,6 @@ const TOPPING_LABELS = {
   'Ice Cream': { en: 'Ice Cream', es: 'Helado' },
 };
 
-const SYRUPS = ['Chocolate', 'Caramel', 'Lechera', 'Nutella', 'Strawberry'];
 const SYRUP_LABELS = {
   Chocolate: { en: 'Chocolate', es: 'Chocolate' },
   Caramel: { en: 'Caramel', es: 'Caramelo' },
@@ -177,30 +158,7 @@ const STR = {
   },
 };
 
-function buildPickupTimes() {
-  const times = [];
-  const start = 17 * 60; // 5:00 PM
-  const end = 21 * 60; // 9:00 PM
-  for (let mins = start; mins <= end; mins += 15) {
-    const h = Math.floor(mins / 60);
-    const m = mins % 60;
-    const suffix = h >= 12 ? 'PM' : 'AM';
-    const h12 = h % 12 === 0 ? 12 : h % 12;
-    times.push(`${h12}:${m.toString().padStart(2, '0')} ${suffix}`);
-  }
-  return times;
-}
 const PICKUP_TIMES = buildPickupTimes();
-
-function toppingsCost(baseId, toppings) {
-  const base = BASES.find((b) => b.id === baseId);
-  const standard = toppings.filter((t) => !TOPPINGS.find((x) => x.name === t)?.alwaysExtra);
-  const premiumCount = toppings.length - standard.length;
-  let cost = premiumCount * 1;
-  const extraStandard = Math.max(0, standard.length - base.freeToppings);
-  cost += extraStandard * 1;
-  return cost;
-}
 
 export default function Home() {
   const [lang, setLang] = useState('en');

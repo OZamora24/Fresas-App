@@ -1,12 +1,17 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Head from 'next/head';
 
 const BASES = [
-  { id: 'regular', name: 'Regular Fresas', price: 7.0, freeToppings: 3 },
-  { id: 'raffaello', name: 'Fresas Raffaello', price: 8.0, freeToppings: 0 },
-  { id: 'biscoff', name: 'Biscoff Cookie Butter', price: 8.0, freeToppings: 0 },
-  { id: 'ferrero', name: 'Ferrero Rocher', price: 9.0, freeToppings: 0 },
+  { id: 'regular', name: 'Regular Fresas', freeToppings: 3 },
+  { id: 'raffaello', name: 'Fresas Raffaello', freeToppings: 0 },
+  { id: 'biscoff', name: 'Biscoff Cookie Butter', freeToppings: 0 },
+  { id: 'ferrero', name: 'Ferrero Rocher', freeToppings: 0 },
 ];
+
+const PRICES = {
+  '12': { regular: 7.0, raffaello: 8.0, biscoff: 8.0, ferrero: 9.0 },
+  '24': { regular: 12.0, raffaello: 15.0, biscoff: 15.0, ferrero: 17.0 },
+};
 
 const BASE_DESC = {
   regular: {
@@ -63,8 +68,10 @@ const STR = {
   en: {
     title: 'Fresas con Crema — Build Your Cup',
     heroTag: 'Build your cup · Rialto, CA',
+    cupSize: 'Cup size',
+    cupSizeHint: 'Choose 12 oz or 24 oz — prices update automatically',
     pickBase: 'Pick your base',
-    pickBaseHint: '12 oz cup, includes homemade sweet cream',
+    pickBaseHint: 'Includes homemade sweet cream',
     toppings: 'Toppings',
     toppingsHint: 'Cheesecake & Ice Cream are always +$1. Any other extra topping is +$1.',
     freeNote: (used, total) => `${used} of ${total} free toppings used`,
@@ -83,6 +90,7 @@ const STR = {
     reviewOrder: 'Review order',
     yourOrder: 'Your order',
     base: 'Base',
+    cupSizeLabel: 'Size',
     pickup: 'Pickup',
     none: 'None',
     payment: 'Payment',
@@ -106,12 +114,15 @@ const STR = {
     pickupLocation: 'Pickup location:',
     zelleFollowUp: (total, phone) => `We'll confirm once your $${total} Zelle payment to ${phone} comes through.`,
     cashFollowUp: (total) => `Have $${total} in cash ready at pickup.`,
+    walnutWarning: '⚠️ Allergy notice: Ferrero Rocher Fresas con Crema contains walnuts.',
   },
   es: {
     title: 'Fresas con Crema — Arma tu Vaso',
     heroTag: 'Arma tu vaso · Rialto, CA',
+    cupSize: 'Tamaño del vaso',
+    cupSizeHint: 'Elige 12 oz o 24 oz — los precios se actualizan automáticamente',
     pickBase: 'Elige tu base',
-    pickBaseHint: 'Vaso de 12 oz, incluye crema dulce casera',
+    pickBaseHint: 'Incluye crema dulce casera',
     toppings: 'Toppings',
     toppingsHint: 'Pastel de queso y helado siempre son +$1. Cualquier otro topping extra es +$1.',
     freeNote: (used, total) => `${used} de ${total} toppings gratis usados`,
@@ -130,6 +141,7 @@ const STR = {
     reviewOrder: 'Revisar orden',
     yourOrder: 'Tu orden',
     base: 'Base',
+    cupSizeLabel: 'Tamaño',
     pickup: 'Recogida',
     none: 'Ninguno',
     payment: 'Pago',
@@ -153,6 +165,7 @@ const STR = {
     pickupLocation: 'Lugar de recogida:',
     zelleFollowUp: (total, phone) => `Confirmaremos tu orden cuando llegue tu pago de $${total} por Zelle a ${phone}.`,
     cashFollowUp: (total) => `Ten $${total} en efectivo listos al recoger.`,
+    walnutWarning: '⚠️ Aviso de alergia: las Fresas con Crema estilo Ferrero Rocher contienen nueces (walnuts).',
   },
 };
 
@@ -185,6 +198,7 @@ export default function Home() {
   const [lang, setLang] = useState('en');
   const t = STR[lang];
 
+  const [cupSize, setCupSize] = useState('12');
   const [base, setBase] = useState('regular');
   const [toppings, setToppings] = useState([]);
   const [syrups, setSyrups] = useState([]);
@@ -200,13 +214,23 @@ export default function Home() {
   const [errorMsg, setErrorMsg] = useState('');
 
   const activeBase = BASES.find((b) => b.id === base);
-  const perCup = activeBase.price + toppingsCost(base, toppings);
+  const basePrice = PRICES[cupSize][base];
+  const perCup = basePrice + toppingsCost(base, toppings);
   const total = perCup * qty;
 
   const standardChecked = useMemo(
     () => toppings.filter((tp) => !TOPPINGS.find((x) => x.name === tp)?.alwaysExtra).length,
     [toppings]
   );
+
+  // Walnut allergy notice: fires whenever Ferrero Rocher is selected, and
+  // again if the cup size changes while it's still selected.
+  useEffect(() => {
+    if (base === 'ferrero') {
+      window.alert(t.walnutWarning);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [base, cupSize]);
 
   function toggleTopping(tp) {
     setToppings((prev) => (prev.includes(tp) ? prev.filter((x) => x !== tp) : [...prev, tp]));
@@ -224,6 +248,7 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           base: activeBase.name,
+          cup_size: `${cupSize} oz`,
           toppings,
           syrups,
           qty,
@@ -301,6 +326,17 @@ export default function Home() {
 
       <div className="wrap">
         <div className="section">
+          <h2>{t.cupSize}</h2>
+          <p className="hint">{t.cupSizeHint}</p>
+          <div className="field">
+            <select value={cupSize} onChange={(e) => setCupSize(e.target.value)}>
+              <option value="12">12 oz</option>
+              <option value="24">24 oz</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="section">
           <h2>{t.pickBase}</h2>
           <p className="hint">{t.pickBaseHint}</p>
           {BASES.map((b) => (
@@ -309,7 +345,7 @@ export default function Home() {
               <div style={{ flex: 1 }}>
                 <div style={{ display: 'flex' }}>
                   <span className="name">{b.name}</span>
-                  <span className="price" style={{ marginLeft: 'auto' }}>${b.price.toFixed(2)}</span>
+                  <span className="price" style={{ marginLeft: 'auto' }}>${PRICES[cupSize][b.id].toFixed(2)}</span>
                 </div>
                 <div className="desc">{BASE_DESC[b.id][lang]}</div>
               </div>
@@ -399,6 +435,7 @@ export default function Home() {
         <div className="sheet">
           <h3>{t.yourOrder}</h3>
           <div className="line"><span>{t.base}</span><strong>{activeBase.name} × {qty}</strong></div>
+          <div className="line"><span>{t.cupSizeLabel}</span><strong>{cupSize} oz</strong></div>
           <div className="line"><span>{t.toppings}</span><strong>{toppings.length ? toppings.map((tp) => TOPPING_LABELS[tp][lang]).join(', ') : t.none}</strong></div>
           <div className="line"><span>{t.syrup}</span><strong>{syrups.length ? syrups.map((s) => SYRUP_LABELS[s][lang]).join(', ') : t.none}</strong></div>
           <div className="line"><span>{t.pickup}</span><strong>{pickup}</strong></div>

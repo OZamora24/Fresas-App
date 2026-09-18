@@ -139,7 +139,7 @@ export default function Admin() {
                 <span className="pickup">Pickup {o.pickup_time}</span>
                 <span className="total">${Number(o.total).toFixed(2)}</span>
               </div>
-              <div className="meta">{o.qty}x {o.base}</div>
+              <div className="meta">{o.qty}x {o.base}{o.cup_size ? ` (${o.cup_size})` : ''}</div>
               <details className="order-details">
                 <summary>View toppings &amp; syrup</summary>
                 <div className="order-details-body">

@@ -35,7 +35,7 @@ export default async function handler(req, res) {
   const supabase = getSupabaseAdmin();
 
   if (req.method === 'POST') {
-    const { base, toppings, syrups, qty, pickup_time, customer_name, notes, total, payment_method, payment_confirmed } = req.body || {};
+    const { base, cup_size, toppings, syrups, qty, pickup_time, customer_name, notes, total, payment_method, payment_confirmed } = req.body || {};
 
     if (!base || !pickup_time || !customer_name || typeof total !== 'number') {
       return res.status(400).json({ error: 'Missing required order fields.' });
@@ -45,6 +45,7 @@ export default async function handler(req, res) {
       .from('orders')
       .insert({
         base,
+        cup_size: cup_size || '12 oz',
         toppings: toppings || [],
         syrups: syrups || [],
         qty: qty || 1,

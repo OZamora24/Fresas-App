@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import Head from 'next/head';
-import { BASES, PRICES, TOPPINGS, SYRUPS, toppingsCost, buildPickupTimes } from '../lib/menu';
+import { BASES, PRICES, TOPPINGS, SYRUPS, toppingsCost, buildPickupTimes, todayDateKey, maxPreorderDateKey, formatDateKey } from '../lib/menu';
 
 const BASE_DESC = {
   regular: {
@@ -61,6 +61,7 @@ const STR = {
     cupSizeHint: 'Choose 12 oz or 24 oz — prices update automatically',
     pickBase: 'Pick your base',
     pickBaseHint: 'Includes homemade sweet cream',
+    soldOut: 'Sold out today',
     toppings: 'Toppings',
     toppingsHint: 'Cheesecake & Ice Cream are always +$1. Any other extra topping is +$1.',
     freeNote: (used, total) => `${used} of ${total} free toppings used`,
@@ -69,12 +70,17 @@ const STR = {
     howMany: 'How many cups?',
     pickupTime: 'Pickup time',
     pickupHint: "Today's pickup window: 5:00 – 9:00 PM",
+    pickupDateLabel: 'Pickup date',
+    pickupDateHint: 'Order for today, or pick a future date — great for catering!',
     yourInfo: 'Your info',
     name: 'Name',
     namePlaceholder: "Who's this order for?",
     phone: 'Phone number',
     phonePlaceholder: 'Optional',
     phoneHint: "We'll text you when your order is ready for pickup. Msg & data rates may apply.",
+    repeatTitle: 'Want your usual again?',
+    repeatUse: 'Use this order',
+    repeatDismiss: 'No thanks',
     notes: 'Notes (optional)',
     notesPlaceholder: 'Anything we should know? Allergies, etc.',
     questions: 'Questions? Call or text',
@@ -120,6 +126,7 @@ const STR = {
     cupSizeHint: 'Elige 12 oz o 24 oz — los precios se actualizan automáticamente',
     pickBase: 'Elige tu base',
     pickBaseHint: 'Incluye crema dulce casera',
+    soldOut: 'Agotado hoy',
     toppings: 'Toppings',
     toppingsHint: 'Pastel de queso y helado siempre son +$1. Cualquier otro topping extra es +$1.',
     freeNote: (used, total) => `${used} de ${total} toppings gratis usados`,
@@ -128,12 +135,17 @@ const STR = {
     howMany: '¿Cuántos vasos?',
     pickupTime: 'Hora de recogida',
     pickupHint: 'Horario de recogida de hoy: 5:00 – 9:00 PM',
+    pickupDateLabel: 'Fecha de recogida',
+    pickupDateHint: 'Ordena para hoy, o elige una fecha futura — ¡ideal para catering!',
     yourInfo: 'Tu información',
     name: 'Nombre',
     namePlaceholder: '¿Para quién es esta orden?',
     phone: 'Número de teléfono',
     phonePlaceholder: 'Opcional',
     phoneHint: 'Te enviaremos un mensaje de texto cuando tu orden esté lista para recoger. Aplican tarifas de mensajes y datos.',
+    repeatTitle: '¿Quieres tu pedido de siempre otra vez?',
+    repeatUse: 'Usar esta orden',
+    repeatDismiss: 'No, gracias',
     notes: 'Notas (opcional)',
     notesPlaceholder: '¿Algo que debamos saber? Alergias, etc.',
     questions: 'Preguntas? Llama o envía un mensaje',
@@ -185,6 +197,7 @@ export default function Home() {
   const [toppings, setToppings] = useState([]);
   const [syrups, setSyrups] = useState([]);
   const [qty, setQty] = useState(1);
+  const [pickupDate, setPickupDate] = useState(todayDateKey());
   const [pickup, setPickup] = useState(PICKUP_TIMES[0]);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -199,21 +212,69 @@ export default function Home() {
   const [shopStatus, setShopStatus] = useState(null); // null = still checking
   const [slotCounts, setSlotCounts] = useState({});
   const [slotLimit, setSlotLimit] = useState(3);
+  const [lastOrder, setLastOrder] = useState(null);
+  const [showRepeatPrompt, setShowRepeatPrompt] = useState(false);
+  const [repeatDismissed, setRepeatDismissed] = useState(false);
 
   useEffect(() => {
     fetch('/api/settings')
       .then((r) => r.json())
       .then((j) => setShopStatus(j.settings))
       .catch(() => setShopStatus({ is_open: true }));
+  }, []);
 
-    fetch('/api/slots')
+  // If the currently selected flavor gets marked sold out, switch to the
+  // first flavor that's still available.
+  useEffect(() => {
+    if (!shopStatus?.sold_out_flavors?.includes(base)) return;
+    const available = BASES.find((b) => !shopStatus.sold_out_flavors.includes(b.id));
+    if (available) setBase(available.id);
+  }, [shopStatus, base]);
+
+  // Reload slot availability whenever the customer changes the pickup date.
+  useEffect(() => {
+    fetch(`/api/slots?date=${pickupDate}`)
       .then((r) => r.json())
       .then((j) => {
         setSlotCounts(j.counts || {});
         setSlotLimit(j.slotLimit ?? 3);
       })
       .catch(() => {});
-  }, []);
+  }, [pickupDate]);
+
+  // Repeat-customer lookup: once the phone number looks complete (10+
+  // digits), check if this number has ordered before and offer to
+  // pre-fill their last order.
+  useEffect(() => {
+    const digits = phone.replace(/\D/g, '');
+    if (digits.length < 10 || repeatDismissed) {
+      setShowRepeatPrompt(false);
+      return;
+    }
+    const handle = setTimeout(() => {
+      fetch(`/api/last-order?phone=${digits}`)
+        .then((r) => r.json())
+        .then((j) => {
+          if (j.order) {
+            setLastOrder(j.order);
+            setShowRepeatPrompt(true);
+          }
+        })
+        .catch(() => {});
+    }, 500);
+    return () => clearTimeout(handle);
+  }, [phone, repeatDismissed]);
+
+  function useLastOrder() {
+    if (!lastOrder) return;
+    const matchedBase = BASES.find((b) => b.name === lastOrder.base);
+    if (matchedBase) setBase(matchedBase.id);
+    if (lastOrder.cup_size) setCupSize(lastOrder.cup_size.startsWith('24') ? '24' : '12');
+    setToppings(lastOrder.toppings || []);
+    setSyrups(lastOrder.syrups || []);
+    if (lastOrder.payment_method) setPaymentMethod(lastOrder.payment_method);
+    setShowRepeatPrompt(false);
+  }
 
   const activeBase = BASES.find((b) => b.id === base);
   const basePrice = PRICES[cupSize][base];
@@ -253,6 +314,7 @@ export default function Home() {
           toppings,
           syrups,
           qty,
+          pickup_date: pickupDate,
           pickup_time: pickup,
           customer_name: name,
           customer_phone: phone,
@@ -269,7 +331,10 @@ export default function Home() {
           setShopStatus({ is_open: false, closed_message: body.message });
         } else if (body.error === 'slot_full') {
           setErrorMsg(body.message || t.genericError);
-          fetch('/api/slots').then((r) => r.json()).then((j) => setSlotCounts(j.counts || {})).catch(() => {});
+          fetch(`/api/slots?date=${pickupDate}`).then((r) => r.json()).then((j) => setSlotCounts(j.counts || {})).catch(() => {});
+        } else if (body.error === 'sold_out') {
+          setErrorMsg(body.message || t.genericError);
+          fetch('/api/settings').then((r) => r.json()).then((j) => setShopStatus(j.settings)).catch(() => {});
         } else {
           setErrorMsg(t.genericError);
         }
@@ -329,6 +394,9 @@ export default function Home() {
         <h1 style={{ color: 'var(--maroon)' }}>{t.orderSent}</h1>
         <p>{t.orderSentBody(pickup)}</p>
         <p style={{ color: 'var(--ink-soft)', fontWeight: 700 }}>
+          {formatDateKey(pickupDate, lang)}
+        </p>
+        <p style={{ color: 'var(--ink-soft)', fontWeight: 700 }}>
           {t.pickupLocation}<br />{PICKUP_ADDRESS}
         </p>
         <p style={{ color: 'var(--ink-soft)', fontSize: '0.9rem' }}>
@@ -362,18 +430,27 @@ export default function Home() {
         <div className="section">
           <h2>{t.pickBase}</h2>
           <p className="hint">{t.pickBaseHint}</p>
-          {BASES.map((b) => (
-            <label key={b.id} className={`base-card${base === b.id ? ' selected' : ''}`}>
-              <input type="radio" name="base" checked={base === b.id} onChange={() => setBase(b.id)} />
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex' }}>
-                  <span className="name">{b.name}</span>
-                  <span className="price" style={{ marginLeft: 'auto' }}>${PRICES[cupSize][b.id].toFixed(2)}</span>
+          {BASES.map((b) => {
+            const isSoldOut = (shopStatus?.sold_out_flavors || []).includes(b.id);
+            return (
+              <label
+                key={b.id}
+                className={`base-card${base === b.id ? ' selected' : ''}`}
+                style={isSoldOut ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+              >
+                <input type="radio" name="base" checked={base === b.id} disabled={isSoldOut} onChange={() => setBase(b.id)} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex' }}>
+                    <span className="name">{b.name}</span>
+                    <span className="price" style={{ marginLeft: 'auto' }}>
+                      {isSoldOut ? t.soldOut : `$${PRICES[cupSize][b.id].toFixed(2)}`}
+                    </span>
+                  </div>
+                  <div className="desc">{BASE_DESC[b.id][lang]}</div>
                 </div>
-                <div className="desc">{BASE_DESC[b.id][lang]}</div>
-              </div>
-            </label>
-          ))}
+              </label>
+            );
+          })}
         </div>
 
         <div className="section">
@@ -418,6 +495,20 @@ export default function Home() {
         </div>
 
         <div className="section">
+          <h2>{t.pickupDateLabel}</h2>
+          <p className="hint">{t.pickupDateHint}</p>
+          <div className="field">
+            <input
+              type="date"
+              value={pickupDate}
+              min={todayDateKey()}
+              max={maxPreorderDateKey()}
+              onChange={(e) => setPickupDate(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="section">
           <h2>{t.pickupTime}</h2>
           <p className="hint">{t.pickupHint}</p>
           <div className="field">
@@ -442,9 +533,30 @@ export default function Home() {
           </div>
           <div className="field">
             <label>{t.phone}</label>
-            <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder={t.phonePlaceholder} />
+            <input type="tel" value={phone} onChange={(e) => { setPhone(e.target.value); setRepeatDismissed(false); }} placeholder={t.phonePlaceholder} />
             <p style={{ margin: '6px 0 0', fontSize: '0.78rem', color: 'var(--ink-soft)' }}>{t.phoneHint}</p>
           </div>
+          {showRepeatPrompt && lastOrder && (
+            <div className="free-note" style={{ display: 'block', width: '100%', boxSizing: 'border-box', marginBottom: 14 }}>
+              <div style={{ marginBottom: 8 }}>
+                {t.repeatTitle} <strong>{lastOrder.base}</strong>
+                {lastOrder.toppings?.length ? ` · ${lastOrder.toppings.join(', ')}` : ''}
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button type="button" className="btn-primary" style={{ padding: '8px 14px', fontSize: '0.85rem' }} onClick={useLastOrder}>
+                  {t.repeatUse}
+                </button>
+                <button
+                  type="button"
+                  className="status-btn"
+                  style={{ padding: '8px 14px', fontSize: '0.85rem' }}
+                  onClick={() => { setShowRepeatPrompt(false); setRepeatDismissed(true); }}
+                >
+                  {t.repeatDismiss}
+                </button>
+              </div>
+            </div>
+          )}
           <div className="field">
             <label>{t.notes}</label>
             <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={t.notesPlaceholder} />
@@ -473,7 +585,7 @@ export default function Home() {
           <div className="line"><span>{t.cupSizeLabel}</span><strong>{cupSize} oz</strong></div>
           <div className="line"><span>{t.toppings}</span><strong>{toppings.length ? toppings.map((tp) => TOPPING_LABELS[tp][lang]).join(', ') : t.none}</strong></div>
           <div className="line"><span>{t.syrup}</span><strong>{syrups.length ? syrups.map((s) => SYRUP_LABELS[s][lang]).join(', ') : t.none}</strong></div>
-          <div className="line"><span>{t.pickup}</span><strong>{pickup}</strong></div>
+          <div className="line"><span>{t.pickup}</span><strong>{formatDateKey(pickupDate, lang)}, {pickup}</strong></div>
           <div className="line"><span>{t.name}</span><strong>{name || '—'}</strong></div>
           {phone && <div className="line"><span>{t.phone}</span><strong>{phone}</strong></div>}
           {notes && <div className="line"><span>{t.notes}</span><strong>{notes}</strong></div>}

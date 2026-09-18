@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import Head from 'next/head';
 import Script from 'next/script';
 import Link from 'next/link';
-import { BASES, PRICES, TOPPINGS, SYRUPS, orderTotal, buildPickupTimes, baseIdFromName } from '../lib/menu';
+import { BASES, PRICES, TOPPINGS, SYRUPS, orderTotal, buildPickupTimes, baseIdFromName, formatDateKey, todayDateKey, maxPreorderDateKey } from '../lib/menu';
 
 const ONESIGNAL_APP_ID = process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID;
 const PICKUP_TIMES = buildPickupTimes();
@@ -113,6 +113,7 @@ export default function Admin() {
       toppings: o.toppings || [],
       syrups: o.syrups || [],
       qty: o.qty || 1,
+      pickup_date: o.pickup_date || todayDateKey(),
       pickup_time: o.pickup_time,
       customer_name: o.customer_name || '',
       customer_phone: o.customer_phone || '',
@@ -151,6 +152,7 @@ export default function Admin() {
       toppings: editForm.toppings,
       syrups: editForm.syrups,
       qty: editForm.qty,
+      pickup_date: editForm.pickup_date,
       pickup_time: editForm.pickup_time,
       customer_name: editForm.customer_name,
       customer_phone: editForm.customer_phone,
@@ -339,6 +341,34 @@ export default function Admin() {
                 <span className="hint" style={{ margin: 0 }}>orders max per time slot</span>
               </div>
             </div>
+
+            <div className="order-card" style={{ marginTop: 10 }}>
+              <label style={{ display: 'block', fontWeight: 700, marginBottom: 10 }}>
+                Flavor availability
+              </label>
+              <div className="chip-grid">
+                {BASES.map((b) => {
+                  const isSoldOut = (settings.sold_out_flavors || []).includes(b.id);
+                  return (
+                    <button
+                      key={b.id}
+                      type="button"
+                      className={`chip${isSoldOut ? ' checked' : ''}`}
+                      style={isSoldOut ? { borderColor: 'var(--maroon)', background: 'var(--pink-pale)' } : {}}
+                      onClick={() => {
+                        const current = settings.sold_out_flavors || [];
+                        const next = isSoldOut ? current.filter((x) => x !== b.id) : [...current, b.id];
+                        saveSettings({ sold_out_flavors: next });
+                      }}
+                      disabled={savingSettings}
+                    >
+                      {isSoldOut ? '🚫 ' : '✅ '}{b.name}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="hint" style={{ marginTop: 10, marginBottom: 0 }}>Tap a flavor to mark it sold out — customers won't be able to select it.</p>
+            </div>
           </div>
         )}
 
@@ -403,7 +433,7 @@ export default function Admin() {
                     checked={selectedIds.includes(o.id)}
                     onChange={() => toggleSelect(o.id)}
                   />
-                  <span className="pickup">Pickup {o.pickup_time}</span>
+                  <span className="pickup">Pickup {formatDateKey(o.pickup_date || todayDateKey())}, {o.pickup_time}</span>
                 </label>
                 <span className="total">${Number(o.total).toFixed(2)}</span>
               </div>
@@ -510,6 +540,17 @@ export default function Admin() {
                 <span>{editForm.qty}</span>
                 <button type="button" onClick={() => setEditForm((f) => ({ ...f, qty: Math.min(20, f.qty + 1) }))}>+</button>
               </div>
+            </div>
+
+            <div className="field">
+              <label>Pickup date</label>
+              <input
+                type="date"
+                value={editForm.pickup_date}
+                min={todayDateKey()}
+                max={maxPreorderDateKey()}
+                onChange={(e) => setEditForm((f) => ({ ...f, pickup_date: e.target.value }))}
+              />
             </div>
 
             <div className="field">

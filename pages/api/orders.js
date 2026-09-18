@@ -1,5 +1,6 @@
 import { getSupabaseAdmin } from '../../lib/supabaseAdmin';
 import { isValidSession } from '../../lib/adminSession';
+import { baseIdFromName, formatDateKey, todayDateKey } from '../../lib/menu';
 
 async function sendPushToAdmin(order) {
   const appId = process.env.ONESIGNAL_APP_ID;
@@ -69,9 +70,10 @@ async function sendSms(to, body) {
 async function sendConfirmationTextToCustomer(order) {
   const to = normalizePhone(order.customer_phone);
   if (!to) return;
+  const dateLabel = formatDateKey(order.pickup_date || todayDateKey(), order.language);
   const body = order.language === 'es'
-    ? '🍓 ¡Recibimos tu orden de Fresas con Crema! Te enviaremos un mensaje cuando esté lista para recoger.'
-    : "🍓 Got your Fresas con Crema order! We'll text you when it's ready for pickup.";
+    ? `🍓 ¡Recibimos tu orden de Fresas con Crema! Te enviaremos un mensaje cuando esté lista para recoger (${dateLabel}, ${order.pickup_time}).`
+    : `🍓 Got your Fresas con Crema order! We'll text you when it's ready for pickup (${dateLabel}, ${order.pickup_time}).`;
   await sendSms(to, body);
 }
 
@@ -88,13 +90,16 @@ export default async function handler(req, res) {
   const supabase = getSupabaseAdmin();
 
   if (req.method === 'POST') {
-    const { base, cup_size, toppings, syrups, qty, pickup_time, customer_name, customer_phone, notes, total, payment_method, payment_confirmed, language } = req.body || {};
+    const { base, cup_size, toppings, syrups, qty, pickup_time, pickup_date, customer_name, customer_phone, notes, total, payment_method, payment_confirmed, language } = req.body || {};
 
     if (!base || !pickup_time || !customer_name || typeof total !== 'number') {
       return res.status(400).json({ error: 'Missing required order fields.' });
     }
 
-    // Reject new orders while the shop is marked closed.
+    const finalPickupDate = pickup_date || todayDateKey();
+
+    // Reject new orders while the shop is marked closed, or if this
+    // specific flavor has been marked sold out.
     const { data: settingsRow } = await supabase.from('shop_settings').select('*').eq('id', 1).single();
     if (settingsRow && settingsRow.is_open === false) {
       return res.status(403).json({
@@ -102,16 +107,19 @@ export default async function handler(req, res) {
         message: settingsRow.closed_message || "We're not taking orders right now — please check back soon!",
       });
     }
+    const baseId = baseIdFromName(base);
+    if (settingsRow?.sold_out_flavors?.includes(baseId)) {
+      return res.status(409).json({ error: 'sold_out', message: `${base} is sold out right now — please pick another flavor.` });
+    }
     const slotLimit = settingsRow?.slot_limit ?? 3;
 
-    // Reject if this pickup slot (today) is already at capacity.
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
+    // Reject if this pickup slot (on the selected pickup date) is already
+    // at capacity.
     const { count: slotCount } = await supabase
       .from('orders')
       .select('id', { count: 'exact', head: true })
       .eq('pickup_time', pickup_time)
-      .gte('created_at', startOfDay.toISOString());
+      .eq('pickup_date', finalPickupDate);
 
     if ((slotCount || 0) >= slotLimit) {
       return res.status(409).json({ error: 'slot_full', message: 'That pickup time just filled up — please choose another.' });
@@ -126,8 +134,10 @@ export default async function handler(req, res) {
         syrups: syrups || [],
         qty: qty || 1,
         pickup_time,
+        pickup_date: finalPickupDate,
         customer_name,
         customer_phone: customer_phone || '',
+        customer_phone_digits: customer_phone ? String(customer_phone).replace(/\D/g, '') : null,
         notes: notes || '',
         total,
         status: 'new',
@@ -178,7 +188,7 @@ export default async function handler(req, res) {
 
     const allowedFields = [
       'status', 'paid', 'base', 'cup_size', 'toppings', 'syrups', 'qty',
-      'pickup_time', 'customer_name', 'customer_phone', 'notes', 'total',
+      'pickup_time', 'pickup_date', 'customer_name', 'customer_phone', 'notes', 'total',
     ];
     const updates = {};
     for (const field of allowedFields) {

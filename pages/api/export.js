@@ -47,6 +47,7 @@ export default async function handler(req, res) {
     { header: 'Toppings', key: 'toppings', width: 34 },
     { header: 'Syrup', key: 'syrup', width: 22 },
     { header: 'Qty', key: 'qty', width: 7 },
+    { header: 'Pickup Date', key: 'pickupDate', width: 13 },
     { header: 'Pickup Time', key: 'pickupTime', width: 13 },
     { header: 'Payment Method', key: 'paymentMethod', width: 16 },
     { header: 'Paid', key: 'paid', width: 9 },
@@ -75,6 +76,7 @@ export default async function handler(req, res) {
       toppings: (o.toppings || []).join(', '),
       syrup: (o.syrups || []).join(', '),
       qty: o.qty ?? '',
+      pickupDate: o.pickup_date || '',
       pickupTime: o.pickup_time || '',
       paymentMethod: o.payment_method || '',
       paid: o.paid ? 'Yes' : 'No',
@@ -109,7 +111,7 @@ export default async function handler(req, res) {
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF7CCD6' } };
   });
 
-  sheet.autoFilter = { from: 'A1', to: 'M1' };
+  sheet.autoFilter = { from: 'A1', to: 'N1' };
 
   const buffer = await workbook.xlsx.writeBuffer();
   const dateStamp = new Date().toISOString().slice(0, 10);

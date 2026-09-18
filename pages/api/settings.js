@@ -19,11 +19,12 @@ export default async function handler(req, res) {
     if (!isValidSession(req)) {
       return res.status(401).json({ error: 'Not authorized.' });
     }
-    const { is_open, closed_message, slot_limit } = req.body || {};
+    const { is_open, closed_message, slot_limit, sold_out_flavors } = req.body || {};
     const updates = {};
     if (is_open !== undefined) updates.is_open = is_open;
     if (closed_message !== undefined) updates.closed_message = closed_message;
     if (slot_limit !== undefined) updates.slot_limit = slot_limit;
+    if (sold_out_flavors !== undefined) updates.sold_out_flavors = sold_out_flavors;
 
     if (Object.keys(updates).length === 0) {
       return res.status(400).json({ error: 'No valid fields to update.' });

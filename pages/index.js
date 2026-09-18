@@ -115,6 +115,8 @@ const STR = {
     zelleFollowUp: (total, phone) => `We'll confirm once your $${total} Zelle payment to ${phone} comes through.`,
     cashFollowUp: (total) => `Have $${total} in cash ready at pickup.`,
     walnutWarning: '⚠️ Allergy notice: Ferrero Rocher Fresas con Crema contains walnuts.',
+    allergyTitle: '🥜 Allergy Notice',
+    gotIt: 'Got it',
   },
   es: {
     title: 'Fresas con Crema — Arma tu Vaso',
@@ -166,6 +168,8 @@ const STR = {
     zelleFollowUp: (total, phone) => `Confirmaremos tu orden cuando llegue tu pago de $${total} por Zelle a ${phone}.`,
     cashFollowUp: (total) => `Ten $${total} en efectivo listos al recoger.`,
     walnutWarning: '⚠️ Aviso de alergia: las Fresas con Crema estilo Ferrero Rocher contienen nueces (walnuts).',
+    allergyTitle: '🥜 Aviso de Alergia',
+    gotIt: 'Entendido',
   },
 };
 
@@ -212,6 +216,7 @@ export default function Home() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [showWalnutAlert, setShowWalnutAlert] = useState(false);
 
   const activeBase = BASES.find((b) => b.id === base);
   const basePrice = PRICES[cupSize][base];
@@ -227,9 +232,8 @@ export default function Home() {
   // again if the cup size changes while it's still selected.
   useEffect(() => {
     if (base === 'ferrero') {
-      window.alert(t.walnutWarning);
+      setShowWalnutAlert(true);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [base, cupSize]);
 
   function toggleTopping(tp) {
@@ -507,6 +511,15 @@ export default function Home() {
             </button>
             <button className="status-btn" onClick={() => setShowSheet(false)}>{t.keepEditing}</button>
           </div>
+        </div>
+      </div>
+      <div className={`overlay${showWalnutAlert ? ' open' : ''}`} onClick={(e) => e.target === e.currentTarget && setShowWalnutAlert(false)}>
+        <div className="sheet" style={{ textAlign: 'center' }}>
+          <h3 style={{ marginBottom: 10 }}>{t.allergyTitle}</h3>
+          <p style={{ fontSize: '0.96rem' }}>{t.walnutWarning.replace('⚠️ ', '')}</p>
+          <button className="btn-primary" style={{ width: '100%', marginTop: 14 }} onClick={() => setShowWalnutAlert(false)}>
+            {t.gotIt}
+          </button>
         </div>
       </div>
     </div>

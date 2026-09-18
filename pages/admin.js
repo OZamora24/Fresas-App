@@ -303,22 +303,35 @@ export default function Admin() {
                 <span className="pickup">{settings.is_open ? '🟢 Open for orders' : '🔴 Closed'}</span>
                 <button
                   className="status-btn"
-                  onClick={() => saveSettings({ is_open: !settings.is_open })}
+                  onClick={() => saveSettings({ is_open: !settings.is_open, ...(settings.is_open ? {} : { reopens_at: null }) })}
                   disabled={savingSettings}
                 >
                   {settings.is_open ? 'Close shop' : 'Reopen shop'}
                 </button>
               </div>
               {!settings.is_open && (
-                <div className="field" style={{ marginTop: 10, marginBottom: 0 }}>
-                  <label>Message customers see</label>
-                  <input
-                    type="text"
-                    defaultValue={settings.closed_message}
-                    placeholder="We're closed right now — check back soon!"
-                    onBlur={(e) => saveSettings({ closed_message: e.target.value })}
-                  />
-                </div>
+                <>
+                  <div className="field" style={{ marginTop: 10, marginBottom: 10 }}>
+                    <label>Message customers see</label>
+                    <input
+                      type="text"
+                      defaultValue={settings.closed_message}
+                      placeholder="We're closed right now — check back soon!"
+                      onBlur={(e) => saveSettings({ closed_message: e.target.value })}
+                    />
+                  </div>
+                  <div className="field" style={{ marginBottom: 0 }}>
+                    <label>We'll be back (optional — shown to customers)</label>
+                    <input
+                      type="datetime-local"
+                      defaultValue={settings.reopens_at ? new Date(settings.reopens_at).toISOString().slice(0, 16) : ''}
+                      onChange={(e) => {
+                        const val = e.target.value ? new Date(e.target.value).toISOString() : null;
+                        saveSettings({ reopens_at: val });
+                      }}
+                    />
+                  </div>
+                </>
               )}
             </div>
 
@@ -368,6 +381,62 @@ export default function Admin() {
                 })}
               </div>
               <p className="hint" style={{ marginTop: 10, marginBottom: 0 }}>Tap a flavor to mark it sold out — customers won't be able to select it.</p>
+            </div>
+
+            <div className="order-card" style={{ marginTop: 10 }}>
+              <label style={{ display: 'block', fontWeight: 700, marginBottom: 10 }}>
+                Topping availability
+              </label>
+              <div className="chip-grid">
+                {TOPPINGS.map((tp) => {
+                  const isSoldOut = (settings.sold_out_toppings || []).includes(tp.name);
+                  return (
+                    <button
+                      key={tp.name}
+                      type="button"
+                      className={`chip${isSoldOut ? ' checked' : ''}`}
+                      style={isSoldOut ? { borderColor: 'var(--maroon)', background: 'var(--pink-pale)' } : {}}
+                      onClick={() => {
+                        const current = settings.sold_out_toppings || [];
+                        const next = isSoldOut ? current.filter((x) => x !== tp.name) : [...current, tp.name];
+                        saveSettings({ sold_out_toppings: next });
+                      }}
+                      disabled={savingSettings}
+                    >
+                      {isSoldOut ? '🚫 ' : '✅ '}{tp.name}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="hint" style={{ marginTop: 10, marginBottom: 0 }}>Tap a topping to mark it sold out.</p>
+            </div>
+
+            <div className="order-card" style={{ marginTop: 10 }}>
+              <label style={{ display: 'block', fontWeight: 700, marginBottom: 10 }}>
+                Syrup availability
+              </label>
+              <div className="chip-grid">
+                {SYRUPS.map((s) => {
+                  const isSoldOut = (settings.sold_out_syrups || []).includes(s);
+                  return (
+                    <button
+                      key={s}
+                      type="button"
+                      className={`chip${isSoldOut ? ' checked' : ''}`}
+                      style={isSoldOut ? { borderColor: 'var(--maroon)', background: 'var(--pink-pale)' } : {}}
+                      onClick={() => {
+                        const current = settings.sold_out_syrups || [];
+                        const next = isSoldOut ? current.filter((x) => x !== s) : [...current, s];
+                        saveSettings({ sold_out_syrups: next });
+                      }}
+                      disabled={savingSettings}
+                    >
+                      {isSoldOut ? '🚫 ' : '✅ '}{s}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="hint" style={{ marginTop: 10, marginBottom: 0 }}>Tap a syrup to mark it sold out.</p>
             </div>
           </div>
         )}

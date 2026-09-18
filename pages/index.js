@@ -117,6 +117,7 @@ const STR = {
     gotIt: 'Got it',
     closedTitle: "We're closed right now",
     closedDefault: "We're not taking orders right now — please check back soon!",
+    closedReopensAt: (when) => `We'll be back ${when}!`,
     fullSuffix: ' (FULL)',
   },
   es: {
@@ -182,6 +183,7 @@ const STR = {
     gotIt: 'Entendido',
     closedTitle: 'Estamos cerrados por ahora',
     closedDefault: 'No estamos tomando órdenes en este momento — ¡vuelve pronto!',
+    closedReopensAt: (when) => `¡Regresamos ${when}!`,
     fullSuffix: ' (LLENO)',
   },
 };
@@ -230,6 +232,17 @@ export default function Home() {
     const available = BASES.find((b) => !shopStatus.sold_out_flavors.includes(b.id));
     if (available) setBase(available.id);
   }, [shopStatus, base]);
+
+  // Drop any selected toppings/syrups that get marked sold out mid-session.
+  useEffect(() => {
+    if (!shopStatus) return;
+    if (shopStatus.sold_out_toppings?.length) {
+      setToppings((prev) => prev.filter((t) => !shopStatus.sold_out_toppings.includes(t)));
+    }
+    if (shopStatus.sold_out_syrups?.length) {
+      setSyrups((prev) => prev.filter((s) => !shopStatus.sold_out_syrups.includes(s)));
+    }
+  }, [shopStatus]);
 
   // Reload slot availability whenever the customer changes the pickup date.
   useEffect(() => {
@@ -378,11 +391,20 @@ export default function Home() {
   );
 
   if (shopStatus && shopStatus.is_open === false) {
+    const reopensDate = shopStatus.reopens_at ? new Date(shopStatus.reopens_at) : null;
+    const reopensLabel = reopensDate
+      ? reopensDate.toLocaleString(lang === 'es' ? 'es-US' : 'en-US', {
+          weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+        })
+      : null;
     return (
       <div className="wrap" style={{ textAlign: 'center', paddingTop: 80 }}>
         <Head><title>{t.closedTitle} — Fresas con Crema</title></Head>
         <h1 style={{ color: 'var(--maroon)' }}>🍓 {t.closedTitle}</h1>
         <p>{shopStatus.closed_message || t.closedDefault}</p>
+        {reopensLabel && (
+          <p style={{ color: 'var(--maroon)', fontWeight: 700 }}>{t.closedReopensAt(reopensLabel)}</p>
+        )}
       </div>
     );
   }
@@ -457,13 +479,20 @@ export default function Home() {
           <h2>{t.toppings}</h2>
           <p className="hint">{t.toppingsHint}</p>
           <div className="chip-grid">
-            {TOPPINGS.map((tp) => (
-              <label key={tp.name} className={`chip${toppings.includes(tp.name) ? ' checked' : ''}`}>
-                <input type="checkbox" style={{ display: 'none' }} checked={toppings.includes(tp.name)} onChange={() => toggleTopping(tp.name)} />
-                <span>{TOPPING_LABELS[tp.name][lang]}</span>
-                {tp.alwaysExtra && <span className="badge">+$1</span>}
-              </label>
-            ))}
+            {TOPPINGS.map((tp) => {
+              const isSoldOut = (shopStatus?.sold_out_toppings || []).includes(tp.name);
+              return (
+                <label
+                  key={tp.name}
+                  className={`chip${toppings.includes(tp.name) ? ' checked' : ''}`}
+                  style={isSoldOut ? { opacity: 0.45, cursor: 'not-allowed' } : {}}
+                >
+                  <input type="checkbox" style={{ display: 'none' }} checked={toppings.includes(tp.name)} disabled={isSoldOut} onChange={() => toggleTopping(tp.name)} />
+                  <span>{TOPPING_LABELS[tp.name][lang]}</span>
+                  {isSoldOut ? <span className="badge">{t.soldOut}</span> : tp.alwaysExtra && <span className="badge">+$1</span>}
+                </label>
+              );
+            })}
           </div>
           {activeBase.freeToppings > 0 && (
             <div className="free-note">
@@ -476,12 +505,20 @@ export default function Home() {
           <h2>{t.syrup}</h2>
           <p className="hint">{t.syrupHint}</p>
           <div className="chip-grid">
-            {SYRUPS.map((s) => (
-              <label key={s} className={`chip${syrups.includes(s) ? ' checked' : ''}`}>
-                <input type="checkbox" style={{ display: 'none' }} checked={syrups.includes(s)} onChange={() => toggleSyrup(s)} />
-                <span>{SYRUP_LABELS[s][lang]}</span>
-              </label>
-            ))}
+            {SYRUPS.map((s) => {
+              const isSoldOut = (shopStatus?.sold_out_syrups || []).includes(s);
+              return (
+                <label
+                  key={s}
+                  className={`chip${syrups.includes(s) ? ' checked' : ''}`}
+                  style={isSoldOut ? { opacity: 0.45, cursor: 'not-allowed' } : {}}
+                >
+                  <input type="checkbox" style={{ display: 'none' }} checked={syrups.includes(s)} disabled={isSoldOut} onChange={() => toggleSyrup(s)} />
+                  <span>{SYRUP_LABELS[s][lang]}</span>
+                  {isSoldOut && <span className="badge">{t.soldOut}</span>}
+                </label>
+              );
+            })}
           </div>
         </div>
 

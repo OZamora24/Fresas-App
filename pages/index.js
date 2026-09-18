@@ -236,9 +236,6 @@ export default function Home() {
           <div className="line"><span>Name</span><strong>{name || '—'}</strong></div>
           {notes && <div className="line"><span>Notes</span><strong>{notes}</strong></div>}
           <div className="grand"><span>Total</span><span>${total.toFixed(2)}</span></div>
-          <p style={{ color: 'var(--ink-soft)', fontSize: '0.85rem', fontWeight: 700, marginTop: 4 }}>
-            Pickup location: {PICKUP_ADDRESS}
-          </p>
 
           <div className="field" style={{ marginTop: 18 }}>
             <label>Payment</label>

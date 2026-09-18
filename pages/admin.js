@@ -139,11 +139,14 @@ export default function Admin() {
                 <span className="pickup">Pickup {o.pickup_time}</span>
                 <span className="total">${Number(o.total).toFixed(2)}</span>
               </div>
-              <div className="meta">
-                {o.qty}x {o.base}
-                {o.toppings?.length ? ` · Toppings: ${o.toppings.join(', ')}` : ''}
-                {o.syrups?.length ? ` · Syrup: ${o.syrups.join(', ')}` : ''}
-              </div>
+              <div className="meta">{o.qty}x {o.base}</div>
+              <details className="order-details">
+                <summary>View toppings &amp; syrup</summary>
+                <div className="order-details-body">
+                  <div><strong>Toppings:</strong> {o.toppings?.length ? o.toppings.join(', ') : 'None'}</div>
+                  <div><strong>Syrup:</strong> {o.syrups?.length ? o.syrups.join(', ') : 'None'}</div>
+                </div>
+              </details>
               <div className="meta">
                 {o.customer_name}{o.notes ? ` — ${o.notes}` : ''}
               </div>

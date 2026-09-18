@@ -16,6 +16,10 @@ export default function Admin() {
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState(null);
   const [savingEdit, setSavingEdit] = useState(false);
+  const [exportRange, setExportRange] = useState('all');
+  const [exportStart, setExportStart] = useState('');
+  const [exportEnd, setExportEnd] = useState('');
+  const [exporting, setExporting] = useState(false);
   const pollRef = useRef(null);
 
   async function fetchOrders() {
@@ -137,6 +141,81 @@ export default function Admin() {
     closeEdit();
   }
 
+  function csvEscape(value) {
+    const str = String(value ?? '');
+    if (/[",\n]/.test(str)) return `"${str.replace(/"/g, '""')}"`;
+    return str;
+  }
+
+  function ordersToCsv(rows) {
+    const headers = ['Date', 'Time', 'Name', 'Phone', 'Base', 'Cup Size', 'Toppings', 'Syrup', 'Qty', 'Pickup Time', 'Payment Method', 'Paid', 'Total'];
+    const lines = [headers.join(',')];
+    for (const o of rows) {
+      const created = new Date(o.created_at);
+      lines.push([
+        created.toLocaleDateString(),
+        created.toLocaleTimeString(),
+        o.customer_name || '',
+        o.customer_phone || '',
+        o.base || '',
+        o.cup_size || '',
+        (o.toppings || []).join('; '),
+        (o.syrups || []).join('; '),
+        o.qty ?? '',
+        o.pickup_time || '',
+        o.payment_method || '',
+        o.paid ? 'Yes' : 'No',
+        Number(o.total || 0).toFixed(2),
+      ].map(csvEscape).join(','));
+    }
+    return lines.join('\n');
+  }
+
+  async function exportOrders() {
+    setExporting(true);
+    try {
+      const params = new URLSearchParams();
+      params.set('limit', '100000');
+
+      if (exportRange === '7days') {
+        const start = new Date();
+        start.setDate(start.getDate() - 7);
+        params.set('start', start.toISOString());
+      } else if (exportRange === '30days') {
+        const start = new Date();
+        start.setDate(start.getDate() - 30);
+        params.set('start', start.toISOString());
+      } else if (exportRange === 'custom') {
+        if (exportStart) params.set('start', new Date(exportStart).toISOString());
+        if (exportEnd) {
+          const endDate = new Date(exportEnd);
+          endDate.setHours(23, 59, 59, 999);
+          params.set('end', endDate.toISOString());
+        }
+      }
+
+      const res = await fetch(`/api/orders?${params.toString()}`);
+      if (!res.ok) throw new Error('Export failed');
+      const data = await res.json();
+      const csv = ordersToCsv(data.orders || []);
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const dateStamp = new Date().toISOString().slice(0, 10);
+      a.href = url;
+      a.download = `fresas-orders-${dateStamp}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      alert('Could not export orders — please try again.');
+    } finally {
+      setExporting(false);
+    }
+  }
+
   async function enablePush() {
     if (!window.OneSignal) return;
     await window.OneSignal.Notifications.requestPermission();
@@ -198,6 +277,33 @@ export default function Admin() {
             </button>
           </div>
         )}
+
+        <div className="section">
+          <h2>Export order history</h2>
+          <div className="field">
+            <select value={exportRange} onChange={(e) => setExportRange(e.target.value)}>
+              <option value="all">All orders ever</option>
+              <option value="7days">Last 7 days</option>
+              <option value="30days">Last 30 days</option>
+              <option value="custom">Custom date range</option>
+            </select>
+          </div>
+          {exportRange === 'custom' && (
+            <div style={{ display: 'flex', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
+              <div className="field" style={{ flex: 1, minWidth: 140, marginBottom: 0 }}>
+                <label>From</label>
+                <input type="date" value={exportStart} onChange={(e) => setExportStart(e.target.value)} />
+              </div>
+              <div className="field" style={{ flex: 1, minWidth: 140, marginBottom: 0 }}>
+                <label>To</label>
+                <input type="date" value={exportEnd} onChange={(e) => setExportEnd(e.target.value)} />
+              </div>
+            </div>
+          )}
+          <button className="btn-primary" onClick={exportOrders} disabled={exporting}>
+            {exporting ? 'Preparing…' : '⬇️ Export CSV'}
+          </button>
+        </div>
 
         <div className="section">
           <h2>Orders ({orders.filter((o) => o.status !== 'done').length} open)</h2>

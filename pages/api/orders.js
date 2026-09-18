@@ -75,11 +75,14 @@ export default async function handler(req, res) {
     if (!isValidSession(req)) {
       return res.status(401).json({ error: 'Not authorized.' });
     }
-    const { data, error } = await supabase
-      .from('orders')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(200);
+    const { start, end, limit } = req.query || {};
+
+    let query = supabase.from('orders').select('*').order('created_at', { ascending: false });
+    if (start) query = query.gte('created_at', start);
+    if (end) query = query.lte('created_at', end);
+    query = query.limit(limit ? parseInt(limit, 10) : 200);
+
+    const { data, error } = await query;
 
     if (error) {
       console.error(error);

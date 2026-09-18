@@ -513,8 +513,8 @@ export default function Home() {
           </div>
         </div>
       </div>
-      <div className={`overlay${showWalnutAlert ? ' open' : ''}`} onClick={(e) => e.target === e.currentTarget && setShowWalnutAlert(false)}>
-        <div className="sheet" style={{ textAlign: 'center' }}>
+      <div className={`overlay center-modal${showWalnutAlert ? ' open' : ''}`} onClick={(e) => e.target === e.currentTarget && setShowWalnutAlert(false)}>
+        <div className="sheet center-card" style={{ textAlign: 'center' }}>
           <h3 style={{ marginBottom: 10 }}>{t.allergyTitle}</h3>
           <p style={{ fontSize: '0.96rem' }}>{t.walnutWarning.replace('⚠️ ', '')}</p>
           <button className="btn-primary" style={{ width: '100%', marginTop: 14 }} onClick={() => setShowWalnutAlert(false)}>

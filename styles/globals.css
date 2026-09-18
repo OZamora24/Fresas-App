@@ -110,7 +110,9 @@ button {
 
 .overlay { position: fixed; inset: 0; background: rgba(40,8,14,0.55); z-index: 20; display: none; align-items: flex-end; justify-content: center; }
 .overlay.open { display: flex; }
+.overlay.center-modal { align-items: center; }
 .sheet { background: var(--cream-2); color: var(--ink); width: 100%; max-width: 640px; border-radius: 22px 22px 0 0; padding: 24px 22px; max-height: 86vh; overflow-y: auto; }
+.sheet.center-card { border-radius: 22px; max-width: 380px; margin: 0 20px; }
 .sheet h3 { color: var(--maroon); margin: 0 0 14px; }
 .sheet .line { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed var(--line); font-size: 0.94rem; }
 .sheet .grand { display:flex; justify-content: space-between; padding: 14px 0 4px; font-weight: 800; color: var(--maroon); font-size: 1.2rem; }

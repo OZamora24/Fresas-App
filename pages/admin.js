@@ -141,41 +141,10 @@ export default function Admin() {
     closeEdit();
   }
 
-  function csvEscape(value) {
-    const str = String(value ?? '');
-    if (/[",\n]/.test(str)) return `"${str.replace(/"/g, '""')}"`;
-    return str;
-  }
-
-  function ordersToCsv(rows) {
-    const headers = ['Date', 'Time', 'Name', 'Phone', 'Base', 'Cup Size', 'Toppings', 'Syrup', 'Qty', 'Pickup Time', 'Payment Method', 'Paid', 'Total'];
-    const lines = [headers.join(',')];
-    for (const o of rows) {
-      const created = new Date(o.created_at);
-      lines.push([
-        created.toLocaleDateString(),
-        created.toLocaleTimeString(),
-        o.customer_name || '',
-        o.customer_phone || '',
-        o.base || '',
-        o.cup_size || '',
-        (o.toppings || []).join('; '),
-        (o.syrups || []).join('; '),
-        o.qty ?? '',
-        o.pickup_time || '',
-        o.payment_method || '',
-        o.paid ? 'Yes' : 'No',
-        Number(o.total || 0).toFixed(2),
-      ].map(csvEscape).join(','));
-    }
-    return lines.join('\n');
-  }
-
   async function exportOrders() {
     setExporting(true);
     try {
       const params = new URLSearchParams();
-      params.set('limit', '100000');
 
       if (exportRange === '7days') {
         const start = new Date();
@@ -194,17 +163,15 @@ export default function Admin() {
         }
       }
 
-      const res = await fetch(`/api/orders?${params.toString()}`);
+      const res = await fetch(`/api/export?${params.toString()}`);
       if (!res.ok) throw new Error('Export failed');
-      const data = await res.json();
-      const csv = ordersToCsv(data.orders || []);
+      const blob = await res.blob();
 
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       const dateStamp = new Date().toISOString().slice(0, 10);
       a.href = url;
-      a.download = `fresas-orders-${dateStamp}.csv`;
+      a.download = `fresas-orders-${dateStamp}.xlsx`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -301,7 +268,7 @@ export default function Admin() {
             </div>
           )}
           <button className="btn-primary" onClick={exportOrders} disabled={exporting}>
-            {exporting ? 'Preparing…' : '⬇️ Export CSV'}
+            {exporting ? 'Preparing…' : '⬇️ Export Excel file'}
           </button>
         </div>
 

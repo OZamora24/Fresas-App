@@ -109,6 +109,9 @@ const STR = {
     walnutWarning: '⚠️ Allergy notice: Ferrero Rocher Fresas con Crema contains walnuts.',
     allergyTitle: '🥜 Allergy Notice',
     gotIt: 'Got it',
+    closedTitle: "We're closed right now",
+    closedDefault: "We're not taking orders right now — please check back soon!",
+    fullSuffix: ' (FULL)',
   },
   es: {
     title: 'Fresas con Crema — Arma tu Vaso',
@@ -165,6 +168,9 @@ const STR = {
     walnutWarning: '⚠️ Aviso de alergia: las Fresas con Crema estilo Ferrero Rocher contienen nueces (walnuts).',
     allergyTitle: '🥜 Aviso de Alergia',
     gotIt: 'Entendido',
+    closedTitle: 'Estamos cerrados por ahora',
+    closedDefault: 'No estamos tomando órdenes en este momento — ¡vuelve pronto!',
+    fullSuffix: ' (LLENO)',
   },
 };
 
@@ -190,6 +196,24 @@ export default function Home() {
   const [submitted, setSubmitted] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [showWalnutAlert, setShowWalnutAlert] = useState(false);
+  const [shopStatus, setShopStatus] = useState(null); // null = still checking
+  const [slotCounts, setSlotCounts] = useState({});
+  const [slotLimit, setSlotLimit] = useState(3);
+
+  useEffect(() => {
+    fetch('/api/settings')
+      .then((r) => r.json())
+      .then((j) => setShopStatus(j.settings))
+      .catch(() => setShopStatus({ is_open: true }));
+
+    fetch('/api/slots')
+      .then((r) => r.json())
+      .then((j) => {
+        setSlotCounts(j.counts || {});
+        setSlotLimit(j.slotLimit ?? 3);
+      })
+      .catch(() => {});
+  }, []);
 
   const activeBase = BASES.find((b) => b.id === base);
   const basePrice = PRICES[cupSize][base];
@@ -239,7 +263,18 @@ export default function Home() {
           language: lang,
         }),
       });
-      if (!res.ok) throw new Error('Order failed');
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        if (body.error === 'closed') {
+          setShopStatus({ is_open: false, closed_message: body.message });
+        } else if (body.error === 'slot_full') {
+          setErrorMsg(body.message || t.genericError);
+          fetch('/api/slots').then((r) => r.json()).then((j) => setSlotCounts(j.counts || {})).catch(() => {});
+        } else {
+          setErrorMsg(t.genericError);
+        }
+        return;
+      }
       setSubmitted(true);
     } catch (e) {
       setErrorMsg(t.genericError);
@@ -276,6 +311,16 @@ export default function Home() {
       </button>
     </div>
   );
+
+  if (shopStatus && shopStatus.is_open === false) {
+    return (
+      <div className="wrap" style={{ textAlign: 'center', paddingTop: 80 }}>
+        <Head><title>{t.closedTitle} — Fresas con Crema</title></Head>
+        <h1 style={{ color: 'var(--maroon)' }}>🍓 {t.closedTitle}</h1>
+        <p>{shopStatus.closed_message || t.closedDefault}</p>
+      </div>
+    );
+  }
 
   if (submitted) {
     return (
@@ -377,7 +422,14 @@ export default function Home() {
           <p className="hint">{t.pickupHint}</p>
           <div className="field">
             <select value={pickup} onChange={(e) => setPickup(e.target.value)}>
-              {PICKUP_TIMES.map((tm) => <option key={tm} value={tm}>{tm}</option>)}
+              {PICKUP_TIMES.map((tm) => {
+                const isFull = (slotCounts[tm] || 0) >= slotLimit;
+                return (
+                  <option key={tm} value={tm} disabled={isFull}>
+                    {tm}{isFull ? t.fullSuffix : ''}
+                  </option>
+                );
+              })}
             </select>
           </div>
         </div>

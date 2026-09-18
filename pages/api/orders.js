@@ -31,14 +31,90 @@ async function sendPushToAdmin(order) {
   }
 }
 
+function normalizePhone(raw) {
+  if (!raw) return null;
+  const trimmed = String(raw).trim();
+  if (trimmed.startsWith('+')) return trimmed;
+  const digits = trimmed.replace(/\D/g, '');
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`;
+  return null;
+}
+
+async function sendSms(to, body) {
+  const sid = process.env.TWILIO_ACCOUNT_SID;
+  const token = process.env.TWILIO_AUTH_TOKEN;
+  const from = process.env.TWILIO_PHONE_NUMBER;
+  if (!sid || !token || !from || !to) return; // Twilio not configured, or no phone on file
+
+  const params = new URLSearchParams();
+  params.append('To', to);
+  params.append('From', from);
+  params.append('Body', body);
+
+  try {
+    await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Authorization: 'Basic ' + Buffer.from(`${sid}:${token}`).toString('base64'),
+      },
+      body: params,
+    });
+  } catch (e) {
+    console.error('Twilio SMS failed', e);
+  }
+}
+
+async function sendConfirmationTextToCustomer(order) {
+  const to = normalizePhone(order.customer_phone);
+  if (!to) return;
+  const body = order.language === 'es'
+    ? '🍓 ¡Recibimos tu orden de Fresas con Crema! Te enviaremos un mensaje cuando esté lista para recoger.'
+    : "🍓 Got your Fresas con Crema order! We'll text you when it's ready for pickup.";
+  await sendSms(to, body);
+}
+
+async function sendReadyTextToCustomer(order) {
+  const to = normalizePhone(order.customer_phone);
+  if (!to) return;
+  const body = order.language === 'es'
+    ? '🍓 ¡Tu orden de Fresas con Crema está lista para recoger! Nos vemos pronto.'
+    : '🍓 Your Fresas con Crema order is ready for pickup! See you soon.';
+  await sendSms(to, body);
+}
+
 export default async function handler(req, res) {
   const supabase = getSupabaseAdmin();
 
   if (req.method === 'POST') {
-    const { base, cup_size, toppings, syrups, qty, pickup_time, customer_name, customer_phone, notes, total, payment_method, payment_confirmed } = req.body || {};
+    const { base, cup_size, toppings, syrups, qty, pickup_time, customer_name, customer_phone, notes, total, payment_method, payment_confirmed, language } = req.body || {};
 
     if (!base || !pickup_time || !customer_name || typeof total !== 'number') {
       return res.status(400).json({ error: 'Missing required order fields.' });
+    }
+
+    // Reject new orders while the shop is marked closed.
+    const { data: settingsRow } = await supabase.from('shop_settings').select('*').eq('id', 1).single();
+    if (settingsRow && settingsRow.is_open === false) {
+      return res.status(403).json({
+        error: 'closed',
+        message: settingsRow.closed_message || "We're not taking orders right now — please check back soon!",
+      });
+    }
+    const slotLimit = settingsRow?.slot_limit ?? 3;
+
+    // Reject if this pickup slot (today) is already at capacity.
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const { count: slotCount } = await supabase
+      .from('orders')
+      .select('id', { count: 'exact', head: true })
+      .eq('pickup_time', pickup_time)
+      .gte('created_at', startOfDay.toISOString());
+
+    if ((slotCount || 0) >= slotLimit) {
+      return res.status(409).json({ error: 'slot_full', message: 'That pickup time just filled up — please choose another.' });
     }
 
     const { data, error } = await supabase
@@ -58,6 +134,7 @@ export default async function handler(req, res) {
         payment_method: payment_method || 'zelle',
         customer_confirmed_payment: !!payment_confirmed,
         paid: false,
+        language: language === 'es' ? 'es' : 'en',
       })
       .select()
       .single();
@@ -68,6 +145,7 @@ export default async function handler(req, res) {
     }
 
     await sendPushToAdmin(data);
+    await sendConfirmationTextToCustomer(data);
     return res.status(200).json({ ok: true, order: data });
   }
 
@@ -110,11 +188,16 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'No valid fields to update.' });
     }
 
-    const { error } = await supabase.from('orders').update(updates).eq('id', id);
+    const { error, data } = await supabase.from('orders').update(updates).eq('id', id).select().single();
     if (error) {
       console.error(error);
       return res.status(500).json({ error: 'Could not update order.' });
     }
+
+    if (updates.status === 'done' && data?.customer_phone) {
+      await sendReadyTextToCustomer(data);
+    }
+
     return res.status(200).json({ ok: true });
   }
 

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Head from 'next/head';
 import Script from 'next/script';
+import Link from 'next/link';
 import { BASES, PRICES, TOPPINGS, SYRUPS, orderTotal, buildPickupTimes, baseIdFromName } from '../lib/menu';
 
 const ONESIGNAL_APP_ID = process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID;
@@ -22,7 +23,17 @@ export default function Admin() {
   const [exporting, setExporting] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
   const [deleting, setDeleting] = useState(false);
+  const [settings, setSettings] = useState(null);
+  const [savingSettings, setSavingSettings] = useState(false);
   const pollRef = useRef(null);
+
+  async function fetchSettings() {
+    const res = await fetch('/api/settings');
+    if (res.ok) {
+      const json = await res.json();
+      setSettings(json.settings);
+    }
+  }
 
   async function fetchOrders() {
     const res = await fetch('/api/orders');
@@ -37,6 +48,7 @@ export default function Admin() {
 
   useEffect(() => {
     fetchOrders().finally(() => setChecking(false));
+    fetchSettings();
   }, []);
 
   useEffect(() => {
@@ -77,6 +89,20 @@ export default function Admin() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, paid }),
     });
+  }
+
+  async function saveSettings(updates) {
+    setSavingSettings(true);
+    const res = await fetch('/api/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    });
+    if (res.ok) {
+      const json = await res.json();
+      setSettings(json.settings);
+    }
+    setSavingSettings(false);
   }
 
   function openEdit(o) {
@@ -267,6 +293,61 @@ export default function Admin() {
       </div>
 
       <div className="wrap">
+        {settings && (
+          <div className="section">
+            <h2>Shop status</h2>
+            <div className="order-card">
+              <div className="row" style={{ marginBottom: settings.is_open ? 0 : 10 }}>
+                <span className="pickup">{settings.is_open ? '🟢 Open for orders' : '🔴 Closed'}</span>
+                <button
+                  className="status-btn"
+                  onClick={() => saveSettings({ is_open: !settings.is_open })}
+                  disabled={savingSettings}
+                >
+                  {settings.is_open ? 'Close shop' : 'Reopen shop'}
+                </button>
+              </div>
+              {!settings.is_open && (
+                <div className="field" style={{ marginTop: 10, marginBottom: 0 }}>
+                  <label>Message customers see</label>
+                  <input
+                    type="text"
+                    defaultValue={settings.closed_message}
+                    placeholder="We're closed right now — check back soon!"
+                    onBlur={(e) => saveSettings({ closed_message: e.target.value })}
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="order-card" style={{ marginTop: 10 }}>
+              <label style={{ display: 'block', fontWeight: 700, marginBottom: 6 }}>
+                Max orders per 15-min pickup slot
+              </label>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                <input
+                  type="number"
+                  min="1"
+                  max="50"
+                  defaultValue={settings.slot_limit}
+                  style={{ width: 90, padding: '10px 12px', borderRadius: 10, border: '2px solid var(--line)', background: 'var(--card-bg)', color: 'var(--ink)' }}
+                  onBlur={(e) => {
+                    const val = parseInt(e.target.value, 10);
+                    if (val > 0) saveSettings({ slot_limit: val });
+                  }}
+                />
+                <span className="hint" style={{ margin: 0 }}>orders max per time slot</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="section">
+          <Link href="/admin/sales" style={{ color: 'var(--maroon)', fontWeight: 700, textDecoration: 'none' }}>
+            📊 View sales dashboard →
+          </Link>
+        </div>
+
         {!pushEnabled && (
           <div className="section">
             <button className="btn-primary" onClick={enablePush}>
@@ -343,6 +424,9 @@ export default function Admin() {
                 </div>
               )}
               <div className="meta">{new Date(o.created_at).toLocaleString()}</div>
+              {o.status === 'done' && o.customer_phone && (
+                <div className="meta">📲 Ready text sent ({o.language === 'es' ? 'Español' : 'English'})</div>
+              )}
               <div className="meta">
                 {o.paid
                   ? `✅ Paid${o.payment_method === 'cash' ? ' (cash)' : ' (Zelle)'}`

@@ -149,7 +149,13 @@ export default function Admin() {
               </div>
               <div className="meta">{new Date(o.created_at).toLocaleString()}</div>
               <div className="meta">
-                {o.paid ? '✅ Paid' : o.customer_confirmed_payment ? '💸 Customer said they sent it — not yet confirmed' : '⏳ Payment not confirmed'}
+                {o.paid
+                  ? `✅ Paid${o.payment_method === 'cash' ? ' (cash)' : ' (Zelle)'}`
+                  : o.payment_method === 'cash'
+                  ? '💵 Cash — pay at pickup'
+                  : o.customer_confirmed_payment
+                  ? '💸 Customer said they sent Zelle — not yet confirmed'
+                  : '⏳ Payment not confirmed'}
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
                 {o.status !== 'done' ? (

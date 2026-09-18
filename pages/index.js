@@ -53,6 +53,7 @@ export default function Home() {
   const [name, setName] = useState('');
   const [notes, setNotes] = useState('');
   const [showSheet, setShowSheet] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState('zelle');
   const [paymentConfirmed, setPaymentConfirmed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -90,7 +91,7 @@ export default function Home() {
           customer_name: name,
           notes,
           total,
-          payment_method: 'zelle',
+          payment_method: paymentMethod,
           payment_confirmed: paymentConfirmed,
         }),
       });
@@ -113,7 +114,9 @@ export default function Home() {
           Pickup location:<br />{PICKUP_ADDRESS}
         </p>
         <p style={{ color: 'var(--ink-soft)', fontSize: '0.9rem' }}>
-          We'll confirm once your ${total.toFixed(2)} Zelle payment to {ZELLE_PHONE} comes through.
+          {paymentMethod === 'zelle'
+            ? `We'll confirm once your $${total.toFixed(2)} Zelle payment to ${ZELLE_PHONE} comes through.`
+            : `Have $${total.toFixed(2)} in cash ready at pickup.`}
         </p>
       </div>
     );
@@ -238,19 +241,61 @@ export default function Home() {
           </p>
 
           <div className="field" style={{ marginTop: 18 }}>
-            <label>Payment — Zelle</label>
-            <p style={{ margin: '0 0 10px', fontSize: '0.9rem' }}>
-              Send <strong>${total.toFixed(2)}</strong> via Zelle to <strong>{ZELLE_PHONE}</strong>, and include your name ({name || 'your name'}) in the Zelle note so we can match it to your order.
-            </p>
-            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontWeight: 700, cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                style={{ width: 18, height: 18, marginTop: 2, flexShrink: 0 }}
-                checked={paymentConfirmed}
-                onChange={(e) => setPaymentConfirmed(e.target.checked)}
-              />
-              I've sent ${total.toFixed(2)} via Zelle to {ZELLE_PHONE}
-            </label>
+            <label>Payment</label>
+            <div className="chip-grid" style={{ marginBottom: 12 }}>
+              <label className={`chip${paymentMethod === 'zelle' ? ' checked' : ''}`}>
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  style={{ display: 'none' }}
+                  checked={paymentMethod === 'zelle'}
+                  onChange={() => { setPaymentMethod('zelle'); setPaymentConfirmed(false); }}
+                />
+                <span>Zelle</span>
+              </label>
+              <label className={`chip${paymentMethod === 'cash' ? ' checked' : ''}`}>
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  style={{ display: 'none' }}
+                  checked={paymentMethod === 'cash'}
+                  onChange={() => { setPaymentMethod('cash'); setPaymentConfirmed(false); }}
+                />
+                <span>Cash at pickup</span>
+              </label>
+            </div>
+
+            {paymentMethod === 'zelle' ? (
+              <>
+                <p style={{ margin: '0 0 10px', fontSize: '0.9rem' }}>
+                  Send <strong>${total.toFixed(2)}</strong> via Zelle to <strong>{ZELLE_PHONE}</strong>, and include your name ({name || 'your name'}) in the Zelle note so we can match it to your order.
+                </p>
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontWeight: 700, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    style={{ width: 18, height: 18, marginTop: 2, flexShrink: 0 }}
+                    checked={paymentConfirmed}
+                    onChange={(e) => setPaymentConfirmed(e.target.checked)}
+                  />
+                  I've sent ${total.toFixed(2)} via Zelle to {ZELLE_PHONE}
+                </label>
+              </>
+            ) : (
+              <>
+                <p style={{ margin: '0 0 10px', fontSize: '0.9rem' }}>
+                  Have <strong>${total.toFixed(2)}</strong> in cash ready when you pick up your order.
+                </p>
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontWeight: 700, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    style={{ width: 18, height: 18, marginTop: 2, flexShrink: 0 }}
+                    checked={paymentConfirmed}
+                    onChange={(e) => setPaymentConfirmed(e.target.checked)}
+                  />
+                  I understand I'll pay ${total.toFixed(2)} cash at pickup
+                </label>
+              </>
+            )}
           </div>
           {errorMsg && <p className="login-box error" style={{ margin: '10px 0' }}>{errorMsg}</p>}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16 }}>

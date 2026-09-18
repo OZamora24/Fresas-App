@@ -73,7 +73,8 @@ const STR = {
     name: 'Name',
     namePlaceholder: "Who's this order for?",
     phone: 'Phone number',
-    phonePlaceholder: 'In case we have a question about your order',
+    phonePlaceholder: 'Optional',
+    phoneHint: "We'll text you when your order is ready for pickup. Msg & data rates may apply.",
     notes: 'Notes (optional)',
     notesPlaceholder: 'Anything we should know? Allergies, etc.',
     questions: 'Questions? Call or text',
@@ -128,7 +129,8 @@ const STR = {
     name: 'Nombre',
     namePlaceholder: '¿Para quién es esta orden?',
     phone: 'Número de teléfono',
-    phonePlaceholder: 'Por si tenemos una pregunta sobre tu orden',
+    phonePlaceholder: 'Opcional',
+    phoneHint: 'Te enviaremos un mensaje de texto cuando tu orden esté lista para recoger. Aplican tarifas de mensajes y datos.',
     notes: 'Notas (opcional)',
     notesPlaceholder: '¿Algo que debamos saber? Alergias, etc.',
     questions: 'Preguntas? Llama o envía un mensaje',
@@ -389,6 +391,7 @@ export default function Home() {
           <div className="field">
             <label>{t.phone}</label>
             <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder={t.phonePlaceholder} />
+            <p style={{ margin: '6px 0 0', fontSize: '0.78rem', color: 'var(--ink-soft)' }}>{t.phoneHint}</p>
           </div>
           <div className="field">
             <label>{t.notes}</label>

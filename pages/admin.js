@@ -20,6 +20,8 @@ export default function Admin() {
   const [exportStart, setExportStart] = useState('');
   const [exportEnd, setExportEnd] = useState('');
   const [exporting, setExporting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [deleting, setDeleting] = useState(false);
   const pollRef = useRef(null);
 
   async function fetchOrders() {
@@ -183,6 +185,34 @@ export default function Admin() {
     }
   }
 
+  function toggleSelect(id) {
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  }
+
+  async function deleteSelected() {
+    if (selectedIds.length === 0) return;
+    const ok = window.confirm(
+      `Delete ${selectedIds.length} order${selectedIds.length > 1 ? 's' : ''}? This cannot be undone.`
+    );
+    if (!ok) return;
+
+    setDeleting(true);
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: selectedIds }),
+      });
+      if (!res.ok) throw new Error('Delete failed');
+      setOrders((prev) => prev.filter((o) => !selectedIds.includes(o.id)));
+      setSelectedIds([]);
+    } catch (e) {
+      alert('Could not delete the selected order(s) — please try again.');
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   async function enablePush() {
     if (!window.OneSignal) return;
     await window.OneSignal.Notifications.requestPermission();
@@ -273,12 +303,27 @@ export default function Admin() {
         </div>
 
         <div className="section">
-          <h2>Orders ({orders.filter((o) => o.status !== 'done').length} open)</h2>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+            <h2>Orders ({orders.filter((o) => o.status !== 'done').length} open)</h2>
+            {selectedIds.length > 0 && (
+              <button className="status-btn" style={{ color: '#fff', background: 'var(--maroon)', borderColor: 'var(--maroon)' }} onClick={deleteSelected} disabled={deleting}>
+                {deleting ? 'Deleting…' : `🗑️ Delete selected (${selectedIds.length})`}
+              </button>
+            )}
+          </div>
           {orders.length === 0 && <p className="hint">No orders yet.</p>}
           {orders.map((o) => (
             <div key={o.id} className={`order-card${o.status === 'done' ? ' done' : ''}`}>
               <div className="row">
-                <span className="pickup">Pickup {o.pickup_time}</span>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <input
+                    type="checkbox"
+                    style={{ width: 18, height: 18, accentColor: 'var(--maroon)' }}
+                    checked={selectedIds.includes(o.id)}
+                    onChange={() => toggleSelect(o.id)}
+                  />
+                  <span className="pickup">Pickup {o.pickup_time}</span>
+                </label>
                 <span className="total">${Number(o.total).toFixed(2)}</span>
               </div>
               <div className="meta">{o.qty}x {o.base}{o.cup_size ? ` (${o.cup_size})` : ''}</div>

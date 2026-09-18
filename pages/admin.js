@@ -150,6 +150,11 @@ export default function Admin() {
               <div className="meta">
                 {o.customer_name}{o.notes ? ` — ${o.notes}` : ''}
               </div>
+              {o.customer_phone && (
+                <div className="meta">
+                  📞 <a href={`tel:${o.customer_phone}`} style={{ color: 'var(--maroon)', fontWeight: 700 }}>{o.customer_phone}</a>
+                </div>
+              )}
               <div className="meta">{new Date(o.created_at).toLocaleString()}</div>
               <div className="meta">
                 {o.paid

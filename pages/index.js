@@ -83,6 +83,8 @@ const STR = {
     yourInfo: 'Your info',
     name: 'Name',
     namePlaceholder: "Who's this order for?",
+    phone: 'Phone number',
+    phonePlaceholder: 'In case we have a question about your order',
     notes: 'Notes (optional)',
     notesPlaceholder: 'Anything we should know? Allergies, etc.',
     questions: 'Questions? Call or text',
@@ -136,6 +138,8 @@ const STR = {
     yourInfo: 'Tu información',
     name: 'Nombre',
     namePlaceholder: '¿Para quién es esta orden?',
+    phone: 'Número de teléfono',
+    phonePlaceholder: 'Por si tenemos una pregunta sobre tu orden',
     notes: 'Notas (opcional)',
     notesPlaceholder: '¿Algo que debamos saber? Alergias, etc.',
     questions: 'Preguntas? Llama o envía un mensaje',
@@ -209,6 +213,7 @@ export default function Home() {
   const [qty, setQty] = useState(1);
   const [pickup, setPickup] = useState(PICKUP_TIMES[0]);
   const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
   const [notes, setNotes] = useState('');
   const [showSheet, setShowSheet] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('zelle');
@@ -258,6 +263,7 @@ export default function Home() {
           qty,
           pickup_time: pickup,
           customer_name: name,
+          customer_phone: phone,
           notes,
           total,
           payment_method: paymentMethod,
@@ -415,6 +421,10 @@ export default function Home() {
             <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder={t.namePlaceholder} />
           </div>
           <div className="field">
+            <label>{t.phone}</label>
+            <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder={t.phonePlaceholder} />
+          </div>
+          <div className="field">
             <label>{t.notes}</label>
             <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={t.notesPlaceholder} />
           </div>
@@ -444,6 +454,7 @@ export default function Home() {
           <div className="line"><span>{t.syrup}</span><strong>{syrups.length ? syrups.map((s) => SYRUP_LABELS[s][lang]).join(', ') : t.none}</strong></div>
           <div className="line"><span>{t.pickup}</span><strong>{pickup}</strong></div>
           <div className="line"><span>{t.name}</span><strong>{name || '—'}</strong></div>
+          {phone && <div className="line"><span>{t.phone}</span><strong>{phone}</strong></div>}
           {notes && <div className="line"><span>{t.notes}</span><strong>{notes}</strong></div>}
           <div className="grand"><span>{t.total}</span><span>${total.toFixed(2)}</span></div>
 

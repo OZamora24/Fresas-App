@@ -111,6 +111,14 @@ export default async function handler(req, res) {
     if (settingsRow?.sold_out_flavors?.includes(baseId)) {
       return res.status(409).json({ error: 'sold_out', message: `${base} is sold out right now — please pick another flavor.` });
     }
+    const soldOutToppingHit = (toppings || []).find((t) => settingsRow?.sold_out_toppings?.includes(t));
+    if (soldOutToppingHit) {
+      return res.status(409).json({ error: 'sold_out', message: `${soldOutToppingHit} is sold out right now — please remove it.` });
+    }
+    const soldOutSyrupHit = (syrups || []).find((s) => settingsRow?.sold_out_syrups?.includes(s));
+    if (soldOutSyrupHit) {
+      return res.status(409).json({ error: 'sold_out', message: `${soldOutSyrupHit} syrup is sold out right now — please remove it.` });
+    }
     const slotLimit = settingsRow?.slot_limit ?? 3;
 
     // Reject if this pickup slot (on the selected pickup date) is already

@@ -438,6 +438,42 @@ export default function Admin() {
               </div>
               <p className="hint" style={{ marginTop: 10, marginBottom: 0 }}>Tap a syrup to mark it sold out.</p>
             </div>
+
+            <div className="order-card" style={{ marginTop: 10 }}>
+              <label style={{ display: 'block', fontWeight: 700, marginBottom: 10 }}>
+                Catering availability
+              </label>
+              <div className="chip-grid">
+                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((label, i) => {
+                  const isOn = (settings.catering_days || []).includes(i);
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      className={`chip${isOn ? ' checked' : ''}`}
+                      onClick={() => {
+                        const current = settings.catering_days || [];
+                        const next = isOn ? current.filter((x) => x !== i) : [...current, i];
+                        saveSettings({ catering_days: next });
+                      }}
+                      disabled={savingSettings}
+                    >
+                      {isOn ? '🎉 ' : ''}{label}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="field" style={{ marginTop: 12, marginBottom: 0 }}>
+                <label>Message shown to customers</label>
+                <input
+                  type="text"
+                  defaultValue={settings.catering_info}
+                  placeholder="e.g. Available for parties of 10+ — text us to arrange details!"
+                  onBlur={(e) => saveSettings({ catering_info: e.target.value })}
+                />
+              </div>
+              <p className="hint" style={{ marginTop: 10, marginBottom: 0 }}>Tap the days you're available for catering. Leave all off to hide the catering section from customers.</p>
+            </div>
           </div>
         )}
 

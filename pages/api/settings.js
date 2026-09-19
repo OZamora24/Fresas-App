@@ -19,7 +19,7 @@ export default async function handler(req, res) {
     if (!isValidSession(req)) {
       return res.status(401).json({ error: 'Not authorized.' });
     }
-    const { is_open, closed_message, slot_limit, sold_out_flavors, sold_out_toppings, sold_out_syrups, reopens_at } = req.body || {};
+    const { is_open, closed_message, slot_limit, sold_out_flavors, sold_out_toppings, sold_out_syrups, reopens_at, catering_days, catering_info } = req.body || {};
     const updates = {};
     if (is_open !== undefined) updates.is_open = is_open;
     if (closed_message !== undefined) updates.closed_message = closed_message;
@@ -28,6 +28,8 @@ export default async function handler(req, res) {
     if (sold_out_toppings !== undefined) updates.sold_out_toppings = sold_out_toppings;
     if (sold_out_syrups !== undefined) updates.sold_out_syrups = sold_out_syrups;
     if (reopens_at !== undefined) updates.reopens_at = reopens_at || null;
+    if (catering_days !== undefined) updates.catering_days = catering_days;
+    if (catering_info !== undefined) updates.catering_info = catering_info;
 
     if (Object.keys(updates).length === 0) {
       return res.status(400).json({ error: 'No valid fields to update.' });

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import Head from 'next/head';
-import { BASES, PRICES, TOPPINGS, SYRUPS, toppingsCost, todayDateKey, maxPreorderDateKey, formatDateKey, getAvailablePickupTimes } from '../lib/menu';
+import { BASES, PRICES, TOPPINGS, SYRUPS, toppingsCost, todayDateKey, maxPreorderDateKey, formatDateKey, getAvailablePickupTimes, formatWeekdaysList } from '../lib/menu';
 
 const BASE_DESC = {
   regular: {
@@ -72,7 +72,9 @@ const STR = {
     pickupHint: "Today's pickup window: 5:00 – 9:00 PM",
     noTimesToday: "No more pickup times available today — please choose another date.",
     pickupDateLabel: 'Pickup date',
-    pickupDateHint: 'Order for today, or pick a future date — great for catering!',
+    pickupDateHint: 'Order for today, or pick a future date.',
+    cateringTitle: '🎉 Catering',
+    cateringAvailable: (days) => `Available for catering on ${days}.`,
     yourInfo: 'Your info',
     name: 'Name',
     namePlaceholder: "Who's this order for?",
@@ -139,7 +141,9 @@ const STR = {
     pickupHint: 'Horario de recogida de hoy: 5:00 – 9:00 PM',
     noTimesToday: 'Ya no hay horarios de recogida disponibles hoy — elige otra fecha.',
     pickupDateLabel: 'Fecha de recogida',
-    pickupDateHint: 'Ordena para hoy, o elige una fecha futura — ¡ideal para catering!',
+    pickupDateHint: 'Ordena para hoy, o elige una fecha futura.',
+    cateringTitle: '🎉 Catering',
+    cateringAvailable: (days) => `Disponible para catering los ${days}.`,
     yourInfo: 'Tu información',
     name: 'Nombre',
     namePlaceholder: '¿Para quién es esta orden?',
@@ -570,6 +574,22 @@ export default function Home() {
             />
           </div>
         </div>
+
+        {shopStatus?.catering_days?.length > 0 && (
+          <div className="section">
+            <div className="order-card" style={{ background: 'var(--pink-pale)' }}>
+              <h2 style={{ marginBottom: 6 }}>{t.cateringTitle}</h2>
+              <p style={{ margin: 0, fontWeight: 700 }}>
+                {t.cateringAvailable(formatWeekdaysList(shopStatus.catering_days, lang))}
+              </p>
+              {shopStatus.catering_info && (
+                <p style={{ margin: '8px 0 0', color: 'var(--ink-soft)', fontSize: '0.92rem' }}>
+                  {shopStatus.catering_info}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="section">
           <h2>{t.pickupTime}</h2>

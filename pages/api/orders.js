@@ -1,6 +1,6 @@
 import { getSupabaseAdmin } from '../../lib/supabaseAdmin';
 import { isValidSession } from '../../lib/adminSession';
-import { baseIdFromName, formatDateKey, todayDateKey } from '../../lib/menu';
+import { baseIdFromName, formatDateKey, todayDateKey, getAvailablePickupTimes } from '../../lib/menu';
 
 async function sendPushToAdmin(order) {
   const appId = process.env.ONESIGNAL_APP_ID;
@@ -97,6 +97,13 @@ export default async function handler(req, res) {
     }
 
     const finalPickupDate = pickup_date || todayDateKey();
+
+    // Reject if this pickup time has already passed (or is inside the
+    // minimum lead-time window) on the shop's own clock — catches both a
+    // stale page left open past closing and any direct API call.
+    if (!getAvailablePickupTimes(finalPickupDate).includes(pickup_time)) {
+      return res.status(409).json({ error: 'time_passed', message: 'That pickup time has already passed — please choose a later time or another date.' });
+    }
 
     // Reject new orders while the shop is marked closed, or if this
     // specific flavor has been marked sold out.

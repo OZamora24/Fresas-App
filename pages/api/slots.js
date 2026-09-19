@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from '../../lib/supabaseAdmin';
+import { todayDateKey } from '../../lib/menu';
 
 // Public — the customer page needs this to gray out full pickup times for
 // whichever pickup date the customer has selected (today or a future date).
@@ -13,10 +14,10 @@ export default async function handler(req, res) {
   const { data: settingsRow } = await supabase.from('shop_settings').select('slot_limit').eq('id', 1).single();
   const slotLimit = settingsRow?.slot_limit ?? 3;
 
-  // Default to today (server's local date) if no date was requested.
-  const today = new Date();
-  const defaultDateKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-  const dateKey = (req.query?.date && /^\d{4}-\d{2}-\d{2}$/.test(req.query.date)) ? req.query.date : defaultDateKey;
+  // Default to today on the shop's own clock (not the server's machine
+  // time, which runs in UTC and would disagree with Rialto, CA for a good
+  // chunk of every day) if no date was requested.
+  const dateKey = (req.query?.date && /^\d{4}-\d{2}-\d{2}$/.test(req.query.date)) ? req.query.date : todayDateKey();
 
   const { data: dayOrders, error } = await supabase
     .from('orders')

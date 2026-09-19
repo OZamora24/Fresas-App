@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import Head from 'next/head';
-import { BASES, PRICES, TOPPINGS, SYRUPS, toppingsCost, buildPickupTimes, todayDateKey, maxPreorderDateKey, formatDateKey } from '../lib/menu';
+import { BASES, PRICES, TOPPINGS, SYRUPS, toppingsCost, todayDateKey, maxPreorderDateKey, formatDateKey, getAvailablePickupTimes } from '../lib/menu';
 
 const BASE_DESC = {
   regular: {
@@ -70,6 +70,7 @@ const STR = {
     howMany: 'How many cups?',
     pickupTime: 'Pickup time',
     pickupHint: "Today's pickup window: 5:00 – 9:00 PM",
+    noTimesToday: "No more pickup times available today — please choose another date.",
     pickupDateLabel: 'Pickup date',
     pickupDateHint: 'Order for today, or pick a future date — great for catering!',
     yourInfo: 'Your info',
@@ -136,6 +137,7 @@ const STR = {
     howMany: '¿Cuántos vasos?',
     pickupTime: 'Hora de recogida',
     pickupHint: 'Horario de recogida de hoy: 5:00 – 9:00 PM',
+    noTimesToday: 'Ya no hay horarios de recogida disponibles hoy — elige otra fecha.',
     pickupDateLabel: 'Fecha de recogida',
     pickupDateHint: 'Ordena para hoy, o elige una fecha futura — ¡ideal para catering!',
     yourInfo: 'Tu información',
@@ -188,8 +190,6 @@ const STR = {
   },
 };
 
-const PICKUP_TIMES = buildPickupTimes();
-
 export default function Home() {
   const [lang, setLang] = useState('en');
   const t = STR[lang];
@@ -200,7 +200,7 @@ export default function Home() {
   const [syrups, setSyrups] = useState([]);
   const [qty, setQty] = useState(1);
   const [pickupDate, setPickupDate] = useState(todayDateKey());
-  const [pickup, setPickup] = useState(PICKUP_TIMES[0]);
+  const [pickup, setPickup] = useState('');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [notes, setNotes] = useState('');
@@ -217,6 +217,29 @@ export default function Home() {
   const [lastOrder, setLastOrder] = useState(null);
   const [showRepeatPrompt, setShowRepeatPrompt] = useState(false);
   const [repeatDismissed, setRepeatDismissed] = useState(false);
+  const [nowTick, setNowTick] = useState(0);
+
+  // Re-check which pickup times are still bookable once a minute, so a
+  // slot that just passed disappears from the list on its own.
+  useEffect(() => {
+    const id = setInterval(() => setNowTick((n) => n + 1), 60000);
+    return () => clearInterval(id);
+  }, []);
+
+  const availableTimes = useMemo(
+    () => getAvailablePickupTimes(pickupDate),
+    [pickupDate, nowTick]
+  );
+
+  // Keep the selected time valid: default to the first bookable slot, and
+  // bump off of one that just passed while the page was open.
+  useEffect(() => {
+    if (availableTimes.length === 0) {
+      setPickup('');
+    } else if (!availableTimes.includes(pickup)) {
+      setPickup(availableTimes[0]);
+    }
+  }, [availableTimes]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     fetch('/api/settings')
@@ -348,6 +371,9 @@ export default function Home() {
         } else if (body.error === 'sold_out') {
           setErrorMsg(body.message || t.genericError);
           fetch('/api/settings').then((r) => r.json()).then((j) => setShopStatus(j.settings)).catch(() => {});
+        } else if (body.error === 'time_passed') {
+          setErrorMsg(body.message || t.genericError);
+          setNowTick((n) => n + 1); // forces availableTimes to recompute and drop the stale slot
         } else {
           setErrorMsg(t.genericError);
         }
@@ -548,18 +574,22 @@ export default function Home() {
         <div className="section">
           <h2>{t.pickupTime}</h2>
           <p className="hint">{t.pickupHint}</p>
-          <div className="field">
-            <select value={pickup} onChange={(e) => setPickup(e.target.value)}>
-              {PICKUP_TIMES.map((tm) => {
-                const isFull = (slotCounts[tm] || 0) >= slotLimit;
-                return (
-                  <option key={tm} value={tm} disabled={isFull}>
-                    {tm}{isFull ? t.fullSuffix : ''}
-                  </option>
-                );
-              })}
-            </select>
-          </div>
+          {availableTimes.length === 0 ? (
+            <p className="free-note">{t.noTimesToday}</p>
+          ) : (
+            <div className="field">
+              <select value={pickup} onChange={(e) => setPickup(e.target.value)}>
+                {availableTimes.map((tm) => {
+                  const isFull = (slotCounts[tm] || 0) >= slotLimit;
+                  return (
+                    <option key={tm} value={tm} disabled={isFull}>
+                      {tm}{isFull ? t.fullSuffix : ''}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+          )}
         </div>
 
         <div className="section">
@@ -610,7 +640,7 @@ export default function Home() {
           <div className="total-label">{t.total}</div>
           <div className="total-amt">${total.toFixed(2)}</div>
         </div>
-        <button className="btn-primary" onClick={() => setShowSheet(true)} disabled={!name.trim()}>
+        <button className="btn-primary" onClick={() => setShowSheet(true)} disabled={!name.trim() || !pickup}>
           {t.reviewOrder}
         </button>
       </div>

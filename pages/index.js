@@ -630,8 +630,37 @@ export default function Home() {
           </div>
         </div>
 
-        <div style={{ textAlign: 'center', color: 'var(--ink-soft)', fontSize: '0.85rem', padding: '10px 0 20px' }}>
-          {t.questions} <a href="tel:+19097252384">(909) 725-2384</a> · <a href="https://instagram.com/lovelyfresitas_" target="_blank" rel="noopener noreferrer">@lovelyfresitas_</a>
+        <div style={{ textAlign: 'center', padding: '14px 0 20px' }}>
+          <p style={{ color: 'var(--ink-soft)', fontSize: '0.85rem', margin: '0 0 10px' }}>{t.questions}</p>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 22 }}>
+            <a
+              href="tel:+19097252384"
+              aria-label="Call or text (909) 725-2384"
+              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, color: 'var(--maroon)', textDecoration: 'none' }}
+            >
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.2.2 2.4.6 3.6.1.4 0 .8-.2 1L6.6 10.8z"
+                  fill="currentColor"
+                />
+              </svg>
+              <span style={{ fontSize: '0.78rem', fontWeight: 700 }}>(909) 725-2384</span>
+            </a>
+            <a
+              href="https://instagram.com/lovelyfresitas_"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="@lovelyfresitas_ on Instagram"
+              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, color: 'var(--maroon)', textDecoration: 'none' }}
+            >
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="2.5" y="2.5" width="19" height="19" rx="5.5" stroke="currentColor" strokeWidth="1.8" />
+                <circle cx="12" cy="12" r="4.3" stroke="currentColor" strokeWidth="1.8" />
+                <circle cx="17.2" cy="6.8" r="1.15" fill="currentColor" />
+              </svg>
+              <span style={{ fontSize: '0.78rem', fontWeight: 700 }}>@lovelyfresitas_</span>
+            </a>
+          </div>
         </div>
       </div>
 

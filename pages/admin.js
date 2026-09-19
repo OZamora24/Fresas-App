@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { BASES, PRICES, TOPPINGS, SYRUPS, orderTotal, buildPickupTimes, baseIdFromName, formatDateKey, todayDateKey, maxPreorderDateKey } from '../lib/menu';
 
 const ONESIGNAL_APP_ID = process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID;
-const PICKUP_TIMES = buildPickupTimes();
 
 export default function Admin() {
   const [authed, setAuthed] = useState(false);
@@ -357,6 +356,47 @@ export default function Admin() {
 
             <div className="order-card" style={{ marginTop: 10 }}>
               <label style={{ display: 'block', fontWeight: 700, marginBottom: 10 }}>
+                Store hours (pickup window)
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="field" style={{ margin: 0 }}>
+                  <label>Mon–Fri start</label>
+                  <input
+                    type="time"
+                    defaultValue={settings.hours_weekday_start}
+                    onBlur={(e) => saveSettings({ hours_weekday_start: e.target.value })}
+                  />
+                </div>
+                <div className="field" style={{ margin: 0 }}>
+                  <label>Mon–Fri end</label>
+                  <input
+                    type="time"
+                    defaultValue={settings.hours_weekday_end}
+                    onBlur={(e) => saveSettings({ hours_weekday_end: e.target.value })}
+                  />
+                </div>
+                <div className="field" style={{ margin: 0 }}>
+                  <label>Sat–Sun start</label>
+                  <input
+                    type="time"
+                    defaultValue={settings.hours_weekend_start}
+                    onBlur={(e) => saveSettings({ hours_weekend_start: e.target.value })}
+                  />
+                </div>
+                <div className="field" style={{ margin: 0 }}>
+                  <label>Sat–Sun end</label>
+                  <input
+                    type="time"
+                    defaultValue={settings.hours_weekend_end}
+                    onBlur={(e) => saveSettings({ hours_weekend_end: e.target.value })}
+                  />
+                </div>
+              </div>
+              <p className="hint" style={{ marginTop: 10, marginBottom: 0 }}>Pickup times customers can pick from are generated from these — weekday and weekend hours can differ.</p>
+            </div>
+
+            <div className="order-card" style={{ marginTop: 10 }}>
+              <label style={{ display: 'block', fontWeight: 700, marginBottom: 10 }}>
                 Flavor availability
               </label>
               <div className="chip-grid">
@@ -661,7 +701,7 @@ export default function Admin() {
             <div className="field">
               <label>Pickup time</label>
               <select value={editForm.pickup_time} onChange={(e) => setEditForm((f) => ({ ...f, pickup_time: e.target.value }))}>
-                {PICKUP_TIMES.map((tm) => <option key={tm} value={tm}>{tm}</option>)}
+                {buildPickupTimes(editForm.pickup_date, settings).map((tm) => <option key={tm} value={tm}>{tm}</option>)}
               </select>
             </div>
 

@@ -231,8 +231,8 @@ export default function Home() {
   }, []);
 
   const availableTimes = useMemo(
-    () => getAvailablePickupTimes(pickupDate),
-    [pickupDate, nowTick]
+    () => getAvailablePickupTimes(pickupDate, shopStatus),
+    [pickupDate, nowTick, shopStatus]
   );
 
   // Keep the selected time valid: default to the first bookable slot, and

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import Head from 'next/head';
-import { BASES, PRICES, TOPPINGS, SYRUPS, toppingsCost, todayDateKey, maxPreorderDateKey, formatDateKey, getAvailablePickupTimes, formatWeekdaysList } from '../lib/menu';
+import { BASES, PRICES, TOPPINGS, SYRUPS, toppingsCost, todayDateKey, maxPreorderDateKey, formatDateKey, getAvailablePickupTimes, buildPickupTimes, formatWeekdaysList } from '../lib/menu';
 
 const BASE_DESC = {
   regular: {
@@ -69,7 +69,7 @@ const STR = {
     syrupHint: "Pick as many as you'd like — no extra charge",
     howMany: 'How many cups?',
     pickupTime: 'Pickup time',
-    pickupHint: "Today's pickup window: 5:00 – 9:00 PM",
+    pickupHint: (dateLabel, start, end) => `${dateLabel} pickup window: ${start} – ${end}`,
     noTimesToday: "No more pickup times available today — please choose another date.",
     pickupDateLabel: 'Pickup date',
     pickupDateHint: 'Order for today, or pick a future date.',
@@ -138,7 +138,7 @@ const STR = {
     syrupHint: 'Elige los que quieras — sin costo extra',
     howMany: '¿Cuántos vasos?',
     pickupTime: 'Hora de recogida',
-    pickupHint: 'Horario de recogida de hoy: 5:00 – 9:00 PM',
+    pickupHint: (dateLabel, start, end) => `Horario de recogida (${dateLabel}): ${start} – ${end}`,
     noTimesToday: 'Ya no hay horarios de recogida disponibles hoy — elige otra fecha.',
     pickupDateLabel: 'Fecha de recogida',
     pickupDateHint: 'Ordena para hoy, o elige una fecha futura.',
@@ -593,7 +593,12 @@ export default function Home() {
 
         <div className="section">
           <h2>{t.pickupTime}</h2>
-          <p className="hint">{t.pickupHint}</p>
+          {(() => {
+            const dayTimes = buildPickupTimes(pickupDate, shopStatus);
+            return dayTimes.length > 0 ? (
+              <p className="hint">{t.pickupHint(formatDateKey(pickupDate, lang), dayTimes[0], dayTimes[dayTimes.length - 1])}</p>
+            ) : null;
+          })()}
           {availableTimes.length === 0 ? (
             <p className="free-note">{t.noTimesToday}</p>
           ) : (

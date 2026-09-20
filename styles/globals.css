@@ -139,6 +139,15 @@ button {
   margin-top: 8px; padding: 10px 12px; background: var(--pink-pale); border-radius: 10px;
   font-size: 0.88rem; color: var(--ink); display: flex; flex-direction: column; gap: 4px;
 }
+.order-details-body-static { margin-top: 6px; }
+
+.availability-dropdown > summary {
+  cursor: pointer; font-size: 1rem;
+  list-style: none; display: flex; align-items: center; gap: 6px;
+}
+.availability-dropdown > summary::-webkit-details-marker { display: none; }
+.availability-dropdown > summary::before { content: '▸'; font-size: 0.8rem; transition: transform 0.15s ease; }
+.availability-dropdown[open] > summary::before { transform: rotate(90deg); }
 
 .login-box { max-width: 340px; margin: 90px auto; text-align: center; }
 .login-box h1 { font-size: 1.8rem; color: var(--maroon); }

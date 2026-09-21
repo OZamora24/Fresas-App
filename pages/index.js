@@ -145,7 +145,7 @@ const STR = {
     allergyTitle: '🥜 Allergy Notice',
     rimTitle: '🥤 Heads Up!',
     rimPrompt: 'Would you like the rim on your cup?',
-    rimSpillWarning: '⚠️ Cups with the rim come without a lid, so please carry it carefully — it can spill.',
+    rimSpillWarning: '⚠️ Cups with the rim come without a lid.',
     rimLabel: 'Cup rim',
     rimYes: 'Yes, add it',
     rimNo: 'No, skip it',
@@ -220,7 +220,7 @@ const STR = {
     allergyTitle: '🥜 Aviso de Alergia',
     rimTitle: '🥤 ¡Aviso!',
     rimPrompt: '¿Quieres el borde en tu vaso?',
-    rimSpillWarning: '⚠️ Los vasos con borde no llevan tapa, así que por favor cárgalo con cuidado — se puede derramar.',
+    rimSpillWarning: '⚠️ Los vasos con borde no llevan tapa.',
     rimLabel: 'Borde del vaso',
     rimYes: 'Sí, agrégalo',
     rimNo: 'No, sin borde',
@@ -556,22 +556,6 @@ export default function Home() {
               </label>
             );
           })}
-          {isRimFlavor && (
-            <div className="field" style={{ marginTop: 12, marginBottom: 0 }}>
-              <label>{t.rimLabel}</label>
-              <p className="hint" style={{ marginTop: 0 }}>{RIM_INFO[base][lang]}</p>
-              <div className="chip-grid">
-                <label className={`chip${includeRim ? ' checked' : ''}`}>
-                  <input type="radio" name="rimChoice" style={{ display: 'none' }} checked={includeRim} onChange={() => setIncludeRim(true)} />
-                  <span>{t.rimYes}</span>
-                </label>
-                <label className={`chip${!includeRim ? ' checked' : ''}`}>
-                  <input type="radio" name="rimChoice" style={{ display: 'none' }} checked={!includeRim} onChange={() => setIncludeRim(false)} />
-                  <span>{t.rimNo}</span>
-                </label>
-              </div>
-            </div>
-          )}
         </div>
 
         <div className="section">

@@ -29,6 +29,20 @@ const BASE_DESC = {
   },
 };
 
+// Banana Pudding and Gansito cups come with a flavored rim around the top
+// of the cup (like a michelada rim) — separate from the toppings/syrup
+// selected inside. Shown as a heads-up popup when that flavor is picked.
+const RIM_INFO = {
+  bananapudding: {
+    en: 'This cup comes with a lechera & crushed Nilla wafer rim.',
+    es: 'Este vaso viene con un borde de lechera y galleta Nilla triturada.',
+  },
+  gansito: {
+    en: 'This cup comes with a Nutella & chocolate sprinkle rim.',
+    es: 'Este vaso viene con un borde de Nutella y chispas de chocolate.',
+  },
+};
+
 const TOPPING_LABELS = {
   'Whipped Cream': { en: 'Whipped Cream', es: 'Crema Batida' },
   'Fruity Pebbles': { en: 'Fruity Pebbles', es: 'Fruity Pebbles' },
@@ -117,6 +131,7 @@ const STR = {
     cashFollowUp: (total) => `Have $${total} in cash ready at pickup.`,
     walnutWarning: '⚠️ Allergy notice: Ferrero Rocher Fresas con Crema contains walnuts.',
     allergyTitle: '🥜 Allergy Notice',
+    rimTitle: '🥤 Heads Up!',
     gotIt: 'Got it',
     closedTitle: "We're closed right now",
     closedDefault: "We're not taking orders right now — please check back soon!",
@@ -186,6 +201,7 @@ const STR = {
     cashFollowUp: (total) => `Ten $${total} en efectivo listos al recoger.`,
     walnutWarning: '⚠️ Aviso de alergia: las Fresas con Crema estilo Ferrero Rocher contienen nueces (walnuts).',
     allergyTitle: '🥜 Aviso de Alergia',
+    rimTitle: '🥤 ¡Aviso!',
     gotIt: 'Entendido',
     closedTitle: 'Estamos cerrados por ahora',
     closedDefault: 'No estamos tomando órdenes en este momento — ¡vuelve pronto!',
@@ -215,6 +231,7 @@ export default function Home() {
   const [submitted, setSubmitted] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [showWalnutAlert, setShowWalnutAlert] = useState(false);
+  const [showRimAlert, setShowRimAlert] = useState(false);
   const [shopStatus, setShopStatus] = useState(null); // null = still checking
   const [slotCounts, setSlotCounts] = useState({});
   const [slotLimit, setSlotLimit] = useState(3);
@@ -331,6 +348,15 @@ export default function Home() {
   useEffect(() => {
     if (base === 'ferrero') {
       setShowWalnutAlert(true);
+    }
+  }, [base, cupSize]);
+
+  // Rim notice: Banana Pudding and Gansito cups come with a flavored rim
+  // around the top (like a michelada) — separate, non-allergy heads-up,
+  // shown the same way as the walnut notice above.
+  useEffect(() => {
+    if (base === 'bananapudding' || base === 'gansito') {
+      setShowRimAlert(true);
     }
   }, [base, cupSize]);
 
@@ -783,6 +809,15 @@ export default function Home() {
           <h3 style={{ marginBottom: 10 }}>{t.allergyTitle}</h3>
           <p style={{ fontSize: '0.96rem' }}>{t.walnutWarning.replace('⚠️ ', '')}</p>
           <button className="btn-primary" style={{ width: '100%', marginTop: 14 }} onClick={() => setShowWalnutAlert(false)}>
+            {t.gotIt}
+          </button>
+        </div>
+      </div>
+      <div className={`overlay center-modal${showRimAlert ? ' open' : ''}`} onClick={(e) => e.target === e.currentTarget && setShowRimAlert(false)}>
+        <div className="sheet center-card" style={{ textAlign: 'center' }}>
+          <h3 style={{ marginBottom: 10 }}>{t.rimTitle}</h3>
+          <p style={{ fontSize: '0.96rem' }}>{RIM_INFO[base]?.[lang]}</p>
+          <button className="btn-primary" style={{ width: '100%', marginTop: 14 }} onClick={() => setShowRimAlert(false)}>
             {t.gotIt}
           </button>
         </div>

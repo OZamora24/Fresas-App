@@ -585,16 +585,19 @@ export default function Admin() {
                 <span className="total">${Number(o.total).toFixed(2)}</span>
               </div>
               <div className="meta">{o.qty}x {o.base}{o.cup_size ? ` (${o.cup_size})` : ''}</div>
-              <details className="order-details">
-                <summary>View toppings &amp; syrup</summary>
-                <div className="order-details-body">
-                  {(o.base === 'Banana Pudding' || o.base === 'Gansito') && (
-                    <div><strong>Rim:</strong> {o.include_rim === false ? '🚫 No rim' : '✅ Yes'}</div>
-                  )}
-                  <div><strong>Toppings:</strong> {o.toppings?.length ? o.toppings.join(', ') : 'None'}</div>
-                  <div><strong>Syrup:</strong> {o.syrups?.length ? o.syrups.join(', ') : 'None'}</div>
-                </div>
-              </details>
+              <div className="order-details-body order-details-body-static">
+                {(o.base === 'Banana Pudding' || o.base === 'Gansito') && (
+                  <div><strong>Rim:</strong> {o.include_rim === false ? '🚫 No rim' : '✅ Yes'}</div>
+                )}
+                <div><strong>Toppings:</strong></div>
+                {o.toppings?.length
+                  ? o.toppings.map((t) => <div key={t}>- {t}</div>)
+                  : <div>- None</div>}
+                <div><strong>Syrup:</strong></div>
+                {o.syrups?.length
+                  ? o.syrups.map((s) => <div key={s}>- {s}</div>)
+                  : <div>- None</div>}
+              </div>
               <div className="meta">
                 {o.customer_name}{o.notes ? ` — ${o.notes}` : ''}
               </div>

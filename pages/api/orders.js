@@ -71,9 +71,10 @@ async function sendConfirmationTextToCustomer(order) {
   const to = normalizePhone(order.customer_phone);
   if (!to) return;
   const dateLabel = formatDateKey(order.pickup_date || todayDateKey(), order.language);
+  const address = '1526 W Bonnie View Dr, Rialto, CA 92376';
   const body = order.language === 'es'
-    ? `🍓 ¡Recibimos tu orden de Fresas con Crema! Te enviaremos un mensaje cuando esté lista para recoger (${dateLabel}, ${order.pickup_time}).`
-    : `🍓 Got your Fresas con Crema order! We'll text you when it's ready for pickup (${dateLabel}, ${order.pickup_time}).`;
+    ? `🍓 ¡Recibimos tu orden de Fresas con Crema! Te enviaremos un mensaje cuando esté lista para recoger (${dateLabel}, ${order.pickup_time}). Recoger en: ${address}`
+    : `🍓 Got your Fresas con Crema order! We'll text you when it's ready for pickup (${dateLabel}, ${order.pickup_time}). Pickup at: ${address}`;
   await sendSms(to, body);
 }
 

@@ -141,6 +141,7 @@ const STR = {
     pickupLocation: 'Pickup location:',
     zelleFollowUp: (total, phone) => `We'll confirm once your $${total} Zelle payment to ${phone} comes through.`,
     cashFollowUp: (total) => `Have $${total} in cash ready at pickup.`,
+    autoReturn: (secs) => `Returning to the order page in ${secs}s…`,
     walnutWarning: '⚠️ Allergy notice: Ferrero Rocher Fresas con Crema contains walnuts.',
     allergyTitle: '🥜 Allergy Notice',
     rimTitle: '🥤 Heads Up!',
@@ -216,6 +217,7 @@ const STR = {
     pickupLocation: 'Lugar de recogida:',
     zelleFollowUp: (total, phone) => `Confirmaremos tu orden cuando llegue tu pago de $${total} por Zelle a ${phone}.`,
     cashFollowUp: (total) => `Ten $${total} en efectivo listos al recoger.`,
+    autoReturn: (secs) => `Volviendo a la página de orden en ${secs}s…`,
     walnutWarning: '⚠️ Aviso de alergia: las Fresas con Crema estilo Ferrero Rocher contienen nueces (walnuts).',
     allergyTitle: '🥜 Aviso de Alergia',
     rimTitle: '🥤 ¡Aviso!',
@@ -251,6 +253,7 @@ export default function Home() {
   const [paymentConfirmed, setPaymentConfirmed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [redirectSeconds, setRedirectSeconds] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [showWalnutAlert, setShowWalnutAlert] = useState(false);
   const [showRimAlert, setShowRimAlert] = useState(false);
@@ -269,6 +272,24 @@ export default function Home() {
     const id = setInterval(() => setNowTick((n) => n + 1), 60000);
     return () => clearInterval(id);
   }, []);
+
+  // Once an order is confirmed, count down 2 minutes then reload back to a
+  // fresh order form — so a phone left open on the confirmation screen
+  // doesn't just sit there indefinitely.
+  useEffect(() => {
+    if (!submitted) return;
+    setRedirectSeconds(120);
+    const id = setInterval(() => {
+      setRedirectSeconds((s) => (s === null ? null : s - 1));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [submitted]);
+
+  useEffect(() => {
+    if (redirectSeconds === 0) {
+      window.location.reload();
+    }
+  }, [redirectSeconds]);
 
   const availableTimes = useMemo(
     () => getAvailablePickupTimes(pickupDate, shopStatus),
@@ -507,6 +528,11 @@ export default function Home() {
         <p style={{ color: 'var(--ink-soft)', fontSize: '0.9rem' }}>
           {paymentMethod === 'zelle' ? t.zelleFollowUp(total.toFixed(2), ZELLE_PHONE) : t.cashFollowUp(total.toFixed(2))}
         </p>
+        {redirectSeconds !== null && (
+          <p style={{ color: 'var(--ink-soft)', fontSize: '0.78rem', marginTop: 20 }}>
+            {t.autoReturn(redirectSeconds)}
+          </p>
+        )}
       </div>
     );
   }

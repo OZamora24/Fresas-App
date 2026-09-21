@@ -572,6 +572,11 @@ export default function Admin() {
           {orders.length === 0 && <p className="hint">No orders yet.</p>}
           {orders.map((o) => (
             <div key={o.id} className={`order-card${o.status === 'done' ? ' done' : ''}`}>
+              {o.order_number && (
+                <div style={{ fontWeight: 800, color: 'var(--maroon)', fontSize: '1.05rem', marginBottom: 6 }}>
+                  #{o.order_number}{o.customer_name ? ` — ${o.customer_name}` : ''}
+                </div>
+              )}
               <div className="row">
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <input
@@ -598,9 +603,9 @@ export default function Admin() {
                   ? o.syrups.map((s) => <div key={s}>- {s}</div>)
                   : <div>- None</div>}
               </div>
-              <div className="meta">
-                {o.customer_name}{o.notes ? ` — ${o.notes}` : ''}
-              </div>
+              {o.notes && (
+                <div className="meta">{o.notes}</div>
+              )}
               {o.customer_phone && (
                 <div className="meta">
                   📞 <a href={`tel:${o.customer_phone}`} style={{ color: 'var(--maroon)', fontWeight: 700 }}>{o.customer_phone}</a>

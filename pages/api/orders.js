@@ -11,7 +11,7 @@ async function sendPushToAdmin(order) {
     app_id: appId,
     target_channel: 'push',
     filters: [{ field: 'tag', key: 'role', relation: '=', value: 'admin' }],
-    headings: { en: 'New order! 🍓' },
+    headings: { en: `New order #${order.order_number}! 🍓` },
     contents: {
       en: `${order.qty}x ${order.base} — $${order.total.toFixed(2)} — pickup ${order.pickup_time}`,
     },
@@ -73,8 +73,8 @@ async function sendConfirmationTextToCustomer(order) {
   const dateLabel = formatDateKey(order.pickup_date || todayDateKey(), order.language);
   const address = '1526 W Bonnie View Dr, Rialto, CA 92376';
   const body = order.language === 'es'
-    ? `🍓 ¡Recibimos tu orden de Fresas con Crema! Te enviaremos un mensaje cuando esté lista para recoger (${dateLabel}, ${order.pickup_time}). Recoger en: ${address}`
-    : `🍓 Got your Fresas con Crema order! We'll text you when it's ready for pickup (${dateLabel}, ${order.pickup_time}). Pickup at: ${address}`;
+    ? `🍓 ¡Recibimos tu orden de Fresas con Crema (#${order.order_number})! Te enviaremos un mensaje cuando esté lista para recoger (${dateLabel}, ${order.pickup_time}). Recoger en: ${address}`
+    : `🍓 Got your Fresas con Crema order (#${order.order_number})! We'll text you when it's ready for pickup (${dateLabel}, ${order.pickup_time}). Pickup at: ${address}`;
   await sendSms(to, body);
 }
 
@@ -82,8 +82,8 @@ async function sendReadyTextToCustomer(order) {
   const to = normalizePhone(order.customer_phone);
   if (!to) return;
   const body = order.language === 'es'
-    ? '🍓 ¡Tu orden de Fresas con Crema está lista para recoger! Nos vemos pronto.'
-    : '🍓 Your Fresas con Crema order is ready for pickup! See you soon.';
+    ? `🍓 ¡La orden #${order.order_number} de Fresas con Crema está lista para recoger! Nos vemos pronto.`
+    : `🍓 Order #${order.order_number} is ready for pickup! See you soon.`;
   await sendSms(to, body);
 }
 

@@ -135,6 +135,7 @@ const STR = {
     confirmPaymentFirst: 'Confirm payment above to continue',
     genericError: "Something went wrong sending your order — please try again, or text us directly.",
     orderSent: '🍓 Order sent!',
+    orderNumberLabel: (num, custName) => `Order #${num}${custName ? ` — ${custName}` : ''}`,
     orderSentBody: (pickup) => (
       <>We got your order for pickup at <strong>{pickup}</strong>. See you soon!</>
     ),
@@ -212,6 +213,7 @@ const STR = {
     confirmPaymentFirst: 'Confirma el pago arriba para continuar',
     genericError: 'Algo salió mal al enviar tu orden — por favor intenta de nuevo, o envíanos un mensaje de texto.',
     orderSent: '🍓 ¡Orden enviada!',
+    orderNumberLabel: (num, custName) => `Orden #${num}${custName ? ` — ${custName}` : ''}`,
     orderSentBody: (pickup) => (
       <>Recibimos tu orden para recoger a las <strong>{pickup}</strong>. ¡Nos vemos pronto!</>
     ),
@@ -255,6 +257,7 @@ export default function Home() {
   const [paymentConfirmed, setPaymentConfirmed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [confirmedOrderNumber, setConfirmedOrderNumber] = useState(null);
   const [redirectSeconds, setRedirectSeconds] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [showWalnutAlert, setShowWalnutAlert] = useState(false);
@@ -459,6 +462,8 @@ export default function Home() {
         }
         return;
       }
+      const body = await res.json().catch(() => ({}));
+      setConfirmedOrderNumber(body.order?.order_number ?? null);
       setSubmitted(true);
     } catch (e) {
       setErrorMsg(t.genericError);
@@ -520,6 +525,11 @@ export default function Home() {
       <div className="wrap" style={{ textAlign: 'center', paddingTop: 80 }}>
         <Head><title>{t.orderSent} — Fresas con Crema</title></Head>
         <h1 style={{ color: 'var(--maroon)' }}>{t.orderSent}</h1>
+        {confirmedOrderNumber && (
+          <p style={{ color: 'var(--maroon)', fontWeight: 800, fontSize: '1.15rem', margin: '4px 0 10px' }}>
+            {t.orderNumberLabel(confirmedOrderNumber, name)}
+          </p>
+        )}
         <p>{t.orderSentBody(pickup)}</p>
         <p style={{ color: 'var(--ink-soft)', fontWeight: 700 }}>
           {formatDateKey(pickupDate, lang)}

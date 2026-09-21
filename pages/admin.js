@@ -397,11 +397,11 @@ export default function Admin() {
               <p className="hint" style={{ marginTop: 10, marginBottom: 0 }}>Pickup times customers can pick from are generated from these — weekday and weekend hours can differ.</p>
             </div>
 
-            <div className="order-card" style={{ marginTop: 10 }}>
-              <label style={{ display: 'block', fontWeight: 700, marginBottom: 10 }}>
+            <details className="order-card availability-dropdown" style={{ marginTop: 10 }}>
+              <summary style={{ fontWeight: 700 }}>
                 Flavor availability
-              </label>
-              <div className="chip-grid">
+              </summary>
+              <div className="chip-grid" style={{ marginTop: 10 }}>
                 {BASES.map((b) => {
                   const isSoldOut = (settings.sold_out_flavors || []).includes(b.id);
                   return (
@@ -423,13 +423,13 @@ export default function Admin() {
                 })}
               </div>
               <p className="hint" style={{ marginTop: 10, marginBottom: 0 }}>Tap a flavor to mark it sold out — customers won't be able to select it.</p>
-            </div>
+            </details>
 
-            <div className="order-card" style={{ marginTop: 10 }}>
-              <label style={{ display: 'block', fontWeight: 700, marginBottom: 10 }}>
+            <details className="order-card availability-dropdown" style={{ marginTop: 10 }}>
+              <summary style={{ fontWeight: 700 }}>
                 Topping availability
-              </label>
-              <div className="chip-grid">
+              </summary>
+              <div className="chip-grid" style={{ marginTop: 10 }}>
                 {TOPPINGS.map((tp) => {
                   const isSoldOut = (settings.sold_out_toppings || []).includes(tp.name);
                   return (
@@ -451,13 +451,13 @@ export default function Admin() {
                 })}
               </div>
               <p className="hint" style={{ marginTop: 10, marginBottom: 0 }}>Tap a topping to mark it sold out.</p>
-            </div>
+            </details>
 
-            <div className="order-card" style={{ marginTop: 10 }}>
-              <label style={{ display: 'block', fontWeight: 700, marginBottom: 10 }}>
+            <details className="order-card availability-dropdown" style={{ marginTop: 10 }}>
+              <summary style={{ fontWeight: 700 }}>
                 Syrup availability
-              </label>
-              <div className="chip-grid">
+              </summary>
+              <div className="chip-grid" style={{ marginTop: 10 }}>
                 {SYRUPS.map((s) => {
                   const isSoldOut = (settings.sold_out_syrups || []).includes(s);
                   return (
@@ -479,7 +479,7 @@ export default function Admin() {
                 })}
               </div>
               <p className="hint" style={{ marginTop: 10, marginBottom: 0 }}>Tap a syrup to mark it sold out.</p>
-            </div>
+            </details>
 
             <div className="order-card" style={{ marginTop: 10 }}>
               <label style={{ display: 'block', fontWeight: 700, marginBottom: 10 }}>

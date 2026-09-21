@@ -145,6 +145,7 @@ const STR = {
     allergyTitle: '🥜 Allergy Notice',
     rimTitle: '🥤 Heads Up!',
     rimPrompt: 'Would you like the rim on your cup?',
+    rimSpillWarning: '⚠️ Cups with the rim come without a lid, so please carry it carefully — it can spill.',
     rimLabel: 'Cup rim',
     rimYes: 'Yes, add it',
     rimNo: 'No, skip it',
@@ -219,6 +220,7 @@ const STR = {
     allergyTitle: '🥜 Aviso de Alergia',
     rimTitle: '🥤 ¡Aviso!',
     rimPrompt: '¿Quieres el borde en tu vaso?',
+    rimSpillWarning: '⚠️ Los vasos con borde no llevan tapa, así que por favor cárgalo con cuidado — se puede derramar.',
     rimLabel: 'Borde del vaso',
     rimYes: 'Sí, agrégalo',
     rimNo: 'No, sin borde',
@@ -861,6 +863,7 @@ export default function Home() {
         <div className="sheet center-card" style={{ textAlign: 'center' }}>
           <h3 style={{ marginBottom: 10 }}>{t.rimTitle}</h3>
           <p style={{ fontSize: '0.96rem', marginBottom: 4 }}>{RIM_INFO[base]?.[lang]}</p>
+          <p style={{ fontSize: '0.86rem', color: 'var(--ink-soft)', marginBottom: 10 }}>{t.rimSpillWarning}</p>
           <p style={{ fontSize: '0.96rem', fontWeight: 700 }}>{t.rimPrompt}</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 14 }}>
             <button className="btn-primary" onClick={() => { setIncludeRim(true); setShowRimAlert(false); }}>

@@ -792,8 +792,8 @@ export default function Home() {
         </button>
       </div>
 
-      <div className={`overlay${showSheet ? ' open' : ''}`} onClick={(e) => e.target === e.currentTarget && setShowSheet(false)}>
-        <div className="sheet">
+      <div className={`overlay center-modal${showSheet ? ' open' : ''}`} onClick={(e) => e.target === e.currentTarget && setShowSheet(false)}>
+        <div className="sheet sheet-centered">
           <h3>{t.yourOrder}</h3>
           <div className="line"><span>{t.base}</span><strong>{activeBase.name} × {qty}</strong></div>
           <div className="line"><span>{t.cupSizeLabel}</span><strong>{cupSize} oz</strong></div>

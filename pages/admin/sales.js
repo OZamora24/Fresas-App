@@ -125,6 +125,32 @@ export default function SalesDashboard() {
             </div>
 
             <div className="section">
+              <h2>Best-selling toppings <span style={{ fontWeight: 400, fontSize: '0.8rem', color: 'var(--ink-soft)' }}>(last 90 days)</span></h2>
+              {(!data.topToppings || data.topToppings.length === 0) && <p className="hint">No orders yet.</p>}
+              {data.topToppings?.map((tp, i) => (
+                <div key={tp.name} className="order-card" style={{ marginBottom: 8 }}>
+                  <div className="row">
+                    <span className="pickup">#{i + 1} {tp.name}</span>
+                    <span className="total">{tp.count}x</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="section">
+              <h2>Best-selling syrups <span style={{ fontWeight: 400, fontSize: '0.8rem', color: 'var(--ink-soft)' }}>(last 90 days)</span></h2>
+              {(!data.topSyrups || data.topSyrups.length === 0) && <p className="hint">No orders yet.</p>}
+              {data.topSyrups?.map((s, i) => (
+                <div key={s.name} className="order-card" style={{ marginBottom: 8 }}>
+                  <div className="row">
+                    <span className="pickup">#{i + 1} {s.name}</span>
+                    <span className="total">{s.count}x</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="section">
               <h2>Busiest pickup times <span style={{ fontWeight: 400, fontSize: '0.8rem', color: 'var(--ink-soft)' }}>(last 90 days)</span></h2>
               {data.topPickupTimes.length === 0 && <p className="hint">No orders yet.</p>}
               {data.topPickupTimes.map((p, i) => (

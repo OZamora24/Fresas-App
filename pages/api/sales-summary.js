@@ -26,7 +26,7 @@ export default async function handler(req, res) {
 
   const { data: orders, error } = await supabase
     .from('orders')
-    .select('base, pickup_time, total, created_at')
+    .select('base, pickup_time, total, toppings, syrups, created_at')
     .gte('created_at', startOfWindow.toISOString());
 
   if (error) {
@@ -39,6 +39,8 @@ export default async function handler(req, res) {
   let allRevenue = 0, allOrders = orders.length;
   const flavorCounts = {};
   const pickupCounts = {};
+  const toppingCounts = {};
+  const syrupCounts = {};
 
   for (const o of orders) {
     const created = new Date(o.created_at);
@@ -56,6 +58,12 @@ export default async function handler(req, res) {
 
     flavorCounts[o.base] = (flavorCounts[o.base] || 0) + 1;
     pickupCounts[o.pickup_time] = (pickupCounts[o.pickup_time] || 0) + 1;
+    for (const tp of o.toppings || []) {
+      toppingCounts[tp] = (toppingCounts[tp] || 0) + 1;
+    }
+    for (const s of o.syrups || []) {
+      syrupCounts[s] = (syrupCounts[s] || 0) + 1;
+    }
   }
 
   const topFlavors = Object.entries(flavorCounts)
@@ -68,11 +76,23 @@ export default async function handler(req, res) {
     .slice(0, 5)
     .map(([time, count]) => ({ time, count }));
 
+  const topToppings = Object.entries(toppingCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([name, count]) => ({ name, count }));
+
+  const topSyrups = Object.entries(syrupCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([name, count]) => ({ name, count }));
+
   return res.status(200).json({
     today: { revenue: todayRevenue, orders: todayOrders },
     week: { revenue: weekRevenue, orders: weekOrders },
     allTime90d: { revenue: allRevenue, orders: allOrders },
     topFlavors,
     topPickupTimes,
+    topToppings,
+    topSyrups,
   });
 }

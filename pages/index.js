@@ -107,7 +107,7 @@ const STR = {
     phone: 'Phone number',
     phonePlaceholder: 'Optional',
     phoneHint: "We'll text you when your order is ready for pickup. Msg & data rates may apply.",
-    repeatTitle: 'Want your usual again?',
+    repeatTitle: 'Want one of your recent orders again?',
     repeatUse: 'Use this order',
     repeatDismiss: 'No thanks',
     notes: 'Notes (optional)',
@@ -155,6 +155,7 @@ const STR = {
     closedDefault: "We're not taking orders right now — please check back soon!",
     closedReopensAt: (when) => `We'll be back ${when}!`,
     fullSuffix: ' (FULL)',
+    almostFullSuffix: ' (1 spot left)',
   },
   es: {
     title: 'Fresas con Crema — Arma tu Vaso',
@@ -183,7 +184,7 @@ const STR = {
     phone: 'Número de teléfono',
     phonePlaceholder: 'Opcional',
     phoneHint: 'Te enviaremos un mensaje de texto cuando tu orden esté lista para recoger. Aplican tarifas de mensajes y datos.',
-    repeatTitle: '¿Quieres tu pedido de siempre otra vez?',
+    repeatTitle: '¿Quieres pedir uno de tus pedidos recientes?',
     repeatUse: 'Usar esta orden',
     repeatDismiss: 'No, gracias',
     notes: 'Notas (opcional)',
@@ -231,6 +232,7 @@ const STR = {
     closedDefault: 'No estamos tomando órdenes en este momento — ¡vuelve pronto!',
     closedReopensAt: (when) => `¡Regresamos ${when}!`,
     fullSuffix: ' (LLENO)',
+    almostFullSuffix: ' (queda 1 lugar)',
   },
 };
 
@@ -261,7 +263,7 @@ export default function Home() {
   const [shopStatus, setShopStatus] = useState(null); // null = still checking
   const [slotCounts, setSlotCounts] = useState({});
   const [slotLimit, setSlotLimit] = useState(3);
-  const [lastOrder, setLastOrder] = useState(null);
+  const [pastOrders, setPastOrders] = useState([]);
   const [showRepeatPrompt, setShowRepeatPrompt] = useState(false);
   const [repeatDismissed, setRepeatDismissed] = useState(false);
   const [nowTick, setNowTick] = useState(0);
@@ -344,8 +346,8 @@ export default function Home() {
   }, [pickupDate]);
 
   // Repeat-customer lookup: once the phone number looks complete (10+
-  // digits), check if this number has ordered before and offer to
-  // pre-fill their last order.
+  // digits), check if this number has ordered before and offer up to 5
+  // of their past distinct orders to quickly reorder from.
   useEffect(() => {
     const digits = phone.replace(/\D/g, '');
     if (digits.length < 10 || repeatDismissed) {
@@ -356,8 +358,8 @@ export default function Home() {
       fetch(`/api/last-order?phone=${digits}`)
         .then((r) => r.json())
         .then((j) => {
-          if (j.order) {
-            setLastOrder(j.order);
+          if (j.orders?.length) {
+            setPastOrders(j.orders);
             setShowRepeatPrompt(true);
           }
         })
@@ -366,14 +368,14 @@ export default function Home() {
     return () => clearTimeout(handle);
   }, [phone, repeatDismissed]);
 
-  function useLastOrder() {
-    if (!lastOrder) return;
-    const matchedBase = BASES.find((b) => b.name === lastOrder.base);
+  function useLastOrder(order) {
+    if (!order) return;
+    const matchedBase = BASES.find((b) => b.name === order.base);
     if (matchedBase) setBase(matchedBase.id);
-    if (lastOrder.cup_size) setCupSize(lastOrder.cup_size.startsWith('24') ? '24' : '12');
-    setToppings(lastOrder.toppings || []);
-    setSyrups(lastOrder.syrups || []);
-    if (lastOrder.payment_method) setPaymentMethod(lastOrder.payment_method);
+    if (order.cup_size) setCupSize(order.cup_size.startsWith('24') ? '24' : '12');
+    setToppings(order.toppings || []);
+    setSyrups(order.syrups || []);
+    if (order.payment_method) setPaymentMethod(order.payment_method);
     setShowRepeatPrompt(false);
   }
 
@@ -685,9 +687,10 @@ export default function Home() {
               <select value={pickup} onChange={(e) => setPickup(e.target.value)}>
                 {availableTimes.map((tm) => {
                   const isFull = (slotCounts[tm] || 0) >= slotLimit;
+                  const isAlmostFull = !isFull && slotLimit - (slotCounts[tm] || 0) === 1;
                   return (
                     <option key={tm} value={tm} disabled={isFull}>
-                      {tm}{isFull ? t.fullSuffix : ''}
+                      {tm}{isFull ? t.fullSuffix : isAlmostFull ? t.almostFullSuffix : ''}
                     </option>
                   );
                 })}
@@ -707,25 +710,36 @@ export default function Home() {
             <input type="tel" value={phone} onChange={(e) => { setPhone(formatPhoneInput(e.target.value)); setRepeatDismissed(false); }} placeholder={t.phonePlaceholder} />
             <p style={{ margin: '6px 0 0', fontSize: '0.78rem', color: 'var(--ink-soft)' }}>{t.phoneHint}</p>
           </div>
-          {showRepeatPrompt && lastOrder && (
+          {showRepeatPrompt && pastOrders.length > 0 && (
             <div className="free-note" style={{ display: 'block', width: '100%', boxSizing: 'border-box', marginBottom: 14 }}>
-              <div style={{ marginBottom: 8 }}>
-                {t.repeatTitle} <strong>{lastOrder.base}</strong>
-                {lastOrder.toppings?.length ? ` · ${lastOrder.toppings.join(', ')}` : ''}
+              <div style={{ marginBottom: 8 }}>{t.repeatTitle}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 220, overflowY: 'auto' }}>
+                {pastOrders.map((o, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                      padding: '8px 10px', borderRadius: 10, background: 'var(--card-bg)', border: '1px solid var(--line)',
+                    }}
+                  >
+                    <div style={{ fontSize: '0.85rem' }}>
+                      <strong>{o.base}</strong>{o.cup_size ? ` (${o.cup_size})` : ''}
+                      {o.toppings?.length ? ` · ${o.toppings.join(', ')}` : ''}
+                    </div>
+                    <button type="button" className="btn-primary" style={{ padding: '6px 12px', fontSize: '0.8rem', flexShrink: 0 }} onClick={() => useLastOrder(o)}>
+                      {t.repeatUse}
+                    </button>
+                  </div>
+                ))}
               </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button type="button" className="btn-primary" style={{ padding: '8px 14px', fontSize: '0.85rem' }} onClick={useLastOrder}>
-                  {t.repeatUse}
-                </button>
-                <button
-                  type="button"
-                  className="status-btn"
-                  style={{ padding: '8px 14px', fontSize: '0.85rem' }}
-                  onClick={() => { setShowRepeatPrompt(false); setRepeatDismissed(true); }}
-                >
-                  {t.repeatDismiss}
-                </button>
-              </div>
+              <button
+                type="button"
+                className="status-btn"
+                style={{ padding: '8px 14px', fontSize: '0.85rem', marginTop: 10 }}
+                onClick={() => { setShowRepeatPrompt(false); setRepeatDismissed(true); }}
+              >
+                {t.repeatDismiss}
+              </button>
             </div>
           )}
           <div className="field">

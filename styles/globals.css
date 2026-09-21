@@ -77,6 +77,10 @@ button {
   color: var(--maroon); background: var(--pink-soft); padding: 5px 12px; border-radius: 999px;
 }
 
+.repeat-order-box {
+  background: var(--pink-soft); border-radius: 14px; padding: 14px 16px;
+}
+
 .stepper { display: inline-flex; align-items: center; border: 2px solid var(--line); border-radius: 14px; overflow: hidden; }
 .stepper button { width: 44px; height: 44px; border: none; background: var(--card-bg); color: var(--maroon); font-size: 1.3rem; font-weight: 800; }
 .stepper span { display: inline-block; width: 46px; text-align: center; font-weight: 800; font-size: 1.1rem; }

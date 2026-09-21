@@ -711,7 +711,7 @@ export default function Home() {
             <p style={{ margin: '6px 0 0', fontSize: '0.78rem', color: 'var(--ink-soft)' }}>{t.phoneHint}</p>
           </div>
           {showRepeatPrompt && pastOrders.length > 0 && (
-            <div className="free-note" style={{ display: 'block', width: '100%', boxSizing: 'border-box', marginBottom: 14 }}>
+            <div className="repeat-order-box" style={{ width: '100%', boxSizing: 'border-box', marginBottom: 14 }}>
               <div style={{ marginBottom: 8 }}>{t.repeatTitle}</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 220, overflowY: 'auto' }}>
                 {pastOrders.map((o, i) => (

@@ -132,6 +132,10 @@ const STR = {
     walnutWarning: '⚠️ Allergy notice: Ferrero Rocher Fresas con Crema contains walnuts.',
     allergyTitle: '🥜 Allergy Notice',
     rimTitle: '🥤 Heads Up!',
+    rimPrompt: 'Would you like the rim on your cup?',
+    rimLabel: 'Cup rim',
+    rimYes: 'Yes, add it',
+    rimNo: 'No, skip it',
     gotIt: 'Got it',
     closedTitle: "We're closed right now",
     closedDefault: "We're not taking orders right now — please check back soon!",
@@ -202,6 +206,10 @@ const STR = {
     walnutWarning: '⚠️ Aviso de alergia: las Fresas con Crema estilo Ferrero Rocher contienen nueces (walnuts).',
     allergyTitle: '🥜 Aviso de Alergia',
     rimTitle: '🥤 ¡Aviso!',
+    rimPrompt: '¿Quieres el borde en tu vaso?',
+    rimLabel: 'Borde del vaso',
+    rimYes: 'Sí, agrégalo',
+    rimNo: 'No, sin borde',
     gotIt: 'Entendido',
     closedTitle: 'Estamos cerrados por ahora',
     closedDefault: 'No estamos tomando órdenes en este momento — ¡vuelve pronto!',
@@ -232,6 +240,7 @@ export default function Home() {
   const [errorMsg, setErrorMsg] = useState('');
   const [showWalnutAlert, setShowWalnutAlert] = useState(false);
   const [showRimAlert, setShowRimAlert] = useState(false);
+  const [includeRim, setIncludeRim] = useState(true);
   const [shopStatus, setShopStatus] = useState(null); // null = still checking
   const [slotCounts, setSlotCounts] = useState({});
   const [slotLimit, setSlotLimit] = useState(3);
@@ -334,6 +343,7 @@ export default function Home() {
   }
 
   const activeBase = BASES.find((b) => b.id === base);
+  const isRimFlavor = base === 'bananapudding' || base === 'gansito';
   const basePrice = PRICES[cupSize][base];
   const perCup = basePrice + toppingsCost(base, toppings);
   const total = perCup * qty;
@@ -352,10 +362,12 @@ export default function Home() {
   }, [base, cupSize]);
 
   // Rim notice: Banana Pudding and Gansito cups come with a flavored rim
-  // around the top (like a michelada) — separate, non-allergy heads-up,
-  // shown the same way as the walnut notice above.
+  // around the top (like a michelada) — separate, non-allergy heads-up
+  // that also lets the customer opt out of the rim. Defaults to "yes" and
+  // re-prompts if the cup size changes while the flavor is still selected.
   useEffect(() => {
     if (base === 'bananapudding' || base === 'gansito') {
+      setIncludeRim(true);
       setShowRimAlert(true);
     }
   }, [base, cupSize]);
@@ -386,6 +398,7 @@ export default function Home() {
           customer_phone: phone,
           notes,
           total,
+          include_rim: isRimFlavor ? includeRim : true,
           payment_method: paymentMethod,
           payment_confirmed: paymentConfirmed,
           language: lang,
@@ -529,6 +542,22 @@ export default function Home() {
               </label>
             );
           })}
+          {isRimFlavor && (
+            <div className="field" style={{ marginTop: 12, marginBottom: 0 }}>
+              <label>{t.rimLabel}</label>
+              <p className="hint" style={{ marginTop: 0 }}>{RIM_INFO[base][lang]}</p>
+              <div className="chip-grid">
+                <label className={`chip${includeRim ? ' checked' : ''}`}>
+                  <input type="radio" name="rimChoice" style={{ display: 'none' }} checked={includeRim} onChange={() => setIncludeRim(true)} />
+                  <span>{t.rimYes}</span>
+                </label>
+                <label className={`chip${!includeRim ? ' checked' : ''}`}>
+                  <input type="radio" name="rimChoice" style={{ display: 'none' }} checked={!includeRim} onChange={() => setIncludeRim(false)} />
+                  <span>{t.rimNo}</span>
+                </label>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="section">
@@ -730,6 +759,9 @@ export default function Home() {
           <h3>{t.yourOrder}</h3>
           <div className="line"><span>{t.base}</span><strong>{activeBase.name} × {qty}</strong></div>
           <div className="line"><span>{t.cupSizeLabel}</span><strong>{cupSize} oz</strong></div>
+          {isRimFlavor && (
+            <div className="line"><span>{t.rimLabel}</span><strong>{includeRim ? t.rimYes : t.rimNo}</strong></div>
+          )}
           <div className="line"><span>{t.toppings}</span><strong>{toppings.length ? toppings.map((tp) => TOPPING_LABELS[tp][lang]).join(', ') : t.none}</strong></div>
           <div className="line"><span>{t.syrup}</span><strong>{syrups.length ? syrups.map((s) => SYRUP_LABELS[s][lang]).join(', ') : t.none}</strong></div>
           <div className="line"><span>{t.pickup}</span><strong>{formatDateKey(pickupDate, lang)}, {pickup}</strong></div>
@@ -816,10 +848,16 @@ export default function Home() {
       <div className={`overlay center-modal${showRimAlert ? ' open' : ''}`} onClick={(e) => e.target === e.currentTarget && setShowRimAlert(false)}>
         <div className="sheet center-card" style={{ textAlign: 'center' }}>
           <h3 style={{ marginBottom: 10 }}>{t.rimTitle}</h3>
-          <p style={{ fontSize: '0.96rem' }}>{RIM_INFO[base]?.[lang]}</p>
-          <button className="btn-primary" style={{ width: '100%', marginTop: 14 }} onClick={() => setShowRimAlert(false)}>
-            {t.gotIt}
-          </button>
+          <p style={{ fontSize: '0.96rem', marginBottom: 4 }}>{RIM_INFO[base]?.[lang]}</p>
+          <p style={{ fontSize: '0.96rem', fontWeight: 700 }}>{t.rimPrompt}</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 14 }}>
+            <button className="btn-primary" onClick={() => { setIncludeRim(true); setShowRimAlert(false); }}>
+              {t.rimYes}
+            </button>
+            <button className="status-btn" onClick={() => { setIncludeRim(false); setShowRimAlert(false); }}>
+              {t.rimNo}
+            </button>
+          </div>
         </div>
       </div>
     </div>

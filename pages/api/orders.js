@@ -90,7 +90,7 @@ export default async function handler(req, res) {
   const supabase = getSupabaseAdmin();
 
   if (req.method === 'POST') {
-    const { base, cup_size, toppings, syrups, qty, pickup_time, pickup_date, customer_name, customer_phone, notes, total, payment_method, payment_confirmed, language } = req.body || {};
+    const { base, cup_size, toppings, syrups, qty, pickup_time, pickup_date, customer_name, customer_phone, notes, total, payment_method, payment_confirmed, language, include_rim } = req.body || {};
 
     if (!base || !pickup_time || !customer_name || typeof total !== 'number') {
       return res.status(400).json({ error: 'Missing required order fields.' });
@@ -98,15 +98,10 @@ export default async function handler(req, res) {
 
     const finalPickupDate = pickup_date || todayDateKey();
 
-    // Reject if this pickup time has already passed (or is inside the
-    // minimum lead-time window) on the shop's own clock — catches both a
-    // stale page left open past closing and any direct API call.
-    if (!getAvailablePickupTimes(finalPickupDate).includes(pickup_time)) {
-      return res.status(409).json({ error: 'time_passed', message: 'That pickup time has already passed — please choose a later time or another date.' });
-    }
-
     // Reject new orders while the shop is marked closed, or if this
-    // specific flavor has been marked sold out.
+    // specific flavor has been marked sold out. Fetched first so the
+    // shop's configured hours (which can differ on weekends) are on hand
+    // for the pickup-time check right below.
     const { data: settingsRow } = await supabase.from('shop_settings').select('*').eq('id', 1).single();
     if (settingsRow && settingsRow.is_open === false) {
       return res.status(403).json({
@@ -114,6 +109,14 @@ export default async function handler(req, res) {
         message: settingsRow.closed_message || "We're not taking orders right now — please check back soon!",
       });
     }
+
+    // Reject if this pickup time has already passed (or is inside the
+    // minimum lead-time window) on the shop's own clock — catches both a
+    // stale page left open past closing and any direct API call.
+    if (!getAvailablePickupTimes(finalPickupDate, settingsRow).includes(pickup_time)) {
+      return res.status(409).json({ error: 'time_passed', message: 'That pickup time has already passed — please choose a later time or another date.' });
+    }
+
     const baseId = baseIdFromName(base);
     if (settingsRow?.sold_out_flavors?.includes(baseId)) {
       return res.status(409).json({ error: 'sold_out', message: `${base} is sold out right now — please pick another flavor.` });
@@ -160,6 +163,7 @@ export default async function handler(req, res) {
         customer_confirmed_payment: !!payment_confirmed,
         paid: false,
         language: language === 'es' ? 'es' : 'en',
+        include_rim: include_rim === false ? false : true,
       })
       .select()
       .single();
@@ -203,7 +207,7 @@ export default async function handler(req, res) {
 
     const allowedFields = [
       'status', 'paid', 'base', 'cup_size', 'toppings', 'syrups', 'qty',
-      'pickup_time', 'pickup_date', 'customer_name', 'customer_phone', 'notes', 'total',
+      'pickup_time', 'pickup_date', 'customer_name', 'customer_phone', 'notes', 'total', 'include_rim',
     ];
     const updates = {};
     for (const field of allowedFields) {

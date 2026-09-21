@@ -117,6 +117,7 @@ export default function Admin() {
       customer_name: o.customer_name || '',
       customer_phone: o.customer_phone || '',
       notes: o.notes || '',
+      includeRim: o.include_rim !== false,
     });
   }
 
@@ -157,6 +158,7 @@ export default function Admin() {
       customer_phone: editForm.customer_phone,
       notes: editForm.notes,
       total: newTotal,
+      include_rim: editForm.includeRim,
     };
 
     await fetch('/api/orders', {
@@ -395,11 +397,11 @@ export default function Admin() {
               <p className="hint" style={{ marginTop: 10, marginBottom: 0 }}>Pickup times customers can pick from are generated from these — weekday and weekend hours can differ.</p>
             </div>
 
-            <details className="order-card availability-dropdown" style={{ marginTop: 10 }}>
-              <summary style={{ fontWeight: 700 }}>
+            <div className="order-card" style={{ marginTop: 10 }}>
+              <label style={{ display: 'block', fontWeight: 700, marginBottom: 10 }}>
                 Flavor availability
-              </summary>
-              <div className="chip-grid" style={{ marginTop: 10 }}>
+              </label>
+              <div className="chip-grid">
                 {BASES.map((b) => {
                   const isSoldOut = (settings.sold_out_flavors || []).includes(b.id);
                   return (
@@ -421,13 +423,13 @@ export default function Admin() {
                 })}
               </div>
               <p className="hint" style={{ marginTop: 10, marginBottom: 0 }}>Tap a flavor to mark it sold out — customers won't be able to select it.</p>
-            </details>
+            </div>
 
-            <details className="order-card availability-dropdown" style={{ marginTop: 10 }}>
-              <summary style={{ fontWeight: 700 }}>
+            <div className="order-card" style={{ marginTop: 10 }}>
+              <label style={{ display: 'block', fontWeight: 700, marginBottom: 10 }}>
                 Topping availability
-              </summary>
-              <div className="chip-grid" style={{ marginTop: 10 }}>
+              </label>
+              <div className="chip-grid">
                 {TOPPINGS.map((tp) => {
                   const isSoldOut = (settings.sold_out_toppings || []).includes(tp.name);
                   return (
@@ -449,13 +451,13 @@ export default function Admin() {
                 })}
               </div>
               <p className="hint" style={{ marginTop: 10, marginBottom: 0 }}>Tap a topping to mark it sold out.</p>
-            </details>
+            </div>
 
-            <details className="order-card availability-dropdown" style={{ marginTop: 10 }}>
-              <summary style={{ fontWeight: 700 }}>
+            <div className="order-card" style={{ marginTop: 10 }}>
+              <label style={{ display: 'block', fontWeight: 700, marginBottom: 10 }}>
                 Syrup availability
-              </summary>
-              <div className="chip-grid" style={{ marginTop: 10 }}>
+              </label>
+              <div className="chip-grid">
                 {SYRUPS.map((s) => {
                   const isSoldOut = (settings.sold_out_syrups || []).includes(s);
                   return (
@@ -477,7 +479,7 @@ export default function Admin() {
                 })}
               </div>
               <p className="hint" style={{ marginTop: 10, marginBottom: 0 }}>Tap a syrup to mark it sold out.</p>
-            </details>
+            </div>
 
             <div className="order-card" style={{ marginTop: 10 }}>
               <label style={{ display: 'block', fontWeight: 700, marginBottom: 10 }}>
@@ -583,16 +585,16 @@ export default function Admin() {
                 <span className="total">${Number(o.total).toFixed(2)}</span>
               </div>
               <div className="meta">{o.qty}x {o.base}{o.cup_size ? ` (${o.cup_size})` : ''}</div>
-              <div className="order-details-body order-details-body-static">
-                <div><strong>Toppings:</strong></div>
-                {o.toppings?.length
-                  ? o.toppings.map((t) => <div key={t}>- {t}</div>)
-                  : <div>- None</div>}
-                <div><strong>Syrup:</strong></div>
-                {o.syrups?.length
-                  ? o.syrups.map((s) => <div key={s}>- {s}</div>)
-                  : <div>- None</div>}
-              </div>
+              <details className="order-details">
+                <summary>View toppings &amp; syrup</summary>
+                <div className="order-details-body">
+                  {(o.base === 'Banana Pudding' || o.base === 'Gansito') && (
+                    <div><strong>Rim:</strong> {o.include_rim === false ? '🚫 No rim' : '✅ Yes'}</div>
+                  )}
+                  <div><strong>Toppings:</strong> {o.toppings?.length ? o.toppings.join(', ') : 'None'}</div>
+                  <div><strong>Syrup:</strong> {o.syrups?.length ? o.syrups.join(', ') : 'None'}</div>
+                </div>
+              </details>
               <div className="meta">
                 {o.customer_name}{o.notes ? ` — ${o.notes}` : ''}
               </div>
@@ -655,6 +657,28 @@ export default function Admin() {
                 <option value="24">24 oz</option>
               </select>
             </div>
+
+            {(editForm.base === 'bananapudding' || editForm.base === 'gansito') && (
+              <div className="field">
+                <label>Rim</label>
+                <div className="chip-grid">
+                  <button
+                    type="button"
+                    className={`chip${editForm.includeRim ? ' checked' : ''}`}
+                    onClick={() => setEditForm((f) => ({ ...f, includeRim: true }))}
+                  >
+                    ✅ Yes
+                  </button>
+                  <button
+                    type="button"
+                    className={`chip${!editForm.includeRim ? ' checked' : ''}`}
+                    onClick={() => setEditForm((f) => ({ ...f, includeRim: false }))}
+                  >
+                    🚫 No rim
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div className="field">
               <label>Toppings</label>

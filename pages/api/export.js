@@ -44,6 +44,7 @@ export default async function handler(req, res) {
     { header: 'Phone', key: 'phone', width: 16 },
     { header: 'Base', key: 'base', width: 20 },
     { header: 'Cup Size', key: 'cupSize', width: 10 },
+    { header: 'Rim', key: 'rim', width: 10 },
     { header: 'Toppings', key: 'toppings', width: 34 },
     { header: 'Syrup', key: 'syrup', width: 22 },
     { header: 'Qty', key: 'qty', width: 7 },
@@ -73,6 +74,7 @@ export default async function handler(req, res) {
       phone: o.customer_phone || '',
       base: o.base || '',
       cupSize: o.cup_size || '',
+      rim: (o.base === 'Banana Pudding' || o.base === 'Gansito') ? (o.include_rim === false ? 'No' : 'Yes') : '',
       toppings: (o.toppings || []).join(', '),
       syrup: (o.syrups || []).join(', '),
       qty: o.qty ?? '',
@@ -111,7 +113,7 @@ export default async function handler(req, res) {
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF7CCD6' } };
   });
 
-  sheet.autoFilter = { from: 'A1', to: 'N1' };
+  sheet.autoFilter = { from: 'A1', to: 'O1' };
 
   const buffer = await workbook.xlsx.writeBuffer();
   const dateStamp = new Date().toISOString().slice(0, 10);

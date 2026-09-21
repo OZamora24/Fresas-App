@@ -67,6 +67,18 @@ const SYRUP_LABELS = {
 const PICKUP_ADDRESS = '1526 W Bonnie View Dr, Rialto, CA 92376';
 const ZELLE_PHONE = '(909) 725-2384';
 
+// Formats digits as the customer types into (xxx) xxx-xxxx, so the area
+// code is always easy to spot. Keeps just the first 10 digits typed —
+// extra characters (letters, extra digits) are dropped rather than
+// blocking input.
+function formatPhoneInput(value) {
+  const digits = value.replace(/\D/g, '').slice(0, 10);
+  if (digits.length === 0) return '';
+  if (digits.length < 4) return `(${digits}`;
+  if (digits.length < 7) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+}
+
 const STR = {
   en: {
     title: 'Fresas con Crema — Build Your Cup',
@@ -680,7 +692,7 @@ export default function Home() {
           </div>
           <div className="field">
             <label>{t.phone}</label>
-            <input type="tel" value={phone} onChange={(e) => { setPhone(e.target.value); setRepeatDismissed(false); }} placeholder={t.phonePlaceholder} />
+            <input type="tel" value={phone} onChange={(e) => { setPhone(formatPhoneInput(e.target.value)); setRepeatDismissed(false); }} placeholder={t.phonePlaceholder} />
             <p style={{ margin: '6px 0 0', fontSize: '0.78rem', color: 'var(--ink-soft)' }}>{t.phoneHint}</p>
           </div>
           {showRepeatPrompt && lastOrder && (

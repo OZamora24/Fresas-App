@@ -209,8 +209,9 @@ button {
 .site-m-chip.active { background: var(--cream-2); color: var(--maroon); border-color: var(--cream-2); }
 
 @media (max-width: 760px) {
+  .site-shell { flex-direction: column; }
   .site-sidebar { display: none; }
-  .site-mobile-tabs { display: block; }
+  .site-mobile-tabs { display: block; width: 100%; }
 }
 
 /* ===================== Home page ===================== */

@@ -24,6 +24,9 @@ export default function Admin() {
   const [deleting, setDeleting] = useState(false);
   const [settings, setSettings] = useState(null);
   const [savingSettings, setSavingSettings] = useState(false);
+  const [photos, setPhotos] = useState([]);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState('');
   const pollRef = useRef(null);
 
   async function fetchSettings() {
@@ -31,6 +34,14 @@ export default function Admin() {
     if (res.ok) {
       const json = await res.json();
       setSettings(json.settings);
+    }
+  }
+
+  async function fetchPhotos() {
+    const res = await fetch('/api/photos');
+    if (res.ok) {
+      const json = await res.json();
+      setPhotos(json.photos || []);
     }
   }
 
@@ -48,6 +59,7 @@ export default function Admin() {
   useEffect(() => {
     fetchOrders().finally(() => setChecking(false));
     fetchSettings();
+    fetchPhotos();
   }, []);
 
   useEffect(() => {
@@ -247,6 +259,56 @@ export default function Admin() {
     await window.OneSignal.Notifications.requestPermission();
     await window.OneSignal.User.addTag('role', 'admin');
     setPushEnabled(true);
+  }
+
+  function readFileAsBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result).split(',')[1] || '');
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function handlePhotoFiles(fileList) {
+    const files = Array.from(fileList || []);
+    if (files.length === 0) return;
+    setPhotoError('');
+    setUploadingPhoto(true);
+    try {
+      for (const file of files) {
+        if (file.size > 4 * 1024 * 1024) {
+          setPhotoError(`${file.name} is over 4MB — please use a smaller photo.`);
+          continue;
+        }
+        const dataBase64 = await readFileAsBase64(file);
+        const res = await fetch('/api/photos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename: file.name, dataBase64, contentType: file.type }),
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          setPhotoError(body.message || body.error || `Could not upload ${file.name}.`);
+        }
+      }
+      await fetchPhotos();
+    } catch (e) {
+      setPhotoError('Could not upload photo(s) — please try again.');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  }
+
+  async function deletePhoto(path) {
+    const ok = window.confirm('Delete this photo? This cannot be undone.');
+    if (!ok) return;
+    await fetch('/api/photos', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path }),
+    });
+    setPhotos((prev) => prev.filter((p) => p.path !== path));
   }
 
   if (checking) return null;
@@ -523,6 +585,37 @@ export default function Admin() {
           <Link href="/admin/sales" style={{ color: 'var(--maroon)', fontWeight: 700, textDecoration: 'none' }}>
             📊 View sales dashboard →
           </Link>
+        </div>
+
+        <div className="section">
+          <h2>Site photos</h2>
+          <p className="hint">These show up on the public Photos page. Max 4MB per photo.</p>
+          <div className="order-card">
+            <label className="btn-primary" style={{ display: 'inline-block', cursor: 'pointer' }}>
+              {uploadingPhoto ? 'Uploading…' : '📷 Upload photo(s)'}
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                style={{ display: 'none' }}
+                disabled={uploadingPhoto}
+                onChange={(e) => { handlePhotoFiles(e.target.files); e.target.value = ''; }}
+              />
+            </label>
+            {photoError && <p className="error" style={{ marginTop: 10 }}>{photoError}</p>}
+            {photos.length === 0 ? (
+              <p className="hint" style={{ marginTop: 14, marginBottom: 0 }}>No photos uploaded yet.</p>
+            ) : (
+              <div className="admin-photo-grid">
+                {photos.map((p) => (
+                  <div key={p.path} className="admin-photo-tile">
+                    <img src={p.url} alt="" />
+                    <button type="button" className="del-btn" onClick={() => deletePhoto(p.path)} title="Delete">✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {!pushEnabled && (

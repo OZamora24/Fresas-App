@@ -25,6 +25,7 @@ html, body {
   color: var(--ink);
   font-family: 'Nunito', sans-serif;
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 }
 
 h1, h2, h3, .display {
@@ -129,8 +130,8 @@ button {
 .overlay.center-modal-high { align-items: flex-start; padding-top: 8vh; }
 @media (max-width: 500px) { .overlay.center-modal-high { padding-top: 5vh; } }
 .sheet { background: var(--cream-2); color: var(--ink); width: 100%; max-width: 640px; border-radius: 22px 22px 0 0; padding: 24px 22px; max-height: 86vh; overflow-y: auto; }
-.sheet.center-card { border-radius: 22px; max-width: 380px; margin: 0 20px; }
-.sheet.sheet-centered { border-radius: 22px; margin: 20px; max-width: 620px; }
+.sheet.center-card { border-radius: 22px; max-width: 380px; width: calc(100% - 40px); margin: 0; }
+.sheet.sheet-centered { border-radius: 22px; width: calc(100% - 40px); margin: 20px 0; max-width: 620px; }
 .sheet h3 { color: var(--maroon); margin: 0 0 14px; }
 .sheet .line { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed var(--line); font-size: 0.94rem; }
 .sheet .grand { display:flex; justify-content: space-between; padding: 14px 0 4px; font-weight: 800; color: var(--maroon); font-size: 1.2rem; }

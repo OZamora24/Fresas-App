@@ -279,6 +279,53 @@ export default function Home() {
   const [showRepeatPrompt, setShowRepeatPrompt] = useState(false);
   const [repeatDismissed, setRepeatDismissed] = useState(false);
   const [nowTick, setNowTick] = useState(0);
+  const [draftReady, setDraftReady] = useState(false);
+
+  // Restore an in-progress order (if any) from localStorage, so a
+  // customer who navigates to Home and back to Order doesn't lose what
+  // they'd already picked. Drafts older than 24 hours are ignored — a
+  // stale draft from days ago would be more confusing than helpful.
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem('fresasOrderDraft');
+      if (raw) {
+        const draft = JSON.parse(raw);
+        if (draft && draft.savedAt && Date.now() - draft.savedAt < 24 * 60 * 60 * 1000) {
+          if (draft.cupSize) setCupSize(draft.cupSize);
+          if (draft.base) setBase(draft.base);
+          if (Array.isArray(draft.toppings)) setToppings(draft.toppings);
+          if (Array.isArray(draft.syrups)) setSyrups(draft.syrups);
+          if (draft.qty) setQty(draft.qty);
+          if (draft.pickupDate) setPickupDate(draft.pickupDate);
+          if (draft.pickup) setPickup(draft.pickup);
+          if (draft.name) setName(draft.name);
+          if (draft.phone) setPhone(draft.phone);
+          if (draft.notes) setNotes(draft.notes);
+          if (draft.paymentMethod) setPaymentMethod(draft.paymentMethod);
+        } else {
+          window.localStorage.removeItem('fresasOrderDraft');
+        }
+      }
+    } catch (e) {
+      // localStorage unavailable (private browsing, etc.) — just skip restoring.
+    }
+    setDraftReady(true);
+  }, []);
+
+  // Save the in-progress order as it changes — but only once the restore
+  // above has run, so we don't immediately overwrite a saved draft with
+  // blank starting values.
+  useEffect(() => {
+    if (!draftReady) return;
+    try {
+      window.localStorage.setItem('fresasOrderDraft', JSON.stringify({
+        cupSize, base, toppings, syrups, qty, pickupDate, pickup, name, phone, notes, paymentMethod,
+        savedAt: Date.now(),
+      }));
+    } catch (e) {
+      // ignore — localStorage may be unavailable
+    }
+  }, [draftReady, cupSize, base, toppings, syrups, qty, pickupDate, pickup, name, phone, notes, paymentMethod]);
 
   // Re-check which pickup times are still bookable once a minute, so a
   // slot that just passed disappears from the list on its own.
@@ -473,6 +520,7 @@ export default function Home() {
       }
       const body = await res.json().catch(() => ({}));
       setConfirmedOrderNumber(body.order?.order_number ?? null);
+      try { window.localStorage.removeItem('fresasOrderDraft'); } catch (e) {}
       setSubmitted(true);
     } catch (e) {
       setErrorMsg(t.genericError);
@@ -562,6 +610,7 @@ export default function Home() {
     <div>
       <Head><title>{t.title}</title></Head>
       <div className="hero">
+        <Link href="/" className="back-home-link">← Home</Link>
         <h1><Link href="/" style={{ color: 'inherit', textDecoration: 'none' }}>Fresas con Crema</Link></h1>
         <p>{t.heroTag}</p>
         {LangToggle}

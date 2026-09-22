@@ -44,9 +44,15 @@ button {
   background: linear-gradient(180deg, var(--maroon) 0%, var(--maroon-deep) 100%);
   padding: 36px 20px 46px;
   text-align: center;
+  position: relative;
 }
 .hero h1 { color: var(--cream-2); font-weight: 800; font-size: clamp(2rem, 7vw, 2.6rem); margin: 0 0 4px; }
 .hero p { color: var(--pink-soft); font-weight: 700; margin: 0; }
+.back-home-link {
+  position: absolute; top: 16px; left: 18px; color: var(--pink-soft); font-size: 0.82rem;
+  font-weight: 700; text-decoration: none; opacity: 0.8;
+}
+.back-home-link:hover { opacity: 1; }
 
 .section { padding: 26px 0 6px; }
 .section h2 { font-weight: 700; font-size: 1.25rem; color: var(--maroon); margin: 0 0 4px; }

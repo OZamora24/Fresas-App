@@ -881,7 +881,7 @@ export default function Home() {
             <button className="btn-primary" onClick={placeOrder} disabled={submitting || !paymentConfirmed}>
               {submitting ? t.sending : paymentConfirmed ? t.placeOrder : t.confirmPaymentFirst}
             </button>
-            <button className="status-btn" onClick={() => setShowSheet(false)}>{t.keepEditing}</button>
+            <button className="btn-outline" onClick={() => setShowSheet(false)}>{t.keepEditing}</button>
           </div>
         </div>
       </div>

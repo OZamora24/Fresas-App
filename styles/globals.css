@@ -107,6 +107,11 @@ button {
 }
 .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 
+.btn-outline {
+  background: transparent; color: var(--maroon); border: 2px solid var(--line); border-radius: 12px;
+  padding: 13px 22px; font-weight: 800; font-size: 1rem;
+}
+
 .btn-secondary {
   background: transparent; color: var(--cream-2); border: 2px solid rgba(255,255,255,0.5); border-radius: 12px;
   padding: 11px 20px; font-weight: 700; font-size: 0.95rem;

@@ -42,6 +42,23 @@ export default function Home() {
   const [lang, setLang] = useState('en');
   const t = STR[lang];
 
+  // Remember the customer's language choice across pages (Home, Order,
+  // Catering, Photos all share this) — read it on mount, and save it
+  // whenever they switch.
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem('fresasLang');
+      if (saved === 'en' || saved === 'es') setLang(saved);
+    } catch (e) {
+      // localStorage unavailable — just keep the default
+    }
+  }, []);
+
+  function changeLang(newLang) {
+    setLang(newLang);
+    try { window.localStorage.setItem('fresasLang', newLang); } catch (e) {}
+  }
+
   useEffect(() => {
     fetch('/api/settings')
       .then((r) => r.json())
@@ -58,7 +75,7 @@ export default function Home() {
   return (
     <div className="site-shell">
       <Head><title>{t.title}</title></Head>
-      <SiteNav lang={lang} onLangChange={setLang} />
+      <SiteNav lang={lang} onLangChange={changeLang} />
       <main className="site-main">
         <div className="home-hero">
           {isOpen !== null && (

@@ -259,6 +259,23 @@ const STR = {
 
 export default function Home() {
   const [lang, setLang] = useState('en');
+
+  // Remember the customer's language choice across pages (Home, Order,
+  // Catering, Photos all share this) — read it on mount, and save it
+  // whenever they switch.
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem('fresasLang');
+      if (saved === 'en' || saved === 'es') setLang(saved);
+    } catch (e) {
+      // localStorage unavailable — just keep the default
+    }
+  }, []);
+
+  function changeLang(newLang) {
+    setLang(newLang);
+    try { window.localStorage.setItem('fresasLang', newLang); } catch (e) {}
+  }
   const t = STR[lang];
 
   const [cupSize, setCupSize] = useState('12');
@@ -543,7 +560,7 @@ export default function Home() {
     <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 14 }}>
       <button
         type="button"
-        onClick={() => setLang('en')}
+        onClick={() => changeLang('en')}
         className="btn-secondary"
         style={{
           padding: '6px 16px', fontSize: '0.82rem',
@@ -555,7 +572,7 @@ export default function Home() {
       </button>
       <button
         type="button"
-        onClick={() => setLang('es')}
+        onClick={() => changeLang('es')}
         className="btn-secondary"
         style={{
           padding: '6px 16px', fontSize: '0.82rem',

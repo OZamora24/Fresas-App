@@ -120,6 +120,8 @@ button {
 .overlay { position: fixed; inset: 0; background: rgba(40,8,14,0.55); z-index: 20; display: none; align-items: flex-end; justify-content: center; }
 .overlay.open { display: flex; }
 .overlay.center-modal { align-items: center; }
+.overlay.center-modal-high { align-items: flex-start; padding-top: 8vh; }
+@media (max-width: 500px) { .overlay.center-modal-high { padding-top: 5vh; } }
 .sheet { background: var(--cream-2); color: var(--ink); width: 100%; max-width: 640px; border-radius: 22px 22px 0 0; padding: 24px 22px; max-height: 86vh; overflow-y: auto; }
 .sheet.center-card { border-radius: 22px; max-width: 380px; margin: 0 20px; }
 .sheet.sheet-centered { border-radius: 22px; margin: 20px; max-width: 620px; }

@@ -80,6 +80,14 @@ function formatPhoneInput(value) {
   return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
 }
 
+// Capitalizes the first letter as the customer types their name, so they
+// don't have to think about it — everything after that first letter is
+// left exactly as typed.
+function capitalizeFirst(value) {
+  if (!value) return value;
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
 const STR = {
   en: {
     title: 'Fresas con Crema — Build Your Cup',
@@ -714,7 +722,7 @@ export default function Home() {
           <h2>{t.yourInfo}</h2>
           <div className="field">
             <label>{t.name}</label>
-            <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder={t.namePlaceholder} />
+            <input type="text" value={name} onChange={(e) => setName(capitalizeFirst(e.target.value))} placeholder={t.namePlaceholder} />
           </div>
           <div className="field">
             <label>{t.phone}</label>
@@ -803,7 +811,7 @@ export default function Home() {
         </button>
       </div>
 
-      <div className={`overlay center-modal${showSheet ? ' open' : ''}`} onClick={(e) => e.target === e.currentTarget && setShowSheet(false)}>
+      <div className={`overlay center-modal-high${showSheet ? ' open' : ''}`} onClick={(e) => e.target === e.currentTarget && setShowSheet(false)}>
         <div className="sheet sheet-centered">
           <h3>{t.yourOrder}</h3>
           <div className="line"><span>{t.base}</span><strong>{activeBase.name} × {qty}</strong></div>

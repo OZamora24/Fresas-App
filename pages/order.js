@@ -115,7 +115,12 @@ const STR = {
     namePlaceholder: "Who's this order for?",
     phone: 'Phone number',
     phonePlaceholder: 'Optional',
-    phoneHint: "We'll text you when your order is ready for pickup. Msg & data rates may apply.",
+    phoneHint: "Optional — you can place an order without it. If you enter it, we'll text you an order confirmation and a message when your order is ready. Up to 2 messages per order. Msg & data rates may apply. Reply STOP to opt out.",
+    phonePolicyLinks: (privacyHref, termsHref) => (
+      <>
+        By entering your number, you agree to our <a href={privacyHref} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--maroon)', fontWeight: 700 }}>Privacy Policy</a> and <a href={termsHref} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--maroon)', fontWeight: 700 }}>Terms</a>.
+      </>
+    ),
     repeatTitle: 'Want one of your recent orders again?',
     repeatUse: 'Use this order',
     repeatDismiss: 'No thanks',
@@ -193,7 +198,12 @@ const STR = {
     namePlaceholder: '¿Para quién es esta orden?',
     phone: 'Número de teléfono',
     phonePlaceholder: 'Opcional',
-    phoneHint: 'Te enviaremos un mensaje de texto cuando tu orden esté lista para recoger. Aplican tarifas de mensajes y datos.',
+    phoneHint: 'Opcional — puedes ordenar sin él. Si lo ingresas, te enviaremos una confirmación de orden y un mensaje cuando esté lista para recoger. Hasta 2 mensajes por orden. Aplican tarifas de mensajes y datos. Responde STOP para cancelar.',
+    phonePolicyLinks: (privacyHref, termsHref) => (
+      <>
+        Al ingresar tu número, aceptas nuestra <a href={privacyHref} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--maroon)', fontWeight: 700 }}>Política de Privacidad</a> y <a href={termsHref} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--maroon)', fontWeight: 700 }}>Términos</a>.
+      </>
+    ),
     repeatTitle: '¿Quieres pedir uno de tus pedidos recientes?',
     repeatUse: 'Usar esta orden',
     repeatDismiss: 'No, gracias',
@@ -777,6 +787,7 @@ export default function Home() {
             <label>{t.phone}</label>
             <input type="tel" value={phone} onChange={(e) => { setPhone(formatPhoneInput(e.target.value)); setRepeatDismissed(false); }} placeholder={t.phonePlaceholder} />
             <p style={{ margin: '6px 0 0', fontSize: '0.78rem', color: 'var(--ink-soft)' }}>{t.phoneHint}</p>
+            <p style={{ margin: '4px 0 0', fontSize: '0.76rem', color: 'var(--ink-soft)' }}>{t.phonePolicyLinks('/privacy', '/terms')}</p>
           </div>
           {showRepeatPrompt && pastOrders.length > 0 && (
             <div className="repeat-order-box" style={{ width: '100%', boxSizing: 'border-box', marginBottom: 14 }}>

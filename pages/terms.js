@@ -18,11 +18,12 @@ export default function Terms() {
 
       <h2 style={{ color: 'var(--maroon)', fontSize: '1.2rem', marginTop: 28 }}>SMS Terms</h2>
       <p>
-        By providing your phone number when placing an order, you consent to receive a one-time
-        text message from Fresas con Crema when your order is ready for pickup.
+        By providing your phone number when placing an order, you consent to receive up to two
+        text messages from Fresas con Crema about that order: an order-received confirmation,
+        and a message letting you know when it&apos;s ready for pickup.
       </p>
       <ul>
-        <li>Message frequency: one message per order.</li>
+        <li>Message frequency: up to 2 messages per order.</li>
         <li>Message and data rates may apply.</li>
         <li>You may reply STOP at any time to opt out of future messages.</li>
         <li>Reply HELP, or contact us at (909) 725-2384, for assistance.</li>

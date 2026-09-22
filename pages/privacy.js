@@ -29,9 +29,9 @@ export default function Privacy() {
 
       <h2 style={{ color: 'var(--maroon)', fontSize: '1.2rem', marginTop: 28 }}>SMS Communications</h2>
       <p>
-        If you provide your phone number, we may send you a one-time text message letting you
-        know when your order is ready for pickup. We do not send marketing texts. Message and
-        data rates may apply. You will receive at most one text per order.
+        If you provide your phone number, we may send you up to two text messages related to
+        your order: one confirming we received your order, and one letting you know when it&apos;s
+        ready for pickup. We do not send marketing texts. Message and data rates may apply.
       </p>
       <p>
         <strong>We do not sell or share your SMS opt-in data or personal information with third

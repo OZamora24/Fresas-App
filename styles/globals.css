@@ -199,7 +199,10 @@ button {
 .site-lang-btn.on { background: rgba(255,255,255,0.22); color: #fff; }
 
 .site-mobile-tabs { display: none; position: sticky; top: 0; z-index: 15; background: var(--maroon); padding: 10px 12px 12px; }
-.site-mobile-brand { color: var(--cream-2); font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 1.1rem; padding: 4px 2px 10px; }
+.site-mobile-brand-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 4px 2px 10px; }
+.site-mobile-brand { color: var(--cream-2); font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 1.1rem; }
+.site-mobile-lang { display: flex; gap: 6px; flex-shrink: 0; }
+.site-mobile-lang .site-lang-btn { padding: 4px 10px; font-size: 0.72rem; }
 .site-mobile-chips { display: flex; gap: 8px; overflow-x: auto; }
 .site-m-chip {
   flex-shrink: 0; padding: 8px 14px; border-radius: 999px; border: 1.5px solid rgba(255,255,255,0.4);

@@ -2,10 +2,10 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 
 const NAV_ITEMS = [
-  { href: '/', label: 'Home', icon: '🏠' },
-  { href: '/order', label: 'Order Here', icon: '🛒' },
-  { href: '/catering', label: 'Catering', icon: '🎉' },
-  { href: '/photos', label: 'Photos', icon: '📸' },
+  { href: '/', icon: '🏠', label: { en: 'Home', es: 'Inicio' } },
+  { href: '/order', icon: '🛒', label: { en: 'Order Here', es: 'Ordenar' } },
+  { href: '/catering', icon: '🎉', label: { en: 'Catering', es: 'Catering' } },
+  { href: '/photos', icon: '📸', label: { en: 'Photos', es: 'Fotos' } },
 ];
 
 // Shared site navigation: a left sidebar on wide screens, a horizontal
@@ -17,7 +17,27 @@ export default function SiteNav({ lang = 'en', onLangChange }) {
   return (
     <>
       <nav className="site-mobile-tabs">
-        <div className="site-mobile-brand">🍓 Fresas con Crema</div>
+        <div className="site-mobile-brand-row">
+          <div className="site-mobile-brand">🍓 Fresas con Crema</div>
+          {onLangChange && (
+            <div className="site-mobile-lang">
+              <button
+                type="button"
+                className={`site-lang-btn${lang === 'en' ? ' on' : ''}`}
+                onClick={() => onLangChange('en')}
+              >
+                EN
+              </button>
+              <button
+                type="button"
+                className={`site-lang-btn${lang === 'es' ? ' on' : ''}`}
+                onClick={() => onLangChange('es')}
+              >
+                ES
+              </button>
+            </div>
+          )}
+        </div>
         <div className="site-mobile-chips">
           {NAV_ITEMS.map((item) => (
             <Link
@@ -25,7 +45,7 @@ export default function SiteNav({ lang = 'en', onLangChange }) {
               href={item.href}
               className={`site-m-chip${router.pathname === item.href ? ' active' : ''}`}
             >
-              {item.label}
+              {item.label[lang] || item.label.en}
             </Link>
           ))}
         </div>
@@ -41,7 +61,7 @@ export default function SiteNav({ lang = 'en', onLangChange }) {
             href={item.href}
             className={`site-nav-item${router.pathname === item.href ? ' active' : ''}`}
           >
-            <span className="site-nav-ic">{item.icon}</span> {item.label}
+            <span className="site-nav-ic">{item.icon}</span> {item.label[lang] || item.label.en}
           </Link>
         ))}
 

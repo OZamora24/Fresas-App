@@ -26,7 +26,7 @@ export default async function handler(req, res) {
 
   const { data: orders, error } = await supabase
     .from('orders')
-    .select('base, pickup_time, total, toppings, syrups, created_at')
+    .select('base, qty, pickup_time, total, toppings, syrups, items, created_at')
     .gte('created_at', startOfWindow.toISOString());
 
   if (error) {
@@ -56,13 +56,24 @@ export default async function handler(req, res) {
       todayOrders += 1;
     }
 
-    flavorCounts[o.base] = (flavorCounts[o.base] || 0) + 1;
     pickupCounts[o.pickup_time] = (pickupCounts[o.pickup_time] || 0) + 1;
-    for (const tp of o.toppings || []) {
-      toppingCounts[tp] = (toppingCounts[tp] || 0) + 1;
-    }
-    for (const s of o.syrups || []) {
-      syrupCounts[s] = (syrupCounts[s] || 0) + 1;
+
+    // Multi-cup orders carry their own list of cups — count each cup by
+    // its own quantity so a 3-cup order of Ferrero Rocher counts as 3,
+    // not 1. Older/simpler orders just have the top-level fields.
+    const cups = Array.isArray(o.items) && o.items.length > 0
+      ? o.items
+      : [{ base: o.base, toppings: o.toppings || [], syrups: o.syrups || [], qty: o.qty || 1 }];
+
+    for (const cup of cups) {
+      const cupQty = cup.qty || 1;
+      flavorCounts[cup.base] = (flavorCounts[cup.base] || 0) + cupQty;
+      for (const tp of cup.toppings || []) {
+        toppingCounts[tp] = (toppingCounts[tp] || 0) + cupQty;
+      }
+      for (const s of cup.syrups || []) {
+        syrupCounts[s] = (syrupCounts[s] || 0) + cupQty;
+      }
     }
   }
 

@@ -130,6 +130,9 @@ export default function Admin() {
       customer_phone: o.customer_phone || '',
       notes: o.notes || '',
       includeRim: o.include_rim !== false,
+      isMultiCup: Array.isArray(o.items) && o.items.length > 0,
+      items: o.items || null,
+      originalTotal: Number(o.total) || 0,
     });
   }
 
@@ -155,23 +158,32 @@ export default function Admin() {
     if (!editForm) return;
     setSavingEdit(true);
     const activeBase = BASES.find((b) => b.id === editForm.base);
-    const newTotal = orderTotal(editForm.base, editForm.cupSize, editForm.toppings, editForm.qty);
+    const newTotal = editForm.isMultiCup ? editForm.originalTotal : orderTotal(editForm.base, editForm.cupSize, editForm.toppings, editForm.qty);
 
-    const payload = {
-      id: editingId,
-      base: activeBase.name,
-      cup_size: `${editForm.cupSize} oz`,
-      toppings: editForm.toppings,
-      syrups: editForm.syrups,
-      qty: editForm.qty,
-      pickup_date: editForm.pickup_date,
-      pickup_time: editForm.pickup_time,
-      customer_name: editForm.customer_name,
-      customer_phone: editForm.customer_phone,
-      notes: editForm.notes,
-      total: newTotal,
-      include_rim: editForm.includeRim,
-    };
+    const payload = editForm.isMultiCup
+      ? {
+          id: editingId,
+          pickup_date: editForm.pickup_date,
+          pickup_time: editForm.pickup_time,
+          customer_name: editForm.customer_name,
+          customer_phone: editForm.customer_phone,
+          notes: editForm.notes,
+        }
+      : {
+          id: editingId,
+          base: activeBase.name,
+          cup_size: `${editForm.cupSize} oz`,
+          toppings: editForm.toppings,
+          syrups: editForm.syrups,
+          qty: editForm.qty,
+          pickup_date: editForm.pickup_date,
+          pickup_time: editForm.pickup_time,
+          customer_name: editForm.customer_name,
+          customer_phone: editForm.customer_phone,
+          notes: editForm.notes,
+          total: newTotal,
+          include_rim: editForm.includeRim,
+        };
 
     await fetch('/api/orders', {
       method: 'PATCH',
@@ -682,20 +694,40 @@ export default function Admin() {
                 </label>
                 <span className="total">${Number(o.total).toFixed(2)}</span>
               </div>
-              <div className="meta">{o.qty}x {o.base}{o.cup_size ? ` (${o.cup_size})` : ''}</div>
-              <div className="order-details-body order-details-body-static">
-                {(o.base === 'Banana Pudding' || o.base === 'Gansito') && (
-                  <div><strong>Rim:</strong> {o.include_rim === false ? '🚫 No rim' : '✅ Yes'}</div>
-                )}
-                <div><strong>Toppings:</strong></div>
-                {o.toppings?.length
-                  ? o.toppings.map((t) => <div key={t}>- {t}</div>)
-                  : <div>- None</div>}
-                <div><strong>Syrup:</strong></div>
-                {o.syrups?.length
-                  ? o.syrups.map((s) => <div key={s}>- {s}</div>)
-                  : <div>- None</div>}
-              </div>
+              {Array.isArray(o.items) && o.items.length > 0 ? (
+                <>
+                  <div className="meta">{o.items.length} cup{o.items.length === 1 ? '' : 's'} in this order</div>
+                  <div className="order-details-body order-details-body-static">
+                    {o.items.map((item, i) => (
+                      <div key={i} style={{ marginBottom: i < o.items.length - 1 ? 10 : 0, paddingBottom: i < o.items.length - 1 ? 10 : 0, borderBottom: i < o.items.length - 1 ? '1px dashed var(--line)' : 'none' }}>
+                        <div><strong>{item.qty}x {item.base}</strong>{item.cup_size ? ` (${item.cup_size})` : ''}</div>
+                        {(item.base === 'Banana Pudding' || item.base === 'Gansito') && (
+                          <div><strong>Rim:</strong> {item.include_rim === false ? '🚫 No rim' : '✅ Yes'}</div>
+                        )}
+                        <div><strong>Toppings:</strong> {item.toppings?.length ? item.toppings.join(', ') : 'None'}</div>
+                        <div><strong>Syrup:</strong> {item.syrups?.length ? item.syrups.join(', ') : 'None'}</div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="meta">{o.qty}x {o.base}{o.cup_size ? ` (${o.cup_size})` : ''}</div>
+                  <div className="order-details-body order-details-body-static">
+                    {(o.base === 'Banana Pudding' || o.base === 'Gansito') && (
+                      <div><strong>Rim:</strong> {o.include_rim === false ? '🚫 No rim' : '✅ Yes'}</div>
+                    )}
+                    <div><strong>Toppings:</strong></div>
+                    {o.toppings?.length
+                      ? o.toppings.map((t) => <div key={t}>- {t}</div>)
+                      : <div>- None</div>}
+                    <div><strong>Syrup:</strong></div>
+                    {o.syrups?.length
+                      ? o.syrups.map((s) => <div key={s}>- {s}</div>)
+                      : <div>- None</div>}
+                  </div>
+                </>
+              )}
               {o.notes && (
                 <div className="meta">{o.notes}</div>
               )}
@@ -740,80 +772,99 @@ export default function Admin() {
           <div className="sheet">
             <h3>Edit order</h3>
 
-            <div className="field">
-              <label>Base</label>
-              <select value={editForm.base} onChange={(e) => setEditForm((f) => ({ ...f, base: e.target.value }))}>
-                {BASES.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.name} — ${PRICES[editForm.cupSize][b.id].toFixed(2)}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="field">
-              <label>Cup size</label>
-              <select value={editForm.cupSize} onChange={(e) => setEditForm((f) => ({ ...f, cupSize: e.target.value }))}>
-                <option value="12">12 oz</option>
-                <option value="24">24 oz</option>
-              </select>
-            </div>
-
-            {(editForm.base === 'bananapudding' || editForm.base === 'gansito') && (
+            {editForm.isMultiCup ? (
               <div className="field">
-                <label>Rim</label>
-                <div className="chip-grid">
-                  <button
-                    type="button"
-                    className={`chip${editForm.includeRim ? ' checked' : ''}`}
-                    onClick={() => setEditForm((f) => ({ ...f, includeRim: true }))}
-                  >
-                    ✅ Yes
-                  </button>
-                  <button
-                    type="button"
-                    className={`chip${!editForm.includeRim ? ' checked' : ''}`}
-                    onClick={() => setEditForm((f) => ({ ...f, includeRim: false }))}
-                  >
-                    🚫 No rim
-                  </button>
+                <label>Cups in this order</label>
+                <div className="order-details-body order-details-body-static" style={{ marginTop: 0 }}>
+                  {editForm.items.map((item, i) => (
+                    <div key={i} style={{ marginBottom: i < editForm.items.length - 1 ? 8 : 0 }}>
+                      <div><strong>{item.qty}x {item.base}</strong>{item.cup_size ? ` (${item.cup_size})` : ''}</div>
+                      <div>Toppings: {item.toppings?.length ? item.toppings.join(', ') : 'None'} · Syrup: {item.syrups?.length ? item.syrups.join(', ') : 'None'}</div>
+                    </div>
+                  ))}
                 </div>
+                <p className="hint" style={{ marginTop: 10, marginBottom: 0 }}>
+                  This order has multiple different cups — editing cup details isn't supported here yet. You can still update pickup time, customer info, and notes below. To change what's in the order, it's easiest to have the customer place a new one and delete this one.
+                </p>
               </div>
+            ) : (
+              <>
+                <div className="field">
+                  <label>Base</label>
+                  <select value={editForm.base} onChange={(e) => setEditForm((f) => ({ ...f, base: e.target.value }))}>
+                    {BASES.map((b) => (
+                      <option key={b.id} value={b.id}>
+                        {b.name} — ${PRICES[editForm.cupSize][b.id].toFixed(2)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="field">
+                  <label>Cup size</label>
+                  <select value={editForm.cupSize} onChange={(e) => setEditForm((f) => ({ ...f, cupSize: e.target.value }))}>
+                    <option value="12">12 oz</option>
+                    <option value="24">24 oz</option>
+                  </select>
+                </div>
+
+                {(editForm.base === 'bananapudding' || editForm.base === 'gansito') && (
+                  <div className="field">
+                    <label>Rim</label>
+                    <div className="chip-grid">
+                      <button
+                        type="button"
+                        className={`chip${editForm.includeRim ? ' checked' : ''}`}
+                        onClick={() => setEditForm((f) => ({ ...f, includeRim: true }))}
+                      >
+                        ✅ Yes
+                      </button>
+                      <button
+                        type="button"
+                        className={`chip${!editForm.includeRim ? ' checked' : ''}`}
+                        onClick={() => setEditForm((f) => ({ ...f, includeRim: false }))}
+                      >
+                        🚫 No rim
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="field">
+                  <label>Toppings</label>
+                  <div className="chip-grid">
+                    {TOPPINGS.map((tp) => (
+                      <label key={tp.name} className={`chip${editForm.toppings.includes(tp.name) ? ' checked' : ''}`}>
+                        <input type="checkbox" style={{ display: 'none' }} checked={editForm.toppings.includes(tp.name)} onChange={() => toggleEditTopping(tp.name)} />
+                        <span>{tp.name}</span>
+                        {tp.alwaysExtra && <span className="badge">+$1</span>}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="field">
+                  <label>Syrup</label>
+                  <div className="chip-grid">
+                    {SYRUPS.map((s) => (
+                      <label key={s} className={`chip${editForm.syrups.includes(s) ? ' checked' : ''}`}>
+                        <input type="checkbox" style={{ display: 'none' }} checked={editForm.syrups.includes(s)} onChange={() => toggleEditSyrup(s)} />
+                        <span>{s}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="field">
+                  <label>Quantity</label>
+                  <div className="stepper">
+                    <button type="button" onClick={() => setEditForm((f) => ({ ...f, qty: Math.max(1, f.qty - 1) }))}>−</button>
+                    <span>{editForm.qty}</span>
+                    <button type="button" onClick={() => setEditForm((f) => ({ ...f, qty: Math.min(20, f.qty + 1) }))}>+</button>
+                  </div>
+                </div>
+              </>
             )}
-
-            <div className="field">
-              <label>Toppings</label>
-              <div className="chip-grid">
-                {TOPPINGS.map((tp) => (
-                  <label key={tp.name} className={`chip${editForm.toppings.includes(tp.name) ? ' checked' : ''}`}>
-                    <input type="checkbox" style={{ display: 'none' }} checked={editForm.toppings.includes(tp.name)} onChange={() => toggleEditTopping(tp.name)} />
-                    <span>{tp.name}</span>
-                    {tp.alwaysExtra && <span className="badge">+$1</span>}
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div className="field">
-              <label>Syrup</label>
-              <div className="chip-grid">
-                {SYRUPS.map((s) => (
-                  <label key={s} className={`chip${editForm.syrups.includes(s) ? ' checked' : ''}`}>
-                    <input type="checkbox" style={{ display: 'none' }} checked={editForm.syrups.includes(s)} onChange={() => toggleEditSyrup(s)} />
-                    <span>{s}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div className="field">
-              <label>Quantity</label>
-              <div className="stepper">
-                <button type="button" onClick={() => setEditForm((f) => ({ ...f, qty: Math.max(1, f.qty - 1) }))}>−</button>
-                <span>{editForm.qty}</span>
-                <button type="button" onClick={() => setEditForm((f) => ({ ...f, qty: Math.min(20, f.qty + 1) }))}>+</button>
-              </div>
-            </div>
 
             <div className="field">
               <label>Pickup date</label>

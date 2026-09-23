@@ -13,6 +13,8 @@ export default function Admin() {
   const [loginError, setLoginError] = useState('');
   const [orders, setOrders] = useState([]);
   const [pushEnabled, setPushEnabled] = useState(false);
+  const [oneSignalReady, setOneSignalReady] = useState(false);
+  const [pushError, setPushError] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState(null);
   const [savingEdit, setSavingEdit] = useState(false);
@@ -267,10 +269,25 @@ export default function Admin() {
   }
 
   async function enablePush() {
-    if (!window.OneSignal) return;
-    await window.OneSignal.Notifications.requestPermission();
-    await window.OneSignal.User.addTag('role', 'admin');
-    setPushEnabled(true);
+    setPushError('');
+    if (!window.OneSignal) {
+      setPushError("Still setting up notifications — give it a second and try again.");
+      return;
+    }
+    try {
+      await window.OneSignal.Notifications.requestPermission();
+      await window.OneSignal.User.addTag('role', 'admin');
+      // requestPermission() can resolve even if the browser prompt was
+      // dismissed or previously denied — check the actual permission
+      // state rather than assuming it worked.
+      if (window.OneSignal.Notifications.permission) {
+        setPushEnabled(true);
+      } else {
+        setPushError("Notifications weren't allowed. Check your browser's site settings (🔒 icon in the address bar) and allow notifications for this site, then try again.");
+      }
+    } catch (e) {
+      setPushError('Something went wrong turning on notifications — please try again.');
+    }
   }
 
   function readFileAsBase64(file) {
@@ -359,6 +376,10 @@ export default function Admin() {
             window.OneSignalDeferred.push(async (OneSignal) => {
               await OneSignal.init({ appId: ONESIGNAL_APP_ID });
               window.OneSignal = OneSignal;
+              setOneSignalReady(true);
+              // If notifications were already granted in an earlier visit,
+              // reflect that immediately instead of showing the button again.
+              if (OneSignal.Notifications.permission) setPushEnabled(true);
             });
           }}
         />
@@ -632,9 +653,10 @@ export default function Admin() {
 
         {!pushEnabled && (
           <div className="section">
-            <button className="btn-primary" onClick={enablePush}>
-              🔔 Enable push notifications on this device
+            <button className="btn-primary" onClick={enablePush} disabled={!oneSignalReady}>
+              🔔 {oneSignalReady ? 'Enable push notifications on this device' : 'Loading notifications…'}
             </button>
+            {pushError && <p className="error" style={{ marginTop: 8 }}>{pushError}</p>}
           </div>
         )}
 

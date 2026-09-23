@@ -176,6 +176,7 @@ button {
 .login-box { max-width: 340px; margin: 90px auto; text-align: center; }
 .login-box h1 { font-size: 1.8rem; color: var(--maroon); }
 .login-box .error { color: var(--maroon); font-weight: 700; margin-top: 10px; font-size: 0.9rem; }
+.error { color: var(--maroon); font-weight: 700; font-size: 0.85rem; }
 
 /* ===================== Site shell / navigation ===================== */
 .site-shell { display: flex; min-height: 100vh; }

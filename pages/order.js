@@ -129,10 +129,6 @@ const STR = {
     questions: 'Questions? Call or text',
     total: 'Total',
     reviewOrder: 'Review order',
-    addAnotherCup: '+ Add Another Cup',
-    yourCupsSoFar: (count) => `Your order so far (${count} cup${count === 1 ? '' : 's'})`,
-    remove: 'Remove',
-    cupLineLabel: (name, size) => `${name} (${size})`,
     yourOrder: 'Your order',
     base: 'Base',
     cupSizeLabel: 'Size',
@@ -216,10 +212,6 @@ const STR = {
     questions: 'Preguntas? Llama o envía un mensaje',
     total: 'Total',
     reviewOrder: 'Revisar orden',
-    addAnotherCup: '+ Agregar Otro Vaso',
-    yourCupsSoFar: (count) => `Tu orden hasta ahora (${count} vaso${count === 1 ? '' : 's'})`,
-    remove: 'Quitar',
-    cupLineLabel: (name, size) => `${name} (${size})`,
     yourOrder: 'Tu orden',
     base: 'Base',
     cupSizeLabel: 'Tamaño',
@@ -291,7 +283,6 @@ export default function Home() {
   const [toppings, setToppings] = useState([]);
   const [syrups, setSyrups] = useState([]);
   const [qty, setQty] = useState(1);
-  const [cart, setCart] = useState([]); // other cups already added to this order
   const [pickupDate, setPickupDate] = useState(todayDateKey());
   const [pickup, setPickup] = useState('');
   const [name, setName] = useState('');
@@ -303,7 +294,6 @@ export default function Home() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [confirmedOrderNumber, setConfirmedOrderNumber] = useState(null);
-  const [confirmedTotal, setConfirmedTotal] = useState(0);
   const [redirectSeconds, setRedirectSeconds] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [showWalnutAlert, setShowWalnutAlert] = useState(false);
@@ -333,8 +323,6 @@ export default function Home() {
           if (Array.isArray(draft.toppings)) setToppings(draft.toppings);
           if (Array.isArray(draft.syrups)) setSyrups(draft.syrups);
           if (draft.qty) setQty(draft.qty);
-          if (draft.includeRim !== undefined) setIncludeRim(draft.includeRim);
-          if (Array.isArray(draft.cart)) setCart(draft.cart);
           if (draft.pickupDate) setPickupDate(draft.pickupDate);
           if (draft.pickup) setPickup(draft.pickup);
           if (draft.name) setName(draft.name);
@@ -358,13 +346,13 @@ export default function Home() {
     if (!draftReady) return;
     try {
       window.localStorage.setItem('fresasOrderDraft', JSON.stringify({
-        cupSize, base, toppings, syrups, qty, includeRim, cart, pickupDate, pickup, name, phone, notes, paymentMethod,
+        cupSize, base, toppings, syrups, qty, pickupDate, pickup, name, phone, notes, paymentMethod,
         savedAt: Date.now(),
       }));
     } catch (e) {
       // ignore — localStorage may be unavailable
     }
-  }, [draftReady, cupSize, base, toppings, syrups, qty, includeRim, cart, pickupDate, pickup, name, phone, notes, paymentMethod]);
+  }, [draftReady, cupSize, base, toppings, syrups, qty, pickupDate, pickup, name, phone, notes, paymentMethod]);
 
   // Re-check which pickup times are still bookable once a minute, so a
   // slot that just passed disappears from the list on its own.
@@ -481,50 +469,7 @@ export default function Home() {
   const isRimFlavor = base === 'bananapudding' || base === 'gansito';
   const basePrice = PRICES[cupSize][base];
   const perCup = basePrice + toppingsCost(base, toppings);
-  const total = perCup * qty; // just the cup currently being built
-
-  // Cost of one saved cart item (a cup already added to this order).
-  function cartItemCost(item) {
-    const itemPerCup = PRICES[item.cupSize][item.base] + toppingsCost(item.base, item.toppings);
-    return itemPerCup * item.qty;
-  }
-  const cartTotal = cart.reduce((sum, item) => sum + cartItemCost(item), 0);
-  const orderTotal = cartTotal + total; // everything if they checked out right now
-  const reviewTotal = cartTotal; // what actually gets charged — the finalized cart only
-
-  // Adds the cup currently being built to the order, then resets the
-  // builder so they can configure another one. Returns the new cart so
-  // callers (like placeOrder) can use it immediately rather than waiting
-  // on the next render.
-  function addCurrentCupToCart() {
-    const newItem = { base, cupSize, toppings, syrups, qty, includeRim: isRimFlavor ? includeRim : true };
-    const nextCart = [...cart, newItem];
-    setCart(nextCart);
-    setBase('regular');
-    setCupSize('12');
-    setToppings([]);
-    setSyrups([]);
-    setQty(1);
-    setIncludeRim(true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    return nextCart;
-  }
-
-  function removeCartItem(index) {
-    setCart((prev) => prev.filter((_, i) => i !== index));
-  }
-
-  function editCartItem(index) {
-    const item = cart[index];
-    setBase(item.base);
-    setCupSize(item.cupSize);
-    setToppings(item.toppings);
-    setSyrups(item.syrups);
-    setQty(item.qty);
-    setIncludeRim(item.includeRim);
-    setCart((prev) => prev.filter((_, i) => i !== index));
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
+  const total = perCup * qty;
 
   const standardChecked = useMemo(
     () => toppings.filter((tp) => !TOPPINGS.find((x) => x.name === tp)?.alwaysExtra).length,
@@ -561,38 +506,22 @@ export default function Home() {
     setSubmitting(true);
     setErrorMsg('');
     try {
-      const firstItem = cart[0];
-      const firstItemBase = BASES.find((b) => b.id === firstItem.base);
-      const cartGrandTotal = cart.reduce((sum, item) => sum + cartItemCost(item), 0);
-      const totalCups = cart.reduce((sum, item) => sum + item.qty, 0);
       const res = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          // Full multi-cup order — the real source of truth.
-          items: cart.map((item) => ({
-            base: BASES.find((b) => b.id === item.base).name,
-            cup_size: `${item.cupSize} oz`,
-            toppings: item.toppings,
-            syrups: item.syrups,
-            qty: item.qty,
-            include_rim: item.includeRim,
-          })),
-          // Summary fields kept for backward compatibility with anything
-          // that only reads a single cup (admin quick-view, SMS, etc.) —
-          // first cup's details, with qty as the total cup count.
-          base: firstItemBase.name,
-          cup_size: `${firstItem.cupSize} oz`,
-          toppings: firstItem.toppings,
-          syrups: firstItem.syrups,
-          qty: totalCups,
+          base: activeBase.name,
+          cup_size: `${cupSize} oz`,
+          toppings,
+          syrups,
+          qty,
           pickup_date: pickupDate,
           pickup_time: pickup,
           customer_name: name,
           customer_phone: phone,
           notes,
-          total: cartGrandTotal,
-          include_rim: firstItem.includeRim,
+          total,
+          include_rim: isRimFlavor ? includeRim : true,
           payment_method: paymentMethod,
           payment_confirmed: paymentConfirmed,
           language: lang,
@@ -618,8 +547,6 @@ export default function Home() {
       }
       const body = await res.json().catch(() => ({}));
       setConfirmedOrderNumber(body.order?.order_number ?? null);
-      setConfirmedTotal(cartGrandTotal);
-      setCart([]);
       try { window.localStorage.removeItem('fresasOrderDraft'); } catch (e) {}
       setSubmitted(true);
     } catch (e) {
@@ -695,7 +622,7 @@ export default function Home() {
           {t.pickupLocation}<br />{PICKUP_ADDRESS}
         </p>
         <p style={{ color: 'var(--ink-soft)', fontSize: '0.9rem' }}>
-          {paymentMethod === 'zelle' ? t.zelleFollowUp(confirmedTotal.toFixed(2), ZELLE_PHONE) : t.cashFollowUp(confirmedTotal.toFixed(2))}
+          {paymentMethod === 'zelle' ? t.zelleFollowUp(total.toFixed(2), ZELLE_PHONE) : t.cashFollowUp(total.toFixed(2))}
         </p>
         {redirectSeconds !== null && (
           <p style={{ color: 'var(--ink-soft)', fontSize: '0.78rem', marginTop: 20 }}>
@@ -717,40 +644,6 @@ export default function Home() {
       </div>
 
       <div className="wrap">
-        {cart.length > 0 && (
-          <div className="section">
-            <div className="repeat-order-box" style={{ width: '100%', boxSizing: 'border-box' }}>
-              <div style={{ marginBottom: 8, fontWeight: 700 }}>{t.yourCupsSoFar(cart.length)}</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {cart.map((item, i) => {
-                  const itemBase = BASES.find((b) => b.id === item.base);
-                  return (
-                    <div
-                      key={i}
-                      style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
-                        padding: '8px 10px', borderRadius: 10, background: 'var(--card-bg)', border: '1px solid var(--line)',
-                      }}
-                    >
-                      <div style={{ fontSize: '0.85rem' }}>
-                        <strong>{item.qty}x {itemBase.name}</strong> ({item.cupSize} oz)
-                        {item.toppings.length ? ` · ${item.toppings.join(', ')}` : ''}
-                      </div>
-                      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                        <button type="button" className="status-btn" style={{ padding: '6px 10px', fontSize: '0.78rem' }} onClick={() => editCartItem(i)}>
-                          ✏️
-                        </button>
-                        <button type="button" className="status-btn" style={{ padding: '6px 10px', fontSize: '0.78rem' }} onClick={() => removeCartItem(i)}>
-                          {t.remove}
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
         <div className="section">
           <h2>{t.cupSize}</h2>
           <p className="hint">{t.cupSizeHint}</p>
@@ -988,51 +881,28 @@ export default function Home() {
       <div className="sticky-bar">
         <div>
           <div className="total-label">{t.total}</div>
-          <div className="total-amt">${orderTotal.toFixed(2)}</div>
+          <div className="total-amt">${total.toFixed(2)}</div>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn-outline" onClick={addCurrentCupToCart} style={{ padding: '13px 16px', fontSize: '0.85rem' }}>
-            {t.addAnotherCup}
-          </button>
-          <button className="btn-primary" onClick={() => { addCurrentCupToCart(); setShowSheet(true); }} disabled={!name.trim() || !pickup}>
-            {t.reviewOrder}
-          </button>
-        </div>
+        <button className="btn-primary" onClick={() => setShowSheet(true)} disabled={!name.trim() || !pickup}>
+          {t.reviewOrder}
+        </button>
       </div>
 
       <div className={`overlay center-modal-high${showSheet ? ' open' : ''}`} onClick={(e) => e.target === e.currentTarget && setShowSheet(false)}>
         <div className="sheet sheet-centered">
           <h3>{t.yourOrder}</h3>
-          {cart.map((item, i) => {
-            const itemBase = BASES.find((b) => b.id === item.base);
-            const itemIsRim = item.base === 'bananapudding' || item.base === 'gansito';
-            return (
-              <div key={i} style={{ padding: '10px 0', borderBottom: '1px dashed var(--line)' }}>
-                <div className="line" style={{ borderBottom: 'none', paddingBottom: 2 }}>
-                  <span>{t.base}</span><strong>{itemBase.name} × {item.qty}</strong>
-                </div>
-                <div className="line" style={{ borderBottom: 'none', paddingBottom: 2 }}>
-                  <span>{t.cupSizeLabel}</span><strong>{item.cupSize} oz</strong>
-                </div>
-                {itemIsRim && (
-                  <div className="line" style={{ borderBottom: 'none', paddingBottom: 2 }}>
-                    <span>{t.rimLabel}</span><strong>{item.includeRim ? t.rimYes : t.rimNo}</strong>
-                  </div>
-                )}
-                <div className="line" style={{ borderBottom: 'none', paddingBottom: 2 }}>
-                  <span>{t.toppings}</span><strong>{item.toppings.length ? item.toppings.map((tp) => TOPPING_LABELS[tp][lang]).join(', ') : t.none}</strong>
-                </div>
-                <div className="line" style={{ borderBottom: 'none' }}>
-                  <span>{t.syrup}</span><strong>{item.syrups.length ? item.syrups.map((s) => SYRUP_LABELS[s][lang]).join(', ') : t.none}</strong>
-                </div>
-              </div>
-            );
-          })}
+          <div className="line"><span>{t.base}</span><strong>{activeBase.name} × {qty}</strong></div>
+          <div className="line"><span>{t.cupSizeLabel}</span><strong>{cupSize} oz</strong></div>
+          {isRimFlavor && (
+            <div className="line"><span>{t.rimLabel}</span><strong>{includeRim ? t.rimYes : t.rimNo}</strong></div>
+          )}
+          <div className="line"><span>{t.toppings}</span><strong>{toppings.length ? toppings.map((tp) => TOPPING_LABELS[tp][lang]).join(', ') : t.none}</strong></div>
+          <div className="line"><span>{t.syrup}</span><strong>{syrups.length ? syrups.map((s) => SYRUP_LABELS[s][lang]).join(', ') : t.none}</strong></div>
           <div className="line"><span>{t.pickup}</span><strong>{formatDateKey(pickupDate, lang)}, {pickup}</strong></div>
           <div className="line"><span>{t.name}</span><strong>{name || '—'}</strong></div>
           {phone && <div className="line"><span>{t.phone}</span><strong>{phone}</strong></div>}
           {notes && <div className="line"><span>{t.notes}</span><strong>{notes}</strong></div>}
-          <div className="grand"><span>{t.total}</span><span>${reviewTotal.toFixed(2)}</span></div>
+          <div className="grand"><span>{t.total}</span><span>${total.toFixed(2)}</span></div>
 
           <div className="field" style={{ marginTop: 18 }}>
             <label>{t.payment}</label>
@@ -1062,7 +932,7 @@ export default function Home() {
             {paymentMethod === 'zelle' ? (
               <>
                 <p style={{ margin: '0 0 10px', fontSize: '0.9rem' }}>
-                  {t.zelleInstructions(reviewTotal.toFixed(2), ZELLE_PHONE, name || t.yourNamePlaceholder)}
+                  {t.zelleInstructions(total.toFixed(2), ZELLE_PHONE, name || t.yourNamePlaceholder)}
                 </p>
                 <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontWeight: 700, cursor: 'pointer' }}>
                   <input
@@ -1071,13 +941,13 @@ export default function Home() {
                     checked={paymentConfirmed}
                     onChange={(e) => setPaymentConfirmed(e.target.checked)}
                   />
-                  {t.zelleCheckbox(reviewTotal.toFixed(2), ZELLE_PHONE)}
+                  {t.zelleCheckbox(total.toFixed(2), ZELLE_PHONE)}
                 </label>
               </>
             ) : (
               <>
                 <p style={{ margin: '0 0 10px', fontSize: '0.9rem' }}>
-                  {t.cashInstructions(reviewTotal.toFixed(2))}
+                  {t.cashInstructions(total.toFixed(2))}
                 </p>
                 <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontWeight: 700, cursor: 'pointer' }}>
                   <input
@@ -1086,7 +956,7 @@ export default function Home() {
                     checked={paymentConfirmed}
                     onChange={(e) => setPaymentConfirmed(e.target.checked)}
                   />
-                  {t.cashCheckbox(reviewTotal.toFixed(2))}
+                  {t.cashCheckbox(total.toFixed(2))}
                 </label>
               </>
             )}

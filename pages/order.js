@@ -129,7 +129,7 @@ const STR = {
     questions: 'Questions? Call or text',
     total: 'Total',
     reviewOrder: 'Review order',
-    addAnotherCup: '+ Add Another Cup',
+    addAnotherCup: '+ Add a Cup',
     yourCupsSoFar: (count) => `Your order so far (${count} cup${count === 1 ? '' : 's'})`,
     remove: 'Remove',
     cupLineLabel: (name, size) => `${name} (${size})`,
@@ -216,7 +216,7 @@ const STR = {
     questions: 'Preguntas? Llama o envía un mensaje',
     total: 'Total',
     reviewOrder: 'Revisar orden',
-    addAnotherCup: '+ Agregar Otro Vaso',
+    addAnotherCup: '+ Agregar Vaso',
     yourCupsSoFar: (count) => `Tu orden hasta ahora (${count} vaso${count === 1 ? '' : 's'})`,
     remove: 'Quitar',
     cupLineLabel: (name, size) => `${name} (${size})`,
@@ -488,9 +488,20 @@ export default function Home() {
     const itemPerCup = PRICES[item.cupSize][item.base] + toppingsCost(item.base, item.toppings);
     return itemPerCup * item.qty;
   }
-  const cartTotal = cart.reduce((sum, item) => sum + cartItemCost(item), 0);
-  const orderTotal = cartTotal + total; // everything if they checked out right now
-  const reviewTotal = cartTotal; // what actually gets charged — the finalized cart only
+  // What the review screen (and the running total) shows: every cup
+  // already added, PLUS the cup currently being built — shown live,
+  // without committing it. This is what makes "Review Order" safe to
+  // open and close repeatedly: it never changes anything, it just
+  // previews what would be ordered right now.
+  // If "Add a Cup" was just tapped and the builder is still sitting at
+  // its untouched default (and there's already at least one cup in the
+  // order), we don't count that blank slate as a second, unintended
+  // cup — only a builder that's actually been customized counts.
+  const isBuilderBlank = base === 'regular' && cupSize === '12' && toppings.length === 0 && syrups.length === 0 && qty === 1;
+  const currentCupItem = { base, cupSize, toppings, syrups, qty, includeRim: isRimFlavor ? includeRim : true };
+  const previewItems = (cart.length === 0 || !isBuilderBlank) ? [...cart, currentCupItem] : cart;
+  const orderTotal = previewItems.reduce((sum, item) => sum + cartItemCost(item), 0); // shown in the sticky bar
+  const reviewTotal = orderTotal; // same figure, shown again in the review sheet
 
   // Adds the cup currently being built to the order, then resets the
   // builder so they can configure another one. Returns the new cart so
@@ -561,16 +572,17 @@ export default function Home() {
     setSubmitting(true);
     setErrorMsg('');
     try {
-      const firstItem = cart[0];
+      const finalItems = previewItems;
+      const firstItem = finalItems[0];
       const firstItemBase = BASES.find((b) => b.id === firstItem.base);
-      const cartGrandTotal = cart.reduce((sum, item) => sum + cartItemCost(item), 0);
-      const totalCups = cart.reduce((sum, item) => sum + item.qty, 0);
+      const cartGrandTotal = finalItems.reduce((sum, item) => sum + cartItemCost(item), 0);
+      const totalCups = finalItems.reduce((sum, item) => sum + item.qty, 0);
       const res = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           // Full multi-cup order — the real source of truth.
-          items: cart.map((item) => ({
+          items: finalItems.map((item) => ({
             base: BASES.find((b) => b.id === item.base).name,
             cup_size: `${item.cupSize} oz`,
             toppings: item.toppings,
@@ -994,7 +1006,7 @@ export default function Home() {
           <button className="btn-outline" onClick={addCurrentCupToCart} style={{ padding: '13px 16px', fontSize: '0.85rem' }}>
             {t.addAnotherCup}
           </button>
-          <button className="btn-primary" onClick={() => { addCurrentCupToCart(); setShowSheet(true); }} disabled={!name.trim() || !pickup}>
+          <button className="btn-primary" onClick={() => setShowSheet(true)} disabled={!name.trim() || !pickup}>
             {t.reviewOrder}
           </button>
         </div>
@@ -1003,7 +1015,7 @@ export default function Home() {
       <div className={`overlay center-modal-high${showSheet ? ' open' : ''}`} onClick={(e) => e.target === e.currentTarget && setShowSheet(false)}>
         <div className="sheet sheet-centered">
           <h3>{t.yourOrder}</h3>
-          {cart.map((item, i) => {
+          {previewItems.map((item, i) => {
             const itemBase = BASES.find((b) => b.id === item.base);
             const itemIsRim = item.base === 'bananapudding' || item.base === 'gansito';
             return (

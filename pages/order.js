@@ -1003,7 +1003,7 @@ export default function Home() {
           <div className="total-amt">${orderTotal.toFixed(2)}</div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn-outline" onClick={addCurrentCupToCart} style={{ padding: '13px 16px', fontSize: '0.85rem' }}>
+          <button className="btn-outline-dark" onClick={addCurrentCupToCart} style={{ padding: '13px 16px', fontSize: '0.85rem' }}>
             {t.addAnotherCup}
           </button>
           <button className="btn-primary" onClick={() => setShowSheet(true)} disabled={!name.trim() || !pickup}>

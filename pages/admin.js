@@ -64,6 +64,18 @@ export default function Admin() {
     fetchPhotos();
   }, []);
 
+  // Safety net: if OneSignal hasn't finished loading within 8 seconds
+  // (blocked by an ad blocker, network issue, etc.), stop showing
+  // "Loading notifications…" forever and say so instead.
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (!oneSignalReady) {
+        setPushError("Notifications are taking too long to load — this can happen if an ad blocker or browser privacy setting is blocking it. Try disabling any ad blocker for this site, or try a different browser.");
+      }
+    }, 8000);
+    return () => clearTimeout(timeout);
+  }, [oneSignalReady]);
+
   useEffect(() => {
     if (!authed) return;
     pollRef.current = setInterval(fetchOrders, 5000);
@@ -374,13 +386,21 @@ export default function Admin() {
           onLoad={() => {
             window.OneSignalDeferred = window.OneSignalDeferred || [];
             window.OneSignalDeferred.push(async (OneSignal) => {
-              await OneSignal.init({ appId: ONESIGNAL_APP_ID });
-              window.OneSignal = OneSignal;
-              setOneSignalReady(true);
-              // If notifications were already granted in an earlier visit,
-              // reflect that immediately instead of showing the button again.
-              if (OneSignal.Notifications.permission) setPushEnabled(true);
+              try {
+                await OneSignal.init({ appId: ONESIGNAL_APP_ID });
+                window.OneSignal = OneSignal;
+                setOneSignalReady(true);
+                // If notifications were already granted in an earlier visit,
+                // reflect that immediately instead of showing the button again.
+                if (OneSignal.Notifications.permission) setPushEnabled(true);
+              } catch (e) {
+                console.error('OneSignal init failed', e);
+                setPushError('Could not set up notifications (setup error) — try refreshing the page.');
+              }
             });
+          }}
+          onError={() => {
+            setPushError('Could not load the notifications service — check your internet connection or try refreshing.');
           }}
         />
       )}

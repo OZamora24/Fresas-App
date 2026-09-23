@@ -631,7 +631,22 @@ export default function Home() {
       const body = await res.json().catch(() => ({}));
       setConfirmedOrderNumber(body.order?.order_number ?? null);
       setConfirmedTotal(cartGrandTotal);
+      // Reset every field, not just the cart — otherwise the auto-save
+      // draft effect (which watches these fields) notices the cart just
+      // changed and immediately writes a fresh draft right back using
+      // whatever was still sitting in the form, undoing the clear below.
       setCart([]);
+      setCupSize('12');
+      setBase('regular');
+      setToppings([]);
+      setSyrups([]);
+      setQty(1);
+      setIncludeRim(true);
+      setName('');
+      setPhone('');
+      setNotes('');
+      setPaymentMethod('zelle');
+      setPaymentConfirmed(false);
       try { window.localStorage.removeItem('fresasOrderDraft'); } catch (e) {}
       setSubmitted(true);
     } catch (e) {

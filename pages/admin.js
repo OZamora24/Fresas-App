@@ -704,8 +704,14 @@ export default function Admin() {
                         {(item.base === 'Banana Pudding' || item.base === 'Gansito') && (
                           <div><strong>Rim:</strong> {item.include_rim === false ? '🚫 No rim' : '✅ Yes'}</div>
                         )}
-                        <div><strong>Toppings:</strong> {item.toppings?.length ? item.toppings.join(', ') : 'None'}</div>
-                        <div><strong>Syrup:</strong> {item.syrups?.length ? item.syrups.join(', ') : 'None'}</div>
+                        <div><strong>Toppings:</strong></div>
+                        {item.toppings?.length
+                          ? item.toppings.map((t) => <div key={t}>- {t}</div>)
+                          : <div>- None</div>}
+                        <div><strong>Syrup:</strong></div>
+                        {item.syrups?.length
+                          ? item.syrups.map((s) => <div key={s}>- {s}</div>)
+                          : <div>- None</div>}
                       </div>
                     ))}
                   </div>

@@ -99,6 +99,13 @@ button {
   background: var(--card-bg); color: var(--ink); font-family: 'Nunito', sans-serif; font-size: 0.96rem;
 }
 .field textarea { min-height: 70px; resize: vertical; }
+/* iOS Safari gives <input type="date"> an intrinsic content width based on
+   the rendered date text and ignores the CSS width in some versions,
+   letting it push past its container's edge (max-width/min-width/appearance
+   below force it to actually respect the 100% width like every other field). */
+.field input[type="date"], .field input[type="datetime-local"] {
+  max-width: 100%; min-width: 0; -webkit-appearance: none; appearance: none;
+}
 
 .sticky-bar {
   position: sticky; bottom: 0; z-index: 10; background: var(--maroon); color: var(--cream-2);

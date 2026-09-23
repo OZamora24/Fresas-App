@@ -101,7 +101,21 @@ export default function Home() {
           </div>
           <div className="cell">
             <div className="label">{t.followUs}</div>
-            <div className="val">@lovelyfresitas_</div>
+            <a
+              href="https://instagram.com/lovelyfresitas_"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="@lovelyfresitas_ on Instagram"
+              className="val"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none', color: 'inherit' }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="2.5" y="2.5" width="19" height="19" rx="5.5" stroke="currentColor" strokeWidth="1.8" />
+                <circle cx="12" cy="12" r="4.3" stroke="currentColor" strokeWidth="1.8" />
+                <circle cx="17.2" cy="6.8" r="1.15" fill="currentColor" />
+              </svg>
+              @lovelyfresitas_
+            </a>
           </div>
           <div className="cell">
             <div className="label">{t.questions}</div>

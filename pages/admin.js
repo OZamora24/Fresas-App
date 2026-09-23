@@ -15,6 +15,7 @@ export default function Admin() {
   const [pushEnabled, setPushEnabled] = useState(false);
   const [oneSignalReady, setOneSignalReady] = useState(false);
   const [pushError, setPushError] = useState('');
+  const [needsHomeScreen, setNeedsHomeScreen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState(null);
   const [savingEdit, setSavingEdit] = useState(false);
@@ -62,6 +63,18 @@ export default function Admin() {
     fetchOrders().finally(() => setChecking(false));
     fetchSettings();
     fetchPhotos();
+
+    // iOS/iPadOS only supports web push for a site that's been "Added to
+    // Home Screen" and opened from there — a regular Safari/Chrome tab on
+    // iPhone/iPad can never get push permission, by Apple's own design.
+    // Detect that case so we can explain it clearly instead of showing a
+    // generic timeout error.
+    const ua = window.navigator.userAgent;
+    const isIOSDevice = /iPad|iPhone|iPod/.test(ua) || (ua.includes('Macintosh') && 'ontouchend' in document);
+    const isStandalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+    if (isIOSDevice && !isStandalone) {
+      setNeedsHomeScreen(true);
+    }
   }, []);
 
   // Safety net: if OneSignal hasn't finished loading within 8 seconds
@@ -69,12 +82,12 @@ export default function Admin() {
   // "Loading notifications…" forever and say so instead.
   useEffect(() => {
     const timeout = setTimeout(() => {
-      if (!oneSignalReady) {
+      if (!oneSignalReady && !needsHomeScreen) {
         setPushError("Notifications are taking too long to load — this can happen if an ad blocker or browser privacy setting is blocking it. Try disabling any ad blocker for this site, or try a different browser.");
       }
     }, 8000);
     return () => clearTimeout(timeout);
-  }, [oneSignalReady]);
+  }, [oneSignalReady, needsHomeScreen]);
 
   useEffect(() => {
     if (!authed) return;
@@ -357,7 +370,14 @@ export default function Admin() {
   if (!authed) {
     return (
       <div className="login-box">
-        <Head><title>Admin — Fresas con Crema</title></Head>
+        <Head>
+          <title>Admin — Fresas con Crema</title>
+          <link rel="manifest" href="/manifest.json" />
+          <link rel="apple-touch-icon" href="/icon-192.png" />
+          <meta name="apple-mobile-web-app-capable" content="yes" />
+          <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+          <meta name="theme-color" content="#7C1B2C" />
+        </Head>
         <h1>🍓 Admin</h1>
         <form onSubmit={handleLogin}>
           <div className="field">
@@ -378,7 +398,14 @@ export default function Admin() {
 
   return (
     <div>
-      <Head><title>Admin — Fresas con Crema</title></Head>
+      <Head>
+          <title>Admin — Fresas con Crema</title>
+          <link rel="manifest" href="/manifest.json" />
+          <link rel="apple-touch-icon" href="/icon-192.png" />
+          <meta name="apple-mobile-web-app-capable" content="yes" />
+          <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+          <meta name="theme-color" content="#7C1B2C" />
+        </Head>
       {ONESIGNAL_APP_ID && (
         <Script
           src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js"
@@ -673,10 +700,25 @@ export default function Admin() {
 
         {!pushEnabled && (
           <div className="section">
-            <button className="btn-primary" onClick={enablePush} disabled={!oneSignalReady}>
-              🔔 {oneSignalReady ? 'Enable push notifications on this device' : 'Loading notifications…'}
-            </button>
-            {pushError && <p className="error" style={{ marginTop: 8 }}>{pushError}</p>}
+            {needsHomeScreen ? (
+              <div className="order-card">
+                <p style={{ margin: '0 0 8px', fontWeight: 700, color: 'var(--maroon)' }}>
+                  📲 One extra step on iPhone/iPad
+                </p>
+                <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--ink-soft)' }}>
+                  Apple only allows notifications for sites added to your Home Screen. Tap the Share button
+                  in Safari, choose <strong>"Add to Home Screen"</strong>, then open Admin from that new icon
+                  instead of Safari — you'll be able to enable notifications from there.
+                </p>
+              </div>
+            ) : (
+              <>
+                <button className="btn-primary" onClick={enablePush} disabled={!oneSignalReady}>
+                  🔔 {oneSignalReady ? 'Enable push notifications on this device' : 'Loading notifications…'}
+                </button>
+                {pushError && <p className="error" style={{ marginTop: 8 }}>{pushError}</p>}
+              </>
+            )}
           </div>
         )}
 

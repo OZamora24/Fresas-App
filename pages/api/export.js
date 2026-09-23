@@ -67,17 +67,36 @@ export default async function handler(req, res) {
 
   orders.forEach((o, i) => {
     const created = new Date(o.created_at);
+    const isMultiCup = Array.isArray(o.items) && o.items.length > 0;
+
+    // Multi-cup orders get their columns built from every cup, joined
+    // into one readable cell each — e.g. Base: "1x Regular Fresas; 2x
+    // Ferrero Rocher" — rather than only reflecting the first cup.
+    const baseCell = isMultiCup ? o.items.map((it) => `${it.qty}x ${it.base}`).join('; ') : (o.base || '');
+    const cupSizeCell = isMultiCup ? [...new Set(o.items.map((it) => it.cup_size))].join('; ') : (o.cup_size || '');
+    const rimCell = isMultiCup
+      ? o.items.filter((it) => it.base === 'Banana Pudding' || it.base === 'Gansito')
+          .map((it) => `${it.base}: ${it.include_rim === false ? 'No' : 'Yes'}`).join('; ')
+      : ((o.base === 'Banana Pudding' || o.base === 'Gansito') ? (o.include_rim === false ? 'No' : 'Yes') : '');
+    const toppingsCell = isMultiCup
+      ? o.items.map((it) => `[${it.base}] ${(it.toppings || []).join(', ') || 'None'}`).join(' | ')
+      : (o.toppings || []).join(', ');
+    const syrupCell = isMultiCup
+      ? o.items.map((it) => `[${it.base}] ${(it.syrups || []).join(', ') || 'None'}`).join(' | ')
+      : (o.syrups || []).join(', ');
+    const qtyCell = isMultiCup ? o.items.reduce((sum, it) => sum + (it.qty || 1), 0) : (o.qty ?? '');
+
     const row = sheet.addRow({
       date: created.toLocaleDateString(),
       time: created.toLocaleTimeString(),
       name: o.customer_name || '',
       phone: o.customer_phone || '',
-      base: o.base || '',
-      cupSize: o.cup_size || '',
-      rim: (o.base === 'Banana Pudding' || o.base === 'Gansito') ? (o.include_rim === false ? 'No' : 'Yes') : '',
-      toppings: (o.toppings || []).join(', '),
-      syrup: (o.syrups || []).join(', '),
-      qty: o.qty ?? '',
+      base: baseCell,
+      cupSize: cupSizeCell,
+      rim: rimCell,
+      toppings: toppingsCell,
+      syrup: syrupCell,
+      qty: qtyCell,
       pickupDate: o.pickup_date || '',
       pickupTime: o.pickup_time || '',
       paymentMethod: o.payment_method || '',

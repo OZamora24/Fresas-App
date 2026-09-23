@@ -7,13 +7,18 @@ async function sendPushToAdmin(order) {
   const apiKey = process.env.ONESIGNAL_REST_API_KEY;
   if (!appId || !apiKey) return; // push not configured yet — order is still saved
 
+  const isMultiCup = Array.isArray(order.items) && order.items.length > 1;
+  const summaryLine = isMultiCup
+    ? `${order.items.length} different cups — $${order.total.toFixed(2)} — pickup ${order.pickup_time}`
+    : `${order.qty}x ${order.base} — $${order.total.toFixed(2)} — pickup ${order.pickup_time}`;
+
   const body = {
     app_id: appId,
     target_channel: 'push',
     filters: [{ field: 'tag', key: 'role', relation: '=', value: 'admin' }],
     headings: { en: `New order #${order.order_number}! 🍓` },
     contents: {
-      en: `${order.qty}x ${order.base} — $${order.total.toFixed(2)} — pickup ${order.pickup_time}`,
+      en: summaryLine,
     },
   };
 
@@ -91,7 +96,7 @@ export default async function handler(req, res) {
   const supabase = getSupabaseAdmin();
 
   if (req.method === 'POST') {
-    const { base, cup_size, toppings, syrups, qty, pickup_time, pickup_date, customer_name, customer_phone, notes, total, payment_method, payment_confirmed, language, include_rim } = req.body || {};
+    const { base, cup_size, toppings, syrups, qty, pickup_time, pickup_date, customer_name, customer_phone, notes, total, payment_method, payment_confirmed, language, include_rim, items } = req.body || {};
 
     if (!base || !pickup_time || !customer_name || typeof total !== 'number') {
       return res.status(400).json({ error: 'Missing required order fields.' });
@@ -118,17 +123,27 @@ export default async function handler(req, res) {
       return res.status(409).json({ error: 'time_passed', message: 'That pickup time has already passed — please choose a later time or another date.' });
     }
 
-    const baseId = baseIdFromName(base);
-    if (settingsRow?.sold_out_flavors?.includes(baseId)) {
-      return res.status(409).json({ error: 'sold_out', message: `${base} is sold out right now — please pick another flavor.` });
-    }
-    const soldOutToppingHit = (toppings || []).find((t) => settingsRow?.sold_out_toppings?.includes(t));
-    if (soldOutToppingHit) {
-      return res.status(409).json({ error: 'sold_out', message: `${soldOutToppingHit} is sold out right now — please remove it.` });
-    }
-    const soldOutSyrupHit = (syrups || []).find((s) => settingsRow?.sold_out_syrups?.includes(s));
-    if (soldOutSyrupHit) {
-      return res.status(409).json({ error: 'sold_out', message: `${soldOutSyrupHit} syrup is sold out right now — please remove it.` });
+    // A multi-cup order lists every cup in `items`; an older/simpler
+    // client might only send the single-cup fields. Either way, check
+    // every cup for sold-out flavors/toppings/syrups — not just the first
+    // one — so a sold-out item hiding in cup #2 doesn't slip through.
+    const cupsToCheck = Array.isArray(items) && items.length > 0
+      ? items
+      : [{ base, toppings: toppings || [], syrups: syrups || [] }];
+
+    for (const cup of cupsToCheck) {
+      const cupBaseId = baseIdFromName(cup.base);
+      if (settingsRow?.sold_out_flavors?.includes(cupBaseId)) {
+        return res.status(409).json({ error: 'sold_out', message: `${cup.base} is sold out right now — please remove it.` });
+      }
+      const soldOutToppingHit = (cup.toppings || []).find((t) => settingsRow?.sold_out_toppings?.includes(t));
+      if (soldOutToppingHit) {
+        return res.status(409).json({ error: 'sold_out', message: `${soldOutToppingHit} is sold out right now — please remove it.` });
+      }
+      const soldOutSyrupHit = (cup.syrups || []).find((s) => settingsRow?.sold_out_syrups?.includes(s));
+      if (soldOutSyrupHit) {
+        return res.status(409).json({ error: 'sold_out', message: `${soldOutSyrupHit} syrup is sold out right now — please remove it.` });
+      }
     }
     const slotLimit = settingsRow?.slot_limit ?? 3;
 
@@ -152,6 +167,7 @@ export default async function handler(req, res) {
         toppings: toppings || [],
         syrups: syrups || [],
         qty: qty || 1,
+        items: Array.isArray(items) && items.length > 0 ? items : null,
         pickup_time,
         pickup_date: finalPickupDate,
         customer_name,

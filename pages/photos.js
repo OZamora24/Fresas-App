@@ -9,6 +9,7 @@ const STR = {
     sub: 'A look at our flavors and past orders.',
     loading: 'Loading…',
     none: 'No photos up yet — check back soon!',
+    close: 'Close',
   },
   es: {
     title: 'Fotos — Fresas con Crema',
@@ -16,12 +17,14 @@ const STR = {
     sub: 'Un vistazo a nuestros sabores y órdenes pasadas.',
     loading: 'Cargando…',
     none: 'Aún no hay fotos — ¡vuelve pronto!',
+    close: 'Cerrar',
   },
 };
 
 export default function Photos() {
   const [photos, setPhotos] = useState(null);
   const [lang, setLang] = useState('en');
+  const [openPhoto, setOpenPhoto] = useState(null);
   const t = STR[lang];
 
   useEffect(() => {
@@ -48,6 +51,17 @@ export default function Photos() {
     try { window.localStorage.setItem('fresasLang', newLang); } catch (e) {}
   }
 
+  // Let the customer close the enlarged photo with the Escape key too,
+  // not just by tapping outside it.
+  useEffect(() => {
+    if (!openPhoto) return;
+    function onKey(e) {
+      if (e.key === 'Escape') setOpenPhoto(null);
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [openPhoto]);
+
   return (
     <div className="site-shell">
       <Head><title>{t.title}</title></Head>
@@ -66,12 +80,38 @@ export default function Photos() {
           {photos && photos.length > 0 && (
             <div className="photo-grid">
               {photos.map((p) => (
-                <img key={p.path} src={p.url} alt="Fresas con Crema" loading="lazy" />
+                <img
+                  key={p.path}
+                  src={p.url}
+                  alt="Fresas con Crema"
+                  loading="lazy"
+                  onClick={() => setOpenPhoto(p)}
+                  style={{ cursor: 'pointer' }}
+                />
               ))}
             </div>
           )}
         </div>
       </main>
+
+      <div
+        className={`overlay center-modal lightbox-overlay${openPhoto ? ' open' : ''}`}
+        onClick={(e) => e.target === e.currentTarget && setOpenPhoto(null)}
+      >
+        {openPhoto && (
+          <div className="lightbox-inner">
+            <button
+              type="button"
+              className="lightbox-close"
+              aria-label={t.close}
+              onClick={() => setOpenPhoto(null)}
+            >
+              ✕
+            </button>
+            <img src={openPhoto.url} alt="Fresas con Crema" className="lightbox-img" />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -284,6 +284,21 @@ button {
 }
 @media (max-width: 760px) { .photo-grid { grid-template-columns: repeat(2, 1fr); } }
 
+.lightbox-overlay { padding: 24px; background: rgba(20,4,8,0.82); }
+.lightbox-inner { position: relative; max-width: 92vw; max-height: 88vh; }
+.lightbox-img { display: block; max-width: 92vw; max-height: 88vh; width: auto; height: auto; border-radius: 14px; box-shadow: 0 12px 40px rgba(0,0,0,0.4); }
+.lightbox-close {
+  position: absolute; top: -14px; right: -14px;
+  width: 34px; height: 34px; border-radius: 50%; border: none;
+  background: var(--cream-2); color: var(--maroon);
+  font-size: 16px; font-weight: 800; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+@media (max-width: 500px) {
+  .lightbox-close { top: -12px; right: 0; }
+}
+
 /* Admin photo manager */
 .admin-photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; margin-top: 14px; }
 .admin-photo-tile { position: relative; border-radius: 12px; overflow: hidden; aspect-ratio: 1; border: 2px solid var(--line); }

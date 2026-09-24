@@ -295,7 +295,7 @@ button {
 }
 @media (max-width: 760px) { .photo-grid { grid-template-columns: repeat(2, 1fr); } }
 
-.lightbox-overlay { padding: 24px; background: rgba(20,4,8,0.82); }
+.lightbox-overlay { padding: 24px; background: rgba(20,4,8,0.82); z-index: 40; }
 .lightbox-inner { position: relative; max-width: 92vw; max-height: 88vh; }
 .lightbox-img { display: block; max-width: 92vw; max-height: 88vh; width: auto; height: auto; border-radius: 14px; box-shadow: 0 12px 40px rgba(0,0,0,0.4); }
 .lightbox-close {

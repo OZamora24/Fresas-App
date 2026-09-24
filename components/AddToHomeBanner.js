@@ -50,12 +50,12 @@ export default function AddToHomeBanner({ lang = 'en', storageKey = 'fresasA2HSD
   useEffect(() => {
     let cleanup;
     try {
-      const standalone =
-        window.navigator.standalone === true ||
-        window.matchMedia('(display-mode: standalone)').matches;
-      if (standalone) return; // already installed — never show
-
-      if (window.localStorage.getItem(storageKey)) return; // customer already dismissed it
+      // Show this once per first-time customer on this page — whether
+      // they're in the regular browser or already have the app added to
+      // their Home Screen. (We used to hide it entirely once installed;
+      // for now we want the video reachable either way. A dedicated
+      // "how to download" tab will take over this job later.)
+      if (window.localStorage.getItem(storageKey)) return; // not their first time here — already seen it
 
       const ua = window.navigator.userAgent || '';
       const isIOS = /iphone|ipad|ipod/i.test(ua) && !window.MSStream;
@@ -64,6 +64,7 @@ export default function AddToHomeBanner({ lang = 'en', storageKey = 'fresasA2HSD
       if (isIOS) {
         setPlatform('ios');
         setVisible(true);
+        try { window.localStorage.setItem(storageKey, '1'); } catch (e) {}
       } else if (isAndroid) {
         // Wait for the browser to confirm the site is installable before
         // showing anything — that's also the event that hands us the
@@ -73,6 +74,7 @@ export default function AddToHomeBanner({ lang = 'en', storageKey = 'fresasA2HSD
           setDeferredPrompt(e);
           setPlatform('android');
           setVisible(true);
+          try { window.localStorage.setItem(storageKey, '1'); } catch (err) {}
         }
         window.addEventListener('beforeinstallprompt', onPrompt);
         cleanup = () => window.removeEventListener('beforeinstallprompt', onPrompt);

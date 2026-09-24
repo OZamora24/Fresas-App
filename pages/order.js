@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { BASES, PRICES, TOPPINGS, SYRUPS, toppingsCost, todayDateKey, maxPreorderDateKey, formatDateKey, getAvailablePickupTimes, buildPickupTimes, formatWeekdaysList } from '../lib/menu';
+import AddToHomeBanner from '../components/AddToHomeBanner';
 
 const BASE_DESC = {
   regular: {
@@ -766,6 +767,8 @@ export default function Home() {
         <p>{t.heroTag}</p>
         {LangToggle}
       </div>
+
+      <AddToHomeBanner lang={lang} storageKey="fresasA2HSDismissed-order" />
 
       <div className="wrap">
         {cart.length > 0 && (

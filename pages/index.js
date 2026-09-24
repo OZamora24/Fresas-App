@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import SiteNav from '../components/SiteNav';
+import AddToHomeBanner from '../components/AddToHomeBanner';
 import { buildPickupTimes, todayDateKey } from '../lib/menu';
 
 const STR = {
@@ -84,6 +85,7 @@ export default function Home() {
         <meta name="theme-color" content="#7C1B2C" />
       </Head>
       <SiteNav lang={lang} onLangChange={changeLang} />
+      <AddToHomeBanner lang={lang} storageKey="fresasA2HSDismissed-home" />
       <main className="site-main">
         <div className="home-hero">
           {isOpen !== null && (

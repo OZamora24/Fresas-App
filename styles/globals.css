@@ -44,13 +44,19 @@ button {
 .hero {
   background: linear-gradient(180deg, var(--maroon) 0%, var(--maroon-deep) 100%);
   padding: 36px 20px 46px;
+  /* When this page is saved to the home screen and opened as a standalone
+     app (no Safari address bar), the phone's status bar floats on top of
+     the page instead of pushing it down — env(safe-area-inset-top) is 0
+     in a normal browser tab and the phone's actual status-bar height in
+     standalone mode, so this keeps the heading clear of it either way. */
+  padding-top: max(36px, calc(env(safe-area-inset-top) + 16px));
   text-align: center;
   position: relative;
 }
 .hero h1 { color: var(--cream-2); font-weight: 800; font-size: clamp(2rem, 7vw, 2.6rem); margin: 0 0 4px; }
 .hero p { color: var(--pink-soft); font-weight: 700; margin: 0; }
 .back-home-link {
-  position: absolute; top: 16px; left: 18px; color: var(--pink-soft); font-size: 0.82rem;
+  position: absolute; top: max(16px, calc(env(safe-area-inset-top) + 8px)); left: 18px; color: var(--pink-soft); font-size: 0.82rem;
   font-weight: 700; text-decoration: none; opacity: 0.8;
 }
 .back-home-link:hover { opacity: 1; }
@@ -211,7 +217,12 @@ button {
 }
 .site-lang-btn.on { background: rgba(255,255,255,0.22); color: #fff; }
 
-.site-mobile-tabs { display: none; position: sticky; top: 0; z-index: 15; background: var(--maroon); padding: 10px 12px 12px; }
+.site-mobile-tabs {
+  display: none; position: sticky; top: 0; z-index: 15; background: var(--maroon);
+  padding: 10px 12px 12px;
+  /* Same standalone-app status-bar fix as .hero above. */
+  padding-top: max(10px, calc(env(safe-area-inset-top) + 6px));
+}
 .site-mobile-brand-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 4px 2px 10px; }
 .site-mobile-brand { color: var(--cream-2); font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 1.1rem; }
 .site-mobile-lang { display: flex; gap: 6px; flex-shrink: 0; }

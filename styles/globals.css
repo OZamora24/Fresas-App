@@ -376,4 +376,10 @@ button {
 .a2hs-video-sub { font-family: 'Nunito', sans-serif; font-size: 0.76rem; color: var(--ink-soft); }
 .a2hs-video-arrow { margin-left: auto; color: var(--maroon); font-size: 1.1rem; padding-right: 4px; flex-shrink: 0; }
 
+/* Admin promo-code cards */
+.promo-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.promo-status-pill { font-size: 0.72rem; font-weight: 800; padding: 4px 11px; border-radius: 999px; white-space: nowrap; }
+.promo-status-pill.active { background: #E3F3EA; color: #2E8B57; }
+.promo-status-pill.inactive { background: var(--pink-pale); color: var(--maroon); }
+
 .lightbox-video { display: block; max-width: 92vw; max-height: 88vh; width: auto; height: auto; border-radius: 14px; box-shadow: 0 12px 40px rgba(0,0,0,0.4); background: #000; }

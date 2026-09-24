@@ -1,6 +1,19 @@
 import { getSupabaseAdmin } from '../../lib/supabaseAdmin';
 import { isValidSession } from '../../lib/adminSession';
-import { baseIdFromName, formatDateKey, todayDateKey, getAvailablePickupTimes } from '../../lib/menu';
+import { baseIdFromName, formatDateKey, todayDateKey, getAvailablePickupTimes, PRICES, toppingsCost } from '../../lib/menu';
+
+// Recomputes the cart subtotal server-side from the item list, using the
+// same shared pricing table the order page uses — this is what lets a
+// promo code's discount be checked against a real number instead of
+// whatever the browser happens to send.
+function computeSubtotalFromItems(items) {
+  return items.reduce((sum, item) => {
+    const baseId = baseIdFromName(item.base);
+    const cupSizeKey = String(item.cup_size || '').startsWith('24') ? '24' : '12';
+    const perCup = PRICES[cupSizeKey][baseId] + toppingsCost(baseId, item.toppings || []);
+    return sum + perCup * (item.qty || 1);
+  }, 0);
+}
 
 async function sendPushToAdmin(order) {
   const appId = process.env.ONESIGNAL_APP_ID;
@@ -8,9 +21,10 @@ async function sendPushToAdmin(order) {
   if (!appId || !apiKey) return; // push not configured yet — order is still saved
 
   const isMultiCup = Array.isArray(order.items) && order.items.length > 1;
-  const summaryLine = isMultiCup
+  const promoSuffix = order.promo_code ? ` — promo ${order.promo_code} (-$${Number(order.discount_amount || 0).toFixed(2)})` : '';
+  const summaryLine = (isMultiCup
     ? `${order.items.length} different cups — $${order.total.toFixed(2)} — pickup ${order.pickup_time}`
-    : `${order.qty}x ${order.base} — $${order.total.toFixed(2)} — pickup ${order.pickup_time}`;
+    : `${order.qty}x ${order.base} — $${order.total.toFixed(2)} — pickup ${order.pickup_time}`) + promoSuffix;
 
   const body = {
     app_id: appId,
@@ -96,7 +110,7 @@ export default async function handler(req, res) {
   const supabase = getSupabaseAdmin();
 
   if (req.method === 'POST') {
-    const { base, cup_size, toppings, syrups, qty, pickup_time, pickup_date, customer_name, customer_phone, notes, total, payment_method, payment_confirmed, language, include_rim, items } = req.body || {};
+    const { base, cup_size, toppings, syrups, qty, pickup_time, pickup_date, customer_name, customer_phone, notes, total, payment_method, payment_confirmed, language, include_rim, items, promo_code } = req.body || {};
 
     if (!base || !pickup_time || !customer_name || typeof total !== 'number') {
       return res.status(400).json({ error: 'Missing required order fields.' });
@@ -129,7 +143,7 @@ export default async function handler(req, res) {
     // one — so a sold-out item hiding in cup #2 doesn't slip through.
     const cupsToCheck = Array.isArray(items) && items.length > 0
       ? items
-      : [{ base, toppings: toppings || [], syrups: syrups || [] }];
+      : [{ base, cup_size, toppings: toppings || [], syrups: syrups || [], qty: qty || 1 }];
 
     for (const cup of cupsToCheck) {
       const cupBaseId = baseIdFromName(cup.base);
@@ -145,6 +159,42 @@ export default async function handler(req, res) {
         return res.status(409).json({ error: 'sold_out', message: `${soldOutSyrupHit} syrup is sold out right now — please remove it.` });
       }
     }
+    // Re-check any promo code against the database (never trust the
+    // discounted total the browser sends) — this is the same check used
+    // while the customer is still on the order page, run again here in
+    // case the code expired, got turned off, or hit its usage limit in
+    // the meantime.
+    let appliedPromoRow = null;
+    let discountAmount = 0;
+    if (promo_code) {
+      const normalizedCode = String(promo_code).trim().toUpperCase();
+      const { data: promoRow } = await supabase
+        .from('promo_codes')
+        .select('*')
+        .eq('code', normalizedCode)
+        .maybeSingle();
+
+      const nowValid = promoRow
+        && promoRow.active
+        && (!promoRow.expires_at || new Date(promoRow.expires_at).getTime() >= Date.now())
+        && (!promoRow.max_uses || promoRow.times_used < promoRow.max_uses);
+
+      if (!nowValid) {
+        return res.status(409).json({ error: 'promo_invalid', message: 'That promo code is no longer valid — please remove it and try again.' });
+      }
+
+      const subtotal = computeSubtotalFromItems(cupsToCheck);
+      discountAmount = promoRow.discount_type === 'percent'
+        ? Math.round(subtotal * (promoRow.discount_amount / 100) * 100) / 100
+        : Math.min(promoRow.discount_amount, subtotal);
+
+      const expectedTotal = Math.max(0, subtotal - discountAmount);
+      if (Math.abs(expectedTotal - total) > 0.01) {
+        return res.status(409).json({ error: 'promo_invalid', message: 'Your order total changed — please review your order and try again.' });
+      }
+      appliedPromoRow = promoRow;
+    }
+
     const slotLimit = settingsRow?.slot_limit ?? 3;
 
     // Reject if this pickup slot (on the selected pickup date) is already
@@ -175,6 +225,8 @@ export default async function handler(req, res) {
         customer_phone_digits: customer_phone ? String(customer_phone).replace(/\D/g, '') : null,
         notes: notes || '',
         total,
+        promo_code: appliedPromoRow ? appliedPromoRow.code : null,
+        discount_amount: discountAmount,
         status: 'new',
         payment_method: payment_method || 'zelle',
         customer_confirmed_payment: !!payment_confirmed,
@@ -188,6 +240,10 @@ export default async function handler(req, res) {
     if (error) {
       console.error(error);
       return res.status(500).json({ error: 'Could not save order.' });
+    }
+
+    if (appliedPromoRow) {
+      await supabase.from('promo_codes').update({ times_used: appliedPromoRow.times_used + 1 }).eq('id', appliedPromoRow.id);
     }
 
     await sendPushToAdmin(data);

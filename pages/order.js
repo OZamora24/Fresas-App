@@ -129,6 +129,15 @@ const STR = {
     notesPlaceholder: 'Anything we should know? Allergies, etc.',
     questions: 'Questions? Call or text',
     total: 'Total',
+    subtotal: 'Subtotal',
+    promoLabel: 'Promo code',
+    promoPlaceholder: 'Enter code',
+    promoApply: 'Apply',
+    promoChecking: 'Checking…',
+    promoAppliedNote: 'Promo applied',
+    promoRemove: 'Remove',
+    promoDiscountLine: (code) => `Promo (${code})`,
+    promoStale: 'Your order changed, so please re-apply your promo code.',
     reviewOrder: 'Review order',
     addAnotherCup: '+ Add a Cup',
     yourCupsSoFar: (count) => `Your order so far (${count} cup${count === 1 ? '' : 's'})`,
@@ -216,6 +225,15 @@ const STR = {
     notesPlaceholder: '¿Algo que debamos saber? Alergias, etc.',
     questions: 'Preguntas? Llama o envía un mensaje',
     total: 'Total',
+    subtotal: 'Subtotal',
+    promoLabel: 'Código de promoción',
+    promoPlaceholder: 'Ingresa el código',
+    promoApply: 'Aplicar',
+    promoChecking: 'Verificando…',
+    promoAppliedNote: 'Promoción aplicada',
+    promoRemove: 'Quitar',
+    promoDiscountLine: (code) => `Promoción (${code})`,
+    promoStale: 'Tu orden cambió — vuelve a aplicar tu código de promoción.',
     reviewOrder: 'Revisar orden',
     addAnotherCup: '+ Agregar Vaso',
     yourCupsSoFar: (count) => `Tu orden hasta ahora (${count} vaso${count === 1 ? '' : 's'})`,
@@ -301,6 +319,10 @@ export default function Home() {
   const [showSheet, setShowSheet] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('zelle');
   const [paymentConfirmed, setPaymentConfirmed] = useState(false);
+  const [promoInput, setPromoInput] = useState('');
+  const [appliedPromo, setAppliedPromo] = useState(null); // { code, discount_type, discount_amount, discountValue, subtotalAtApply }
+  const [promoChecking, setPromoChecking] = useState(false);
+  const [promoError, setPromoError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [confirmedOrderNumber, setConfirmedOrderNumber] = useState(null);
@@ -501,8 +523,21 @@ export default function Home() {
   const isBuilderBlank = base === 'regular' && cupSize === '12' && toppings.length === 0 && syrups.length === 0 && qty === 1;
   const currentCupItem = { base, cupSize, toppings, syrups, qty, includeRim: isRimFlavor ? includeRim : true };
   const previewItems = (cart.length === 0 || !isBuilderBlank) ? [...cart, currentCupItem] : cart;
-  const orderTotal = previewItems.reduce((sum, item) => sum + cartItemCost(item), 0); // shown in the sticky bar
-  const reviewTotal = orderTotal; // same figure, shown again in the review sheet
+  const orderTotal = previewItems.reduce((sum, item) => sum + cartItemCost(item), 0); // pre-discount subtotal
+  const discountValue = appliedPromo ? appliedPromo.discountValue : 0;
+  const finalTotal = Math.max(0, orderTotal - discountValue); // what's actually owed/shown after a promo
+
+  // If the cart changes after a promo was applied, the discount may no
+  // longer be right (a % off recalculates differently against a new
+  // subtotal) — clear it and ask them to re-apply rather than silently
+  // showing a stale number.
+  useEffect(() => {
+    if (appliedPromo && Math.abs(orderTotal - appliedPromo.subtotalAtApply) > 0.001) {
+      setAppliedPromo(null);
+      setPromoError(t.promoStale);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderTotal]);
 
   // Adds the cup currently being built to the order, then resets the
   // builder so they can configure another one. Returns the new cart so
@@ -569,6 +604,51 @@ export default function Home() {
     setSyrups((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
   }
 
+  async function applyPromoCode() {
+    const code = promoInput.trim();
+    if (!code) return;
+    setPromoChecking(true);
+    setPromoError('');
+    try {
+      const res = await fetch('/api/promo/check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code,
+          items: previewItems.map((item) => ({
+            base: BASES.find((b) => b.id === item.base).name,
+            cup_size: `${item.cupSize} oz`,
+            toppings: item.toppings,
+            qty: item.qty,
+          })),
+        }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (body.valid) {
+        setAppliedPromo({
+          code: body.code,
+          discount_type: body.discount_type,
+          discount_amount: body.discount_amount,
+          discountValue: body.discount_value,
+          subtotalAtApply: body.subtotal,
+        });
+        setPromoInput('');
+      } else {
+        setAppliedPromo(null);
+        setPromoError(body.message || t.genericError);
+      }
+    } catch (e) {
+      setPromoError(t.genericError);
+    } finally {
+      setPromoChecking(false);
+    }
+  }
+
+  function removePromoCode() {
+    setAppliedPromo(null);
+    setPromoError('');
+  }
+
   async function placeOrder() {
     setSubmitting(true);
     setErrorMsg('');
@@ -578,6 +658,8 @@ export default function Home() {
       const firstItemBase = BASES.find((b) => b.id === firstItem.base);
       const cartGrandTotal = finalItems.reduce((sum, item) => sum + cartItemCost(item), 0);
       const totalCups = finalItems.reduce((sum, item) => sum + item.qty, 0);
+      const appliedDiscount = appliedPromo ? appliedPromo.discountValue : 0;
+      const finalOrderTotal = Math.max(0, cartGrandTotal - appliedDiscount);
       const res = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -604,7 +686,9 @@ export default function Home() {
           customer_name: name,
           customer_phone: phone,
           notes,
-          total: cartGrandTotal,
+          total: finalOrderTotal,
+          promo_code: appliedPromo ? appliedPromo.code : null,
+          discount_amount: appliedDiscount,
           include_rim: firstItem.includeRim,
           payment_method: paymentMethod,
           payment_confirmed: paymentConfirmed,
@@ -624,6 +708,9 @@ export default function Home() {
         } else if (body.error === 'time_passed') {
           setErrorMsg(body.message || t.genericError);
           setNowTick((n) => n + 1); // forces availableTimes to recompute and drop the stale slot
+        } else if (body.error === 'promo_invalid') {
+          setErrorMsg(body.message || t.genericError);
+          setAppliedPromo(null);
         } else {
           setErrorMsg(t.genericError);
         }
@@ -631,7 +718,7 @@ export default function Home() {
       }
       const body = await res.json().catch(() => ({}));
       setConfirmedOrderNumber(body.order?.order_number ?? null);
-      setConfirmedTotal(cartGrandTotal);
+      setConfirmedTotal(finalOrderTotal);
       // Reset every field, not just the cart — otherwise the auto-save
       // draft effect (which watches these fields) notices the cart just
       // changed and immediately writes a fresh draft right back using
@@ -648,6 +735,9 @@ export default function Home() {
       setNotes('');
       setPaymentMethod('zelle');
       setPaymentConfirmed(false);
+      setAppliedPromo(null);
+      setPromoInput('');
+      setPromoError('');
       try { window.localStorage.removeItem('fresasOrderDraft'); } catch (e) {}
       setSubmitted(true);
     } catch (e) {
@@ -1042,7 +1132,7 @@ export default function Home() {
       <div className="sticky-bar">
         <div>
           <div className="total-label">{t.total}</div>
-          <div className="total-amt">${orderTotal.toFixed(2)}</div>
+          <div className="total-amt">${finalTotal.toFixed(2)}</div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn-outline-dark" onClick={addCurrentCupToCart} style={{ padding: '13px 16px', fontSize: '0.85rem' }}>
@@ -1086,7 +1176,44 @@ export default function Home() {
           <div className="line"><span>{t.name}</span><strong>{name || '—'}</strong></div>
           {phone && <div className="line"><span>{t.phone}</span><strong>{phone}</strong></div>}
           {notes && <div className="line"><span>{t.notes}</span><strong>{notes}</strong></div>}
-          <div className="grand"><span>{t.total}</span><span>${reviewTotal.toFixed(2)}</span></div>
+
+          <div className="field" style={{ marginTop: 14, marginBottom: 10 }}>
+            <label>{t.promoLabel}</label>
+            {!appliedPromo ? (
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  type="text"
+                  value={promoInput}
+                  onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
+                  placeholder={t.promoPlaceholder}
+                  style={{ flex: 1 }}
+                />
+                <button
+                  type="button"
+                  className="btn-outline-dark"
+                  onClick={applyPromoCode}
+                  disabled={!promoInput.trim() || promoChecking}
+                  style={{ padding: '0 18px', fontSize: '0.9rem' }}
+                >
+                  {promoChecking ? t.promoChecking : t.promoApply}
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--pink-pale)', padding: '10px 14px', borderRadius: 12 }}>
+                <span style={{ fontWeight: 800, color: 'var(--maroon)' }}>✓ {appliedPromo.code} — {t.promoAppliedNote}</span>
+                <button type="button" className="status-btn" onClick={removePromoCode}>{t.promoRemove}</button>
+              </div>
+            )}
+            {promoError && <p className="hint" style={{ color: 'var(--maroon)', marginTop: 6, marginBottom: 0 }}>{promoError}</p>}
+          </div>
+
+          {appliedPromo && (
+            <>
+              <div className="line"><span>{t.subtotal}</span><span>${orderTotal.toFixed(2)}</span></div>
+              <div className="line"><span>{t.promoDiscountLine(appliedPromo.code)}</span><span>-${discountValue.toFixed(2)}</span></div>
+            </>
+          )}
+          <div className="grand"><span>{t.total}</span><span>${finalTotal.toFixed(2)}</span></div>
 
           <div className="field" style={{ marginTop: 18 }}>
             <label>{t.payment}</label>
@@ -1116,7 +1243,7 @@ export default function Home() {
             {paymentMethod === 'zelle' ? (
               <>
                 <p style={{ margin: '0 0 10px', fontSize: '0.9rem' }}>
-                  {t.zelleInstructions(reviewTotal.toFixed(2), ZELLE_PHONE, name || t.yourNamePlaceholder)}
+                  {t.zelleInstructions(finalTotal.toFixed(2), ZELLE_PHONE, name || t.yourNamePlaceholder)}
                 </p>
                 <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontWeight: 700, cursor: 'pointer' }}>
                   <input
@@ -1125,13 +1252,13 @@ export default function Home() {
                     checked={paymentConfirmed}
                     onChange={(e) => setPaymentConfirmed(e.target.checked)}
                   />
-                  {t.zelleCheckbox(reviewTotal.toFixed(2), ZELLE_PHONE)}
+                  {t.zelleCheckbox(finalTotal.toFixed(2), ZELLE_PHONE)}
                 </label>
               </>
             ) : (
               <>
                 <p style={{ margin: '0 0 10px', fontSize: '0.9rem' }}>
-                  {t.cashInstructions(reviewTotal.toFixed(2))}
+                  {t.cashInstructions(finalTotal.toFixed(2))}
                 </p>
                 <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontWeight: 700, cursor: 'pointer' }}>
                   <input
@@ -1140,7 +1267,7 @@ export default function Home() {
                     checked={paymentConfirmed}
                     onChange={(e) => setPaymentConfirmed(e.target.checked)}
                   />
-                  {t.cashCheckbox(reviewTotal.toFixed(2))}
+                  {t.cashCheckbox(finalTotal.toFixed(2))}
                 </label>
               </>
             )}

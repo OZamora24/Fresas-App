@@ -30,6 +30,12 @@ export default function Admin() {
   const [photos, setPhotos] = useState([]);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [photoError, setPhotoError] = useState('');
+  const [promoCodes, setPromoCodes] = useState([]);
+  const [promoFormOpen, setPromoFormOpen] = useState(false);
+  const [editingPromoId, setEditingPromoId] = useState(null);
+  const [promoForm, setPromoForm] = useState({ code: '', discount_type: 'percent', discount_amount: '', expires_at: '', active: true });
+  const [savingPromo, setSavingPromo] = useState(false);
+  const [promoFormError, setPromoFormError] = useState('');
   const pollRef = useRef(null);
 
   async function fetchSettings() {
@@ -59,10 +65,19 @@ export default function Admin() {
     setAuthed(true);
   }
 
+  async function fetchPromoCodes() {
+    const res = await fetch('/api/promo-codes');
+    if (res.ok) {
+      const json = await res.json();
+      setPromoCodes(json.promoCodes || []);
+    }
+  }
+
   useEffect(() => {
     fetchOrders().finally(() => setChecking(false));
     fetchSettings();
     fetchPhotos();
+    fetchPromoCodes();
 
     // iOS/iPadOS only supports web push for a site that's been "Added to
     // Home Screen" and opened from there — a regular Safari/Chrome tab on
@@ -365,6 +380,77 @@ export default function Admin() {
     setPhotos((prev) => prev.filter((p) => p.path !== path));
   }
 
+  function openNewPromo() {
+    setEditingPromoId(null);
+    setPromoForm({ code: '', discount_type: 'percent', discount_amount: '', expires_at: '', active: true });
+    setPromoFormError('');
+    setPromoFormOpen(true);
+  }
+
+  function openEditPromo(pc) {
+    setEditingPromoId(pc.id);
+    setPromoForm({
+      code: pc.code,
+      discount_type: pc.discount_type,
+      discount_amount: String(pc.discount_amount),
+      expires_at: pc.expires_at ? pc.expires_at.slice(0, 10) : '',
+      active: pc.active,
+    });
+    setPromoFormError('');
+    setPromoFormOpen(true);
+  }
+
+  async function savePromoCode() {
+    setPromoFormError('');
+    const code = promoForm.code.trim().toUpperCase();
+    const amount = parseFloat(promoForm.discount_amount);
+    if (!code) { setPromoFormError('Enter a code.'); return; }
+    if (!amount || amount <= 0) { setPromoFormError('Enter a discount amount.'); return; }
+    if (promoForm.discount_type === 'percent' && amount > 100) { setPromoFormError('Percent off cannot be more than 100.'); return; }
+
+    setSavingPromo(true);
+    const payload = {
+      code,
+      discount_type: promoForm.discount_type,
+      discount_amount: amount,
+      expires_at: promoForm.expires_at ? new Date(`${promoForm.expires_at}T23:59:59`).toISOString() : null,
+      active: promoForm.active,
+    };
+    const res = await fetch('/api/promo-codes', {
+      method: editingPromoId ? 'PATCH' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(editingPromoId ? { id: editingPromoId, ...payload } : payload),
+    });
+    if (res.ok) {
+      await fetchPromoCodes();
+      setPromoFormOpen(false);
+    } else {
+      const body = await res.json().catch(() => ({}));
+      setPromoFormError(body.error || 'Could not save promo code.');
+    }
+    setSavingPromo(false);
+  }
+
+  async function togglePromoActive(pc) {
+    await fetch('/api/promo-codes', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: pc.id, active: !pc.active }),
+    });
+    fetchPromoCodes();
+  }
+
+  async function deletePromoCode(pc) {
+    const ok = window.confirm(`Delete promo code ${pc.code}? This cannot be undone.`);
+    if (!ok) return;
+    await fetch('/api/promo-codes', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: pc.id }),
+    });
+    setPromoCodes((prev) => prev.filter((x) => x.id !== pc.id));
+  }
+
   if (checking) return null;
 
   if (!authed) {
@@ -665,6 +751,113 @@ export default function Admin() {
           <Link href="/admin/sales" style={{ color: 'var(--maroon)', fontWeight: 700, textDecoration: 'none' }}>
             📊 View sales dashboard →
           </Link>
+        </div>
+
+        <div className="section">
+          <h2>Promo codes</h2>
+          <p className="hint">Create a code and turn it on — customers enter it on the order page for an automatic discount.</p>
+          <p className="hint" style={{ marginTop: -8 }}>
+            Want a push notification to go out to customers when a promo goes live? That needs customers to opt into notifications first, the way you did above — happy to build that next once you're ready.
+          </p>
+
+          {promoCodes.map((pc) => {
+            const isExpired = pc.expires_at && new Date(pc.expires_at).getTime() < Date.now();
+            const statusLabel = isExpired ? 'Expired' : pc.active ? 'Active' : 'Off';
+            const statusClass = isExpired || !pc.active ? 'inactive' : 'active';
+            return (
+              <div key={pc.id} className={`order-card${pc.active && !isExpired ? '' : ' done'}`}>
+                <div className="row" style={{ alignItems: 'flex-start' }}>
+                  <div>
+                    <div style={{ fontFamily: "'Baloo 2', sans-serif", fontWeight: 800, fontSize: '1.05rem', color: 'var(--maroon)' }}>
+                      {pc.code}
+                    </div>
+                    <div style={{ fontWeight: 700, marginTop: 2 }}>
+                      {pc.discount_type === 'percent' ? `${pc.discount_amount}% off` : `$${Number(pc.discount_amount).toFixed(2)} off`}
+                    </div>
+                    <div className="meta">
+                      Used {pc.times_used || 0} time{pc.times_used === 1 ? '' : 's'} · {pc.expires_at ? `${isExpired ? 'expired' : 'expires'} ${new Date(pc.expires_at).toLocaleDateString()}` : 'no expiration'}
+                    </div>
+                  </div>
+                  <span className={`promo-status-pill ${statusClass}`}>{statusLabel}</span>
+                </div>
+                <div className="promo-actions">
+                  <button className="status-btn" onClick={() => openEditPromo(pc)}>Edit</button>
+                  {!isExpired && (
+                    <button className="status-btn" onClick={() => togglePromoActive(pc)}>
+                      {pc.active ? 'Turn off' : 'Turn on'}
+                    </button>
+                  )}
+                  <button className="status-btn" onClick={() => deletePromoCode(pc)}>Delete</button>
+                </div>
+              </div>
+            );
+          })}
+
+          {promoCodes.length === 0 && !promoFormOpen && (
+            <p className="hint">No promo codes yet.</p>
+          )}
+
+          {!promoFormOpen ? (
+            <button className="btn-primary" onClick={openNewPromo}>+ Add a new promo code</button>
+          ) : (
+            <div className="order-card" style={{ borderColor: 'var(--pink)', background: 'var(--pink-pale)' }}>
+              <div className="field">
+                <label>Code</label>
+                <input
+                  type="text"
+                  value={promoForm.code}
+                  onChange={(e) => setPromoForm((f) => ({ ...f, code: e.target.value.toUpperCase() }))}
+                  placeholder="e.g. FALL15"
+                />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="field" style={{ margin: 0 }}>
+                  <label>Discount type</label>
+                  <select
+                    value={promoForm.discount_type}
+                    onChange={(e) => setPromoForm((f) => ({ ...f, discount_type: e.target.value }))}
+                  >
+                    <option value="percent">Percent off (%)</option>
+                    <option value="fixed">Dollar amount off ($)</option>
+                  </select>
+                </div>
+                <div className="field" style={{ margin: 0 }}>
+                  <label>Amount</label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={promoForm.discount_amount}
+                    onChange={(e) => setPromoForm((f) => ({ ...f, discount_amount: e.target.value }))}
+                    placeholder={promoForm.discount_type === 'percent' ? '10' : '5'}
+                  />
+                </div>
+              </div>
+              <div className="field" style={{ marginTop: 12 }}>
+                <label>Expiration date (optional)</label>
+                <input
+                  type="date"
+                  value={promoForm.expires_at}
+                  onChange={(e) => setPromoForm((f) => ({ ...f, expires_at: e.target.value }))}
+                />
+              </div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, cursor: 'pointer', marginBottom: 4 }}>
+                <input
+                  type="checkbox"
+                  style={{ width: 18, height: 18 }}
+                  checked={promoForm.active}
+                  onChange={(e) => setPromoForm((f) => ({ ...f, active: e.target.checked }))}
+                />
+                Active right away
+              </label>
+              {promoFormError && <p className="login-box error" style={{ margin: '8px 0' }}>{promoFormError}</p>}
+              <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
+                <button className="btn-primary" onClick={savePromoCode} disabled={savingPromo} style={{ flex: 1 }}>
+                  {savingPromo ? 'Saving…' : 'Save promo code'}
+                </button>
+                <button className="status-btn" onClick={() => setPromoFormOpen(false)}>Cancel</button>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="section">

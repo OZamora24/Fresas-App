@@ -694,7 +694,15 @@ export default function Home() {
       : null;
     return (
       <div className="wrap" style={{ textAlign: 'center', paddingTop: 80 }}>
-        <Head><title>{t.closedTitle} — Fresas con Crema</title></Head>
+        <Head>
+          <title>{t.closedTitle} — Fresas con Crema</title>
+          <link rel="manifest" href="/manifest-order.json" />
+          <link rel="apple-touch-icon" href="/icon-192.png" />
+          <meta name="apple-mobile-web-app-title" content="Fresas Order" />
+          <meta name="apple-mobile-web-app-capable" content="yes" />
+          <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+          <meta name="theme-color" content="#7C1B2C" />
+        </Head>
         <h1 style={{ color: 'var(--maroon)' }}>🍓 {t.closedTitle}</h1>
         <p>{shopStatus.closed_message || t.closedDefault}</p>
         {reopensLabel && (
@@ -707,7 +715,15 @@ export default function Home() {
   if (submitted) {
     return (
       <div className="wrap" style={{ textAlign: 'center', paddingTop: 80 }}>
-        <Head><title>{t.orderSent} — Fresas con Crema</title></Head>
+        <Head>
+          <title>{t.orderSent} — Fresas con Crema</title>
+          <link rel="manifest" href="/manifest-order.json" />
+          <link rel="apple-touch-icon" href="/icon-192.png" />
+          <meta name="apple-mobile-web-app-title" content="Fresas Order" />
+          <meta name="apple-mobile-web-app-capable" content="yes" />
+          <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+          <meta name="theme-color" content="#7C1B2C" />
+        </Head>
         <h1 style={{ color: 'var(--maroon)' }}>{t.orderSent}</h1>
         {confirmedOrderNumber && (
           <p style={{ color: 'var(--maroon)', fontWeight: 800, fontSize: '1.15rem', margin: '4px 0 10px' }}>
@@ -735,7 +751,15 @@ export default function Home() {
 
   return (
     <div>
-      <Head><title>{t.title}</title></Head>
+      <Head>
+        <title>{t.title}</title>
+        <link rel="manifest" href="/manifest-order.json" />
+        <link rel="apple-touch-icon" href="/icon-192.png" />
+        <meta name="apple-mobile-web-app-title" content="Fresas Order" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="theme-color" content="#7C1B2C" />
+      </Head>
       <div className="hero">
         <Link href="/" className="back-home-link">← Home</Link>
         <h1><Link href="/" style={{ color: 'inherit', textDecoration: 'none' }}>Fresas con Crema</Link></h1>

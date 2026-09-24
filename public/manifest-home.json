@@ -1,0 +1,20 @@
+{
+  "name": "Fresas Con Crema",
+  "short_name": "Fresas Con Crema",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#7C1B2C",
+  "theme_color": "#7C1B2C",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

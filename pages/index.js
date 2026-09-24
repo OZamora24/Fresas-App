@@ -74,7 +74,15 @@ export default function Home() {
 
   return (
     <div className="site-shell">
-      <Head><title>{t.title}</title></Head>
+      <Head>
+        <title>{t.title}</title>
+        <link rel="manifest" href="/manifest-home.json" />
+        <link rel="apple-touch-icon" href="/icon-192.png" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="Fresas Con Crema" />
+        <meta name="theme-color" content="#7C1B2C" />
+      </Head>
       <SiteNav lang={lang} onLangChange={changeLang} />
       <main className="site-main">
         <div className="home-hero">

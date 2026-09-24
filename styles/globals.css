@@ -318,3 +318,62 @@ button {
   position: absolute; top: 4px; right: 4px; background: rgba(40,8,14,0.75); color: #fff; border: none;
   border-radius: 8px; width: 26px; height: 26px; font-size: 0.9rem; line-height: 1; cursor: pointer;
 }
+
+/* "Add to Home Screen" nudge banner (components/AddToHomeBanner.js) */
+.a2hs-banner {
+  position: fixed; left: 14px; right: 14px;
+  bottom: max(14px, calc(env(safe-area-inset-bottom) + 10px));
+  z-index: 30;
+  background: var(--cream-2); border: 1.5px solid var(--line);
+  border-radius: 18px; padding: 16px 16px 14px;
+  box-shadow: 0 10px 30px rgba(40,8,14,0.22);
+  display: flex; gap: 12px; align-items: flex-start;
+  max-width: 460px; margin: 0 auto;
+  animation: a2hsRise 0.25s ease-out;
+}
+@keyframes a2hsRise {
+  from { transform: translateY(16px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.a2hs-icon { font-size: 1.6rem; line-height: 1; margin-top: 2px; }
+.a2hs-text { flex: 1; min-width: 0; }
+.a2hs-title { font-weight: 800; color: var(--maroon); font-size: 0.96rem; margin-bottom: 3px; }
+.a2hs-body { color: var(--ink-soft); font-size: 0.86rem; line-height: 1.45; }
+.a2hs-actions { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; flex-shrink: 0; }
+.a2hs-btn-primary {
+  background: var(--maroon); color: var(--cream-2); border: none; border-radius: 10px;
+  padding: 9px 14px; font-weight: 800; font-size: 0.82rem; white-space: nowrap; cursor: pointer;
+}
+.a2hs-btn-ghost {
+  background: transparent; color: var(--ink-soft); border: none;
+  font-weight: 700; font-size: 0.8rem; cursor: pointer; padding: 2px 4px;
+}
+@media (max-width: 500px) {
+  .a2hs-banner { flex-direction: column; }
+  .a2hs-actions { flex-direction: row-reverse; align-items: center; width: 100%; justify-content: flex-start; gap: 14px; }
+}
+
+/* "Watch how" video row inside the A2HS banner + its lightbox player */
+.a2hs-video-row {
+  display: flex; align-items: center; gap: 10px;
+  margin-top: 10px; padding: 8px;
+  background: rgba(124,27,44,0.05); border: 1px solid var(--line);
+  border-radius: 12px; cursor: pointer;
+}
+.a2hs-thumb {
+  position: relative; width: 54px; height: 54px; border-radius: 9px;
+  overflow: hidden; flex-shrink: 0; background: var(--maroon-deep);
+}
+.a2hs-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; opacity: 0.85; }
+.a2hs-thumb .play-dot { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+.a2hs-thumb .play-dot span {
+  width: 26px; height: 26px; background: rgba(255,255,255,0.95); border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+}
+.a2hs-thumb .play-dot svg { width: 11px; height: 11px; margin-left: 2px; }
+.a2hs-video-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.a2hs-video-title { font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 0.86rem; color: var(--ink); }
+.a2hs-video-sub { font-family: 'Nunito', sans-serif; font-size: 0.76rem; color: var(--ink-soft); }
+.a2hs-video-arrow { margin-left: auto; color: var(--maroon); font-size: 1.1rem; padding-right: 4px; flex-shrink: 0; }
+
+.lightbox-video { display: block; max-width: 92vw; max-height: 88vh; width: auto; height: auto; border-radius: 14px; box-shadow: 0 12px 40px rgba(0,0,0,0.4); background: #000; }

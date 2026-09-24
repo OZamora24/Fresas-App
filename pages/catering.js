@@ -16,6 +16,8 @@ const STR = {
     ),
     photoGallery: 'photo gallery',
     callToBook: 'Call or text to book',
+    cartRentalHeading: '🛒 Cart Rental',
+    cartRentalText: 'The cart itself is available to rent for the day — $75, serving trays and spoons included.',
   },
   es: {
     title: 'Catering — Fresas con Crema',
@@ -28,6 +30,8 @@ const STR = {
     ),
     photoGallery: 'galería de fotos',
     callToBook: 'Llama o envía un mensaje para reservar',
+    cartRentalHeading: '🛒 Renta del Carrito',
+    cartRentalText: 'El carrito en sí está disponible para rentar por el día — $75, incluye bandejas y cucharas para servir.',
   },
 };
 
@@ -83,6 +87,11 @@ export default function Catering() {
               <div className="note">{t.notSetUp}</div>
             </div>
           )}
+
+          <div className="catering-info-card">
+            <div className="days">{t.cartRentalHeading}</div>
+            <div className="note">{t.cartRentalText}</div>
+          </div>
 
           <p style={{ color: 'var(--ink-soft)', fontSize: '0.95rem', lineHeight: 1.6, marginBottom: 28 }}>
             {t.seeMore(

@@ -85,7 +85,7 @@ export default function Home() {
         <meta name="theme-color" content="#7C1B2C" />
       </Head>
       <SiteNav lang={lang} onLangChange={changeLang} />
-      <AddToHomeBanner lang={lang} storageKey="fresasA2HSDismissed-home" />
+      <AddToHomeBanner lang={lang} storageKey="fresasA2HSSeen" />
       <main className="site-main">
         <div className="home-hero">
           {isOpen !== null && (

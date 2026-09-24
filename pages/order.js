@@ -768,7 +768,7 @@ export default function Home() {
         {LangToggle}
       </div>
 
-      <AddToHomeBanner lang={lang} storageKey="fresasA2HSDismissed-order" />
+      <AddToHomeBanner lang={lang} storageKey="fresasA2HSSeen" />
 
       <div className="wrap">
         {cart.length > 0 && (

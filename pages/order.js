@@ -352,6 +352,7 @@ export default function Home() {
   const [submitted, setSubmitted] = useState(false);
   const [confirmedOrderNumber, setConfirmedOrderNumber] = useState(null);
   const [confirmedTotal, setConfirmedTotal] = useState(0);
+  const [confirmedPaymentMethod, setConfirmedPaymentMethod] = useState('zelle');
   const [redirectSeconds, setRedirectSeconds] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [showWalnutAlert, setShowWalnutAlert] = useState(false);
@@ -793,6 +794,7 @@ export default function Home() {
       const body = await res.json().catch(() => ({}));
       setConfirmedOrderNumber(body.order?.order_number ?? null);
       setConfirmedTotal(finalOrderTotal);
+      setConfirmedPaymentMethod(paymentMethod);
       // Reset every field, not just the cart — otherwise the auto-save
       // draft effect (which watches these fields) notices the cart just
       // changed and immediately writes a fresh draft right back using
@@ -903,7 +905,7 @@ export default function Home() {
           {t.pickupLocation}<br />{PICKUP_ADDRESS}
         </p>
         <p style={{ color: 'var(--ink-soft)', fontSize: '0.9rem' }}>
-          {paymentMethod === 'zelle' ? t.zelleFollowUp(confirmedTotal.toFixed(2), ZELLE_PHONE) : t.cashFollowUp(confirmedTotal.toFixed(2))}
+          {confirmedPaymentMethod === 'zelle' ? t.zelleFollowUp(confirmedTotal.toFixed(2), ZELLE_PHONE) : t.cashFollowUp(confirmedTotal.toFixed(2))}
         </p>
         {(!notifyResponded || notifyError) && (
           <div className="notify-card">

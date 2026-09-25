@@ -1317,7 +1317,7 @@ export default function Home() {
                 />
                 <button
                   type="button"
-                  className="btn-outline-dark"
+                  className="btn-outline"
                   onClick={applyPromoCode}
                   disabled={!promoInput.trim() || promoChecking}
                   style={{ padding: '0 18px', fontSize: '0.9rem' }}

@@ -41,6 +41,7 @@ export default function Admin() {
   const [sendingNotify, setSendingNotify] = useState(false);
   const [notifyResult, setNotifyResult] = useState(null);
   const [newClosedDate, setNewClosedDate] = useState('');
+  const closedDateInputRef = useRef(null);
   const pollRef = useRef(null);
 
   async function fetchSettings() {
@@ -700,26 +701,50 @@ export default function Admin() {
               <p className="hint" style={{ marginTop: 0 }}>
                 Know in advance you'll be closed a day — a trip, a holiday? Add the date here. Customers won't be able to pick it for pickup, and the home page shows "Closed" that day automatically — you don't have to remember to flip the shop switch.
               </p>
-              <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12 }}>
+              <div style={{ marginBottom: 12 }}>
+                {/* Kept in the DOM (not display:none) so the browser will let us
+                    open its native picker programmatically from the button below,
+                    but visually collapsed since the button is the only thing the
+                    admin actually clicks. */}
                 <input
+                  ref={closedDateInputRef}
                   type="date"
                   value={newClosedDate}
                   min={todayDateKey()}
-                  onChange={(e) => setNewClosedDate(e.target.value)}
-                  style={{ flex: 1 }}
+                  onChange={(e) => {
+                    const picked = e.target.value;
+                    setNewClosedDate(picked);
+                    if (picked) {
+                      const current = settings.closed_dates || [];
+                      if (!current.includes(picked)) {
+                        saveSettings({ closed_dates: [...current, picked].sort() });
+                      }
+                      setNewClosedDate('');
+                    }
+                  }}
+                  style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
+                  tabIndex={-1}
+                  aria-hidden="true"
                 />
                 <button
                   className="status-btn"
-                  disabled={!newClosedDate || savingSettings}
+                  disabled={savingSettings}
                   onClick={() => {
-                    const current = settings.closed_dates || [];
-                    if (!current.includes(newClosedDate)) {
-                      saveSettings({ closed_dates: [...current, newClosedDate].sort() });
+                    const el = closedDateInputRef.current;
+                    if (!el) return;
+                    if (typeof el.showPicker === 'function') {
+                      try {
+                        el.showPicker();
+                        return;
+                      } catch (err) {
+                        // Some browsers throw if showPicker isn't allowed here —
+                        // fall through to the focus fallback below.
+                      }
                     }
-                    setNewClosedDate('');
+                    el.focus();
                   }}
                 >
-                  + Add
+                  + Add a closed day
                 </button>
               </div>
               {(settings.closed_dates || []).length === 0 ? (

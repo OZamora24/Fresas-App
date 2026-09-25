@@ -110,6 +110,7 @@ const STR = {
     pickupTime: 'Pickup time',
     pickupHint: (dateLabel, start, end) => `${dateLabel} pickup window: ${start} – ${end}`,
     noTimesToday: "No more pickup times available today — please choose another date.",
+    closedThatDay: "We're closed that day — please choose another date.",
     pickupDateLabel: 'Pickup date',
     pickupDateHint: 'Order for today, or pick a future date.',
     cateringTitle: '🎉 Catering',
@@ -217,6 +218,7 @@ const STR = {
     pickupTime: 'Hora de recogida',
     pickupHint: (dateLabel, start, end) => `Horario de recogida (${dateLabel}): ${start} – ${end}`,
     noTimesToday: 'Ya no hay horarios de recogida disponibles hoy — elige otra fecha.',
+    closedThatDay: 'Ese día estamos cerrados — elige otra fecha.',
     pickupDateLabel: 'Fecha de recogida',
     pickupDateHint: 'Ordena para hoy, o elige una fecha futura.',
     cateringTitle: '🎉 Catering',
@@ -1142,7 +1144,9 @@ export default function Home() {
             ) : null;
           })()}
           {availableTimes.length === 0 ? (
-            <p className="free-note">{t.noTimesToday}</p>
+            <p className="free-note">
+              {buildPickupTimes(pickupDate, shopStatus).length === 0 ? t.closedThatDay : t.noTimesToday}
+            </p>
           ) : (
             <div className="field">
               <select value={pickup} onChange={(e) => setPickup(e.target.value)}>

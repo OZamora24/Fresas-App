@@ -40,6 +40,7 @@ export default function Admin() {
   const [notifyForm, setNotifyForm] = useState({ title: '', message: '' });
   const [sendingNotify, setSendingNotify] = useState(false);
   const [notifyResult, setNotifyResult] = useState(null);
+  const [newClosedDate, setNewClosedDate] = useState('');
   const pollRef = useRef(null);
 
   async function fetchSettings() {
@@ -690,6 +691,58 @@ export default function Admin() {
                 </div>
               </div>
               <p className="hint" style={{ marginTop: 10, marginBottom: 0 }}>Pickup times customers can pick from are generated from these — weekday and weekend hours can differ.</p>
+            </div>
+
+            <div className="order-card" style={{ marginTop: 10 }}>
+              <label style={{ display: 'block', fontWeight: 700, marginBottom: 6 }}>
+                Closed days
+              </label>
+              <p className="hint" style={{ marginTop: 0 }}>
+                Know in advance you'll be closed a day — a trip, a holiday? Add the date here. Customers won't be able to pick it for pickup, and the home page shows "Closed" that day automatically — you don't have to remember to flip the shop switch.
+              </p>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12 }}>
+                <input
+                  type="date"
+                  value={newClosedDate}
+                  min={todayDateKey()}
+                  max={maxPreorderDateKey()}
+                  onChange={(e) => setNewClosedDate(e.target.value)}
+                  style={{ flex: 1 }}
+                />
+                <button
+                  className="status-btn"
+                  disabled={!newClosedDate || savingSettings}
+                  onClick={() => {
+                    const current = settings.closed_dates || [];
+                    if (!current.includes(newClosedDate)) {
+                      saveSettings({ closed_dates: [...current, newClosedDate].sort() });
+                    }
+                    setNewClosedDate('');
+                  }}
+                >
+                  + Add
+                </button>
+              </div>
+              {(settings.closed_dates || []).length === 0 ? (
+                <p className="hint" style={{ margin: 0 }}>No closed days scheduled.</p>
+              ) : (
+                <div className="chip-grid">
+                  {(settings.closed_dates || []).slice().sort().map((d) => (
+                    <span key={d} className="chip" style={{ cursor: 'default' }}>
+                      {formatDateKey(d)}
+                      <button
+                        type="button"
+                        onClick={() => saveSettings({ closed_dates: (settings.closed_dates || []).filter((x) => x !== d) })}
+                        disabled={savingSettings}
+                        aria-label={`Remove ${d}`}
+                        style={{ background: 'none', border: 'none', color: 'var(--maroon)', fontWeight: 800, fontSize: '1rem', cursor: 'pointer', padding: 0, lineHeight: 1 }}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
 
             <details className="order-card availability-dropdown" style={{ marginTop: 10 }}>

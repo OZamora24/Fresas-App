@@ -19,7 +19,7 @@ export default async function handler(req, res) {
     if (!isValidSession(req)) {
       return res.status(401).json({ error: 'Not authorized.' });
     }
-    const { is_open, closed_message, slot_limit, sold_out_flavors, sold_out_toppings, sold_out_syrups, reopens_at, catering_days, catering_info, hours_weekday_start, hours_weekday_end, hours_weekend_start, hours_weekend_end } = req.body || {};
+    const { is_open, closed_message, slot_limit, sold_out_flavors, sold_out_toppings, sold_out_syrups, reopens_at, catering_days, catering_info, hours_weekday_start, hours_weekday_end, hours_weekend_start, hours_weekend_end, closed_dates } = req.body || {};
     const updates = {};
     if (is_open !== undefined) updates.is_open = is_open;
     if (closed_message !== undefined) updates.closed_message = closed_message;
@@ -34,6 +34,12 @@ export default async function handler(req, res) {
     if (hours_weekday_end !== undefined) updates.hours_weekday_end = hours_weekday_end;
     if (hours_weekend_start !== undefined) updates.hours_weekend_start = hours_weekend_start;
     if (hours_weekend_end !== undefined) updates.hours_weekend_end = hours_weekend_end;
+    if (closed_dates !== undefined) {
+      if (!Array.isArray(closed_dates) || closed_dates.some((d) => !/^\d{4}-\d{2}-\d{2}$/.test(d))) {
+        return res.status(400).json({ error: 'closed_dates must be a list of YYYY-MM-DD dates.' });
+      }
+      updates.closed_dates = closed_dates;
+    }
 
     if (Object.keys(updates).length === 0) {
       return res.status(400).json({ error: 'No valid fields to update.' });

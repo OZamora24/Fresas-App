@@ -3,12 +3,18 @@ import Head from 'next/head';
 import Link from 'next/link';
 import SiteNav from '../components/SiteNav';
 import AddToHomeBanner from '../components/AddToHomeBanner';
-import { buildPickupTimes, todayDateKey } from '../lib/menu';
+import { buildPickupTimes, todayDateKey, nowMinutesInShopTz, timeStringToMinutes } from '../lib/menu';
+
+// Show "Closing soon" instead of "Open now" once we're inside this many
+// minutes of today's closing time (weekday and weekend hours can differ,
+// but this window applies to whichever one is in effect today).
+const CLOSING_SOON_MINUTES = 30;
 
 const STR = {
   en: {
     title: 'Fresas con Crema — Rialto, CA',
     openNow: 'Open now',
+    closingSoon: 'Closing soon',
     closedNow: 'Closed right now',
     eyebrow: 'Rialto, CA · Fresh daily',
     heading: 'Handmade fresas con crema, made to order.',
@@ -16,6 +22,7 @@ const STR = {
     orderNow: 'Order Now',
     seeCatering: 'See Catering Info',
     todaysHours: "Today's hours",
+    closedToday: 'Closed today',
     followUs: 'Follow us',
     questions: 'Questions',
     whyTitle: 'Why customers keep coming back',
@@ -25,12 +32,14 @@ const STR = {
     title: 'Fresas con Crema — Rialto, CA',
     openNow: 'Abierto ahora',
     closedNow: 'Cerrado por ahora',
+    closingSoon: 'Cerrando pronto',
     eyebrow: 'Rialto, CA · Fresco cada día',
     heading: 'Fresas con crema hechas a mano, preparadas al pedirlas.',
     tagline: 'Arma tu vaso, elige una hora de recogida, y lo tendremos listo — dulce, fresco, y vale la pena.',
     orderNow: 'Ordenar Ahora',
     seeCatering: 'Ver Info de Catering',
     todaysHours: 'Horario de hoy',
+    closedToday: 'Cerrado hoy',
     followUs: 'Síguenos',
     questions: 'Preguntas',
     whyTitle: 'Por qué los clientes siguen regresando',
@@ -67,11 +76,38 @@ export default function Home() {
       .catch(() => setSettings({ is_open: true }));
   }, []);
 
+  // Re-check every minute so "Open now" flips to "Closing soon" (and
+  // eventually to whatever the shop status says after closing) without
+  // needing a page reload.
+  const [nowTick, setNowTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setNowTick((n) => n + 1), 60000);
+    return () => clearInterval(id);
+  }, []);
+
   const isOpen = settings ? settings.is_open !== false : null;
   const todayTimes = settings ? buildPickupTimes(todayDateKey(), settings) : [];
-  const hoursLabel = todayTimes.length > 0
-    ? `${todayTimes[0]} – ${todayTimes[todayTimes.length - 1]}`
-    : '—';
+  // A day the shop scheduled as closed in advance (see the admin "Closed
+  // days" list) has no pickup slots at all, same as if hours were never
+  // set — either way there's nothing to book today. This is checked
+  // independently of the manual open/closed switch so a pre-scheduled
+  // closure shows correctly even if nobody remembers to flip that switch
+  // on the day.
+  const closedToday = todayTimes.length === 0;
+  const effectivelyOpen = isOpen && !closedToday;
+  const hoursLabel = closedToday ? t.closedToday : `${todayTimes[0]} – ${todayTimes[todayTimes.length - 1]}`;
+
+  // Recomputed on every render, including the one triggered by nowTick
+  // ticking every minute above — no memoization needed for something this
+  // cheap.
+  let closingSoon = false;
+  if (effectivelyOpen) {
+    const closeMinutes = timeStringToMinutes(todayTimes[todayTimes.length - 1]);
+    if (closeMinutes !== null) {
+      const minutesLeft = closeMinutes - nowMinutesInShopTz();
+      closingSoon = minutesLeft >= 0 && minutesLeft <= CLOSING_SOON_MINUTES;
+    }
+  }
 
   return (
     <div className="site-shell">
@@ -90,8 +126,8 @@ export default function Home() {
         <div className="home-hero">
           {isOpen !== null && (
             <div className="home-status-row">
-              <span className={`home-status-badge${isOpen ? '' : ' closed'}`}>
-                <span className="home-status-dot"></span> {isOpen ? t.openNow : t.closedNow}
+              <span className={`home-status-badge${effectivelyOpen ? (closingSoon ? ' closing-soon' : '') : ' closed'}`}>
+                <span className="home-status-dot"></span> {effectivelyOpen ? (closingSoon ? t.closingSoon : t.openNow) : t.closedNow}
               </span>
             </div>
           )}

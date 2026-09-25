@@ -75,6 +75,13 @@ export default function Catering() {
           <h2>{t.heading}</h2>
           <p className="sub">{t.sub}</p>
 
+          {!settings && (
+            <div className="catering-info-card" aria-hidden="true">
+              <div className="skeleton-line skeleton-line--title"></div>
+              <div className="skeleton-line skeleton-line--body"></div>
+            </div>
+          )}
+
           {settings && hasCatering && (
             <div className="catering-info-card">
               <div className="days">{t.availableOn(formatWeekdaysList(settings.catering_days, lang))}</div>

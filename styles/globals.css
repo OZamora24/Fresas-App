@@ -287,6 +287,14 @@ button {
 .catering-info-card .days { font-weight: 800; color: var(--maroon); font-size: 1.02rem; margin-bottom: 6px; }
 .catering-info-card .note { color: var(--ink-soft); font-size: 0.9rem; }
 
+/* While /api/settings is loading, hold this card's usual size with a
+   soft pulsing placeholder so the real text doesn't pop in and shove
+   the rest of the page down a beat later. */
+.catering-info-card .skeleton-line { border-radius: 6px; background: rgba(124, 27, 44, 0.14); animation: skeleton-pulse 1.1s ease-in-out infinite; }
+.catering-info-card .skeleton-line--title { height: 13px; width: 92%; margin-bottom: 6px; }
+.catering-info-card .skeleton-line--body { height: 13px; width: 60%; }
+@keyframes skeleton-pulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+
 .photo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .photo-grid img { width: 100%; height: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 14px; display: block; }
 .photo-tile-empty {

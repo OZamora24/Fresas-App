@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
+import Script from 'next/script';
 import { BASES, PRICES, TOPPINGS, SYRUPS, toppingsCost, todayDateKey, maxPreorderDateKey, formatDateKey, getAvailablePickupTimes, buildPickupTimes, formatWeekdaysList } from '../lib/menu';
 import AddToHomeBanner from '../components/AddToHomeBanner';
+
+const ONESIGNAL_APP_ID = process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID;
 
 const BASE_DESC = {
   regular: {
@@ -171,6 +174,17 @@ const STR = {
     zelleFollowUp: (total, phone) => `We'll confirm once your $${total} Zelle payment to ${phone} comes through.`,
     cashFollowUp: (total) => `Have $${total} in cash ready at pickup.`,
     autoReturn: (secs) => `Returning to the order page in ${secs}s…`,
+    notifyTitle: 'Get notified about deals',
+    notifyBody: "We'll send you a quick alert when there's a new promo code or flavor — no spam, turn it off anytime.",
+    notifyBtn: 'Turn on notifications',
+    notifyNoThanks: 'No thanks',
+    notifyIosTitle: 'Add to your Home Screen to get notified',
+    notifyIosBody: 'iPhone needs the app added to your Home Screen first (tap Share, then "Add to Home Screen"), then reopen it from there to turn on alerts.',
+    notifyGotIt: 'Got it',
+    notifyDenied: "Notifications weren't allowed. Check your browser's site settings (🔒 icon in the address bar) and allow notifications for this site.",
+    notifyGenericError: 'Something went wrong turning on notifications — please try again.',
+    notifySettingUp: 'Still setting up notifications — give it a second and try again.',
+    notifyLoading: 'Loading…',
     walnutWarning: '⚠️ Allergy notice: Ferrero Rocher Fresas con Crema contains walnuts.',
     allergyTitle: '🥜 Allergy Notice',
     rimTitle: '🥤 Heads Up!',
@@ -267,6 +281,17 @@ const STR = {
     zelleFollowUp: (total, phone) => `Confirmaremos tu orden cuando llegue tu pago de $${total} por Zelle a ${phone}.`,
     cashFollowUp: (total) => `Ten $${total} en efectivo listos al recoger.`,
     autoReturn: (secs) => `Volviendo a la página de orden en ${secs}s…`,
+    notifyTitle: 'Entérate de nuestras promociones',
+    notifyBody: 'Te avisaremos cuando haya un nuevo código de descuento o sabor — sin spam, puedes desactivarlo cuando quieras.',
+    notifyBtn: 'Activar notificaciones',
+    notifyNoThanks: 'Ahora no',
+    notifyIosTitle: 'Agrega esto a tu pantalla de inicio para recibir avisos',
+    notifyIosBody: 'En iPhone primero debes agregar la app a tu pantalla de inicio (toca Compartir, luego "Agregar a inicio"), y ábrela desde ahí para activar los avisos.',
+    notifyGotIt: 'Entendido',
+    notifyDenied: 'No se permitieron las notificaciones. Revisa la configuración del sitio en tu navegador (ícono 🔒 en la barra de direcciones) y permite notificaciones para este sitio.',
+    notifyGenericError: 'Algo salió mal al activar las notificaciones — intenta de nuevo.',
+    notifySettingUp: 'Aún preparando las notificaciones — intenta de nuevo en un segundo.',
+    notifyLoading: 'Cargando…',
     walnutWarning: '⚠️ Aviso de alergia: las Fresas con Crema estilo Ferrero Rocher contienen nueces (walnuts).',
     allergyTitle: '🥜 Aviso de Alergia',
     rimTitle: '🥤 ¡Aviso!',
@@ -340,6 +365,55 @@ export default function Home() {
   const [repeatDismissed, setRepeatDismissed] = useState(false);
   const [nowTick, setNowTick] = useState(0);
   const [draftReady, setDraftReady] = useState(false);
+  const [oneSignalReady, setOneSignalReady] = useState(false);
+  const [notifyError, setNotifyError] = useState('');
+  const [notifyResponded, setNotifyResponded] = useState(false);
+  const [notifyNeedsHomeScreen, setNotifyNeedsHomeScreen] = useState(false);
+
+  // The "get notified about deals" card on the confirmation screen: keep
+  // showing it after every order until the customer actually taps one of
+  // its two buttons (Turn on / No thanks) — checked once per page load.
+  useEffect(() => {
+    try {
+      if (window.localStorage.getItem('fresasNotifyResponded')) {
+        setNotifyResponded(true);
+      }
+      // iOS only supports web push for a site added to the Home Screen
+      // and opened from there — a bare Safari tab can't show the native
+      // permission prompt, so we point them to add it first instead.
+      const ua = window.navigator.userAgent;
+      const isIOSDevice = /iPad|iPhone|iPod/.test(ua) || (ua.includes('Macintosh') && 'ontouchend' in document);
+      const isStandalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+      if (isIOSDevice && !isStandalone) setNotifyNeedsHomeScreen(true);
+    } catch (e) {
+      // localStorage/UA sniffing unavailable — just skip
+    }
+  }, []);
+
+  function markNotifyResponded() {
+    setNotifyResponded(true);
+    setNotifyError('');
+    try { window.localStorage.setItem('fresasNotifyResponded', '1'); } catch (e) {}
+  }
+
+  async function enableCustomerPush() {
+    setNotifyError('');
+    if (!window.OneSignal) {
+      setNotifyError(t.notifySettingUp);
+      return;
+    }
+    try {
+      await window.OneSignal.Notifications.requestPermission();
+      markNotifyResponded();
+      await window.OneSignal.User.addTag('role', 'customer');
+      if (!window.OneSignal.Notifications.permission) {
+        setNotifyError(t.notifyDenied);
+      }
+    } catch (e) {
+      setNotifyError(t.notifyGenericError);
+      markNotifyResponded();
+    }
+  }
 
   // Restore an in-progress order (if any) from localStorage, so a
   // customer who navigates to Home and back to Order doesn't lose what
@@ -831,6 +905,26 @@ export default function Home() {
         <p style={{ color: 'var(--ink-soft)', fontSize: '0.9rem' }}>
           {paymentMethod === 'zelle' ? t.zelleFollowUp(confirmedTotal.toFixed(2), ZELLE_PHONE) : t.cashFollowUp(confirmedTotal.toFixed(2))}
         </p>
+        {(!notifyResponded || notifyError) && (
+          <div className="notify-card">
+            <div className="notify-icon">🔔</div>
+            <div className="notify-content">
+              <div className="notify-title">{notifyNeedsHomeScreen ? t.notifyIosTitle : t.notifyTitle}</div>
+              <div className="notify-body">{notifyNeedsHomeScreen ? t.notifyIosBody : t.notifyBody}</div>
+              {notifyError && <div className="notify-error">{notifyError}</div>}
+              <div className="notify-actions">
+                {!notifyNeedsHomeScreen && (
+                  <button type="button" className="notify-btn-primary" onClick={enableCustomerPush} disabled={!oneSignalReady}>
+                    {oneSignalReady ? t.notifyBtn : t.notifyLoading}
+                  </button>
+                )}
+                <button type="button" className="notify-btn-ghost" onClick={markNotifyResponded}>
+                  {notifyNeedsHomeScreen ? t.notifyGotIt : t.notifyNoThanks}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         {redirectSeconds !== null && (
           <p style={{ color: 'var(--ink-soft)', fontSize: '0.78rem', marginTop: 20 }}>
             {t.autoReturn(redirectSeconds)}
@@ -851,6 +945,25 @@ export default function Home() {
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="theme-color" content="#7C1B2C" />
       </Head>
+      {ONESIGNAL_APP_ID && (
+        <Script
+          src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js"
+          strategy="afterInteractive"
+          onLoad={() => {
+            window.OneSignalDeferred = window.OneSignalDeferred || [];
+            window.OneSignalDeferred.push(async (OneSignal) => {
+              try {
+                await OneSignal.init({ appId: ONESIGNAL_APP_ID });
+                window.OneSignal = OneSignal;
+                setOneSignalReady(true);
+                if (OneSignal.Notifications.permission) setNotifyEnabled(true);
+              } catch (e) {
+                console.error('OneSignal init failed', e);
+              }
+            });
+          }}
+        />
+      )}
       <div className="hero">
         <Link href="/" className="back-home-link">← Home</Link>
         <h1><Link href="/" style={{ color: 'inherit', textDecoration: 'none' }}>Fresas con Crema</Link></h1>

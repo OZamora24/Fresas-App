@@ -384,6 +384,30 @@ button {
 .a2hs-video-sub { font-family: 'Nunito', sans-serif; font-size: 0.76rem; color: var(--ink-soft); }
 .a2hs-video-arrow { margin-left: auto; color: var(--maroon); font-size: 1.1rem; padding-right: 4px; flex-shrink: 0; }
 
+/* "Get notified about deals" push opt-in card, shown on the order
+   confirmation screen after every order until the customer responds. */
+.notify-card {
+  margin: 26px auto 14px; max-width: 480px;
+  background: var(--card-bg); border: 2px solid var(--line); border-radius: 16px;
+  padding: 18px 20px; text-align: left;
+  display: flex; gap: 12px; align-items: flex-start;
+}
+.notify-icon { font-size: 1.6rem; line-height: 1; margin-top: 2px; }
+.notify-content { flex: 1; min-width: 0; }
+.notify-title { font-weight: 800; color: var(--maroon); font-size: 0.98rem; margin-bottom: 3px; }
+.notify-body { color: var(--ink-soft); font-size: 0.86rem; line-height: 1.45; margin-bottom: 12px; }
+.notify-error { color: var(--maroon-deep); font-size: 0.8rem; font-weight: 700; margin: -4px 0 10px; }
+.notify-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.notify-btn-primary {
+  background: var(--maroon); color: var(--cream-2); border: none; border-radius: 12px;
+  padding: 10px 16px; font-weight: 800; font-size: 0.86rem; font-family: 'Nunito', sans-serif; cursor: pointer;
+}
+.notify-btn-primary:disabled { opacity: 0.6; cursor: default; }
+.notify-btn-ghost {
+  background: transparent; color: var(--maroon); border: 2px solid var(--line); border-radius: 12px;
+  padding: 8px 14px; font-weight: 700; font-size: 0.86rem; font-family: 'Nunito', sans-serif; cursor: pointer;
+}
+
 /* Admin promo-code cards */
 .promo-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .promo-status-pill { font-size: 0.72rem; font-weight: 800; padding: 4px 11px; border-radius: 999px; white-space: nowrap; }

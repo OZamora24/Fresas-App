@@ -705,7 +705,6 @@ export default function Admin() {
                   type="date"
                   value={newClosedDate}
                   min={todayDateKey()}
-                  max={maxPreorderDateKey()}
                   onChange={(e) => setNewClosedDate(e.target.value)}
                   style={{ flex: 1 }}
                 />

@@ -136,6 +136,7 @@ const STR = {
     subtotal: 'Subtotal',
     promoLabel: 'Promo code',
     promoPlaceholder: 'Enter code',
+    promoHint: 'Tap Apply to use your code — it won’t be applied automatically.',
     promoApply: 'Apply',
     promoChecking: 'Checking…',
     promoAppliedNote: 'Promo applied',
@@ -244,6 +245,7 @@ const STR = {
     subtotal: 'Subtotal',
     promoLabel: 'Código de promoción',
     promoPlaceholder: 'Ingresa el código',
+    promoHint: 'Toca Aplicar para usar tu código — no se aplica automáticamente.',
     promoApply: 'Aplicar',
     promoChecking: 'Verificando…',
     promoAppliedNote: 'Promoción aplicada',
@@ -1304,6 +1306,12 @@ export default function Home() {
                   type="text"
                   value={promoInput}
                   onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      if (promoInput.trim() && !promoChecking) applyPromoCode();
+                    }
+                  }}
                   placeholder={t.promoPlaceholder}
                   style={{ flex: 1 }}
                 />
@@ -1322,6 +1330,9 @@ export default function Home() {
                 <span style={{ fontWeight: 800, color: 'var(--maroon)' }}>✓ {appliedPromo.code} — {t.promoAppliedNote}</span>
                 <button type="button" className="status-btn" onClick={removePromoCode}>{t.promoRemove}</button>
               </div>
+            )}
+            {!appliedPromo && !promoError && (
+              <p className="hint" style={{ marginTop: 6, marginBottom: 0 }}>{t.promoHint}</p>
             )}
             {promoError && <p className="hint" style={{ color: 'var(--maroon)', marginTop: 6, marginBottom: 0 }}>{promoError}</p>}
           </div>

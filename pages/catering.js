@@ -3,6 +3,28 @@ import Head from 'next/head';
 import Link from 'next/link';
 import SiteNav from '../components/SiteNav';
 import { formatWeekdaysList } from '../lib/menu';
+import { getSupabaseAdmin } from '../lib/supabaseAdmin';
+
+// Fetches the shop settings on the SERVER, before the page is ever sent to
+// the browser — so the catering card's real text is already baked into the
+// HTML on arrival. This is what actually removes the loading flicker: with
+// only a client-side fetch (the old approach), the browser always has to
+// paint the page once with nothing there, then again a beat later once the
+// request comes back, no matter how that gap is visually covered up.
+// Next.js excludes this function (and getSupabaseAdmin, since it's only
+// used in here) from the client-side JS bundle automatically.
+export async function getServerSideProps() {
+  let initialSettings = null;
+  try {
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase.from('shop_settings').select('*').eq('id', 1).single();
+    if (!error) initialSettings = data;
+  } catch (e) {
+    // Supabase env vars missing or unreachable — fall back to the
+    // client-side fetch below rather than failing the whole page.
+  }
+  return { props: { initialSettings } };
+}
 
 const STR = {
   en: {
@@ -35,17 +57,21 @@ const STR = {
   },
 };
 
-export default function Catering() {
-  const [settings, setSettings] = useState(null);
+export default function Catering({ initialSettings }) {
+  const [settings, setSettings] = useState(initialSettings || null);
   const [lang, setLang] = useState('en');
   const t = STR[lang];
 
+  // Only needed as a fallback if the server-side fetch above came back
+  // empty (e.g. a transient Supabase hiccup) — normally `settings` is
+  // already set from initialSettings and this is a no-op.
   useEffect(() => {
+    if (settings) return;
     fetch('/api/settings')
       .then((r) => r.json())
       .then((j) => setSettings(j.settings))
       .catch(() => setSettings({}));
-  }, []);
+  }, [settings]);
 
   // Remember the customer's language choice across pages (Home, Order,
   // Catering, Photos all share this) — read it on mount, and save it

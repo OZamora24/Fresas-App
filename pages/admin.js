@@ -36,6 +36,10 @@ export default function Admin() {
   const [promoForm, setPromoForm] = useState({ code: '', discount_type: 'percent', discount_amount: '', expires_at: '', active: true });
   const [savingPromo, setSavingPromo] = useState(false);
   const [promoFormError, setPromoFormError] = useState('');
+  const [notifyOpen, setNotifyOpen] = useState(false);
+  const [notifyForm, setNotifyForm] = useState({ title: '', message: '' });
+  const [sendingNotify, setSendingNotify] = useState(false);
+  const [notifyResult, setNotifyResult] = useState(null);
   const pollRef = useRef(null);
 
   async function fetchSettings() {
@@ -109,6 +113,20 @@ export default function Admin() {
     pollRef.current = setInterval(fetchOrders, 5000);
     return () => clearInterval(pollRef.current);
   }, [authed]);
+
+  // Keep the edit-order pickup time in sync with the pickup date: weekday
+  // and weekend hours can differ, so a time that was valid for the order's
+  // original date (e.g. "5:00 PM") isn't necessarily valid once the admin
+  // switches the date to a Saturday. Without this, the <select> keeps
+  // showing the old time even though it's no longer one of the options
+  // generated for the new date, which is exactly the "stuck at 5pm" bug.
+  useEffect(() => {
+    if (!editForm) return;
+    const times = buildPickupTimes(editForm.pickup_date, settings);
+    if (times.length > 0 && !times.includes(editForm.pickup_time)) {
+      setEditForm((f) => (f ? { ...f, pickup_time: times[0] } : f));
+    }
+  }, [editForm?.pickup_date, settings]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleLogin(e) {
     e.preventDefault();
@@ -451,6 +469,55 @@ export default function Admin() {
     setPromoCodes((prev) => prev.filter((x) => x.id !== pc.id));
   }
 
+  function openNotifyForm(prefill) {
+    setNotifyForm(prefill || { title: '', message: '' });
+    setNotifyResult(null);
+    setNotifyOpen(true);
+  }
+
+  function openNotifyForPromo(pc) {
+    const discount = pc.discount_type === 'percent'
+      ? `${pc.discount_amount}% off`
+      : `$${Number(pc.discount_amount).toFixed(2)} off`;
+    openNotifyForm({
+      title: 'New promo code! 🍓',
+      message: `Use code ${pc.code} for ${discount} your next order.`,
+    });
+  }
+
+  async function sendCustomerNotification() {
+    const title = notifyForm.title.trim();
+    const message = notifyForm.message.trim();
+    if (!title || !message) {
+      setNotifyResult({ ok: false, text: 'Enter a title and message.' });
+      return;
+    }
+    setSendingNotify(true);
+    setNotifyResult(null);
+    try {
+      const res = await fetch('/api/notify-customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, message }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setNotifyResult({ ok: false, text: json.error || 'Could not send notification.' });
+      } else {
+        const count = json.recipients ?? 0;
+        setNotifyResult({
+          ok: true,
+          text: count > 0 ? `Sent to ${count} subscriber${count === 1 ? '' : 's'}.` : 'Sent — but no one is subscribed yet.',
+        });
+        setNotifyForm({ title: '', message: '' });
+      }
+    } catch (e) {
+      setNotifyResult({ ok: false, text: 'Could not reach the server.' });
+    } finally {
+      setSendingNotify(false);
+    }
+  }
+
   if (checking) return null;
 
   if (!authed) {
@@ -757,7 +824,7 @@ export default function Admin() {
           <h2>Promo codes</h2>
           <p className="hint">Create a code and turn it on — customers enter it on the order page for an automatic discount.</p>
           <p className="hint" style={{ marginTop: -8 }}>
-            Want a push notification to go out to customers when a promo goes live? That needs customers to opt into notifications first, the way you did above — happy to build that next once you're ready.
+            Turning a code on doesn't notify anyone by itself — use "Notify customers" on a code below, or the general button underneath the list, to actually push it out to whoever opted into "Get notified about deals."
           </p>
 
           {promoCodes.map((pc) => {
@@ -786,6 +853,9 @@ export default function Admin() {
                     <button className="status-btn" onClick={() => togglePromoActive(pc)}>
                       {pc.active ? 'Turn off' : 'Turn on'}
                     </button>
+                  )}
+                  {pc.active && !isExpired && (
+                    <button className="status-btn" onClick={() => openNotifyForPromo(pc)}>📣 Notify customers</button>
                   )}
                   <button className="status-btn" onClick={() => deletePromoCode(pc)}>Delete</button>
                 </div>
@@ -858,6 +928,47 @@ export default function Admin() {
               </div>
             </div>
           )}
+
+          <div style={{ marginTop: 14 }}>
+            {!notifyOpen ? (
+              <button className="status-btn" onClick={() => openNotifyForm()}>📣 Send a notification to subscribers</button>
+            ) : (
+              <div className="order-card" style={{ borderColor: 'var(--pink)', background: 'var(--pink-pale)' }}>
+                <p className="hint" style={{ marginTop: 0 }}>
+                  Goes out to everyone who tapped "Turn on notifications" on the order confirmation screen — not to every customer.
+                </p>
+                <div className="field">
+                  <label>Title</label>
+                  <input
+                    type="text"
+                    value={notifyForm.title}
+                    onChange={(e) => setNotifyForm((f) => ({ ...f, title: e.target.value }))}
+                    placeholder="e.g. New promo code! 🍓"
+                  />
+                </div>
+                <div className="field" style={{ marginTop: 12 }}>
+                  <label>Message</label>
+                  <textarea
+                    value={notifyForm.message}
+                    onChange={(e) => setNotifyForm((f) => ({ ...f, message: e.target.value }))}
+                    placeholder="e.g. Use code LAUNCH15 for 15% off your next order."
+                    rows={3}
+                  />
+                </div>
+                {notifyResult && (
+                  <p className={notifyResult.ok ? 'hint' : 'login-box error'} style={{ margin: '8px 0' }}>
+                    {notifyResult.text}
+                  </p>
+                )}
+                <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
+                  <button className="btn-primary" onClick={sendCustomerNotification} disabled={sendingNotify} style={{ flex: 1 }}>
+                    {sendingNotify ? 'Sending…' : 'Send notification'}
+                  </button>
+                  <button className="status-btn" onClick={() => setNotifyOpen(false)}>Cancel</button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="section">

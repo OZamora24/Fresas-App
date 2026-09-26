@@ -663,7 +663,7 @@ export default function Admin() {
                   <input
                     type="time"
                     defaultValue={settings.hours_weekday_start}
-                    onBlur={(e) => saveSettings({ hours_weekday_start: e.target.value })}
+                    onChange={(e) => saveSettings({ hours_weekday_start: e.target.value })}
                   />
                 </div>
                 <div className="field" style={{ margin: 0 }}>
@@ -671,7 +671,7 @@ export default function Admin() {
                   <input
                     type="time"
                     defaultValue={settings.hours_weekday_end}
-                    onBlur={(e) => saveSettings({ hours_weekday_end: e.target.value })}
+                    onChange={(e) => saveSettings({ hours_weekday_end: e.target.value })}
                   />
                 </div>
                 <div className="field" style={{ margin: 0 }}>
@@ -679,7 +679,7 @@ export default function Admin() {
                   <input
                     type="time"
                     defaultValue={settings.hours_weekend_start}
-                    onBlur={(e) => saveSettings({ hours_weekend_start: e.target.value })}
+                    onChange={(e) => saveSettings({ hours_weekend_start: e.target.value })}
                   />
                 </div>
                 <div className="field" style={{ margin: 0 }}>
@@ -687,7 +687,7 @@ export default function Admin() {
                   <input
                     type="time"
                     defaultValue={settings.hours_weekend_end}
-                    onBlur={(e) => saveSettings({ hours_weekend_end: e.target.value })}
+                    onChange={(e) => saveSettings({ hours_weekend_end: e.target.value })}
                   />
                 </div>
               </div>

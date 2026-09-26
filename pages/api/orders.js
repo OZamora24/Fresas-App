@@ -2,6 +2,8 @@ import { getSupabaseAdmin } from '../../lib/supabaseAdmin';
 import { isValidSession } from '../../lib/adminSession';
 import { baseIdFromName, formatDateKey, todayDateKey, getAvailablePickupTimes, PRICES, toppingsCost } from '../../lib/menu';
 
+const APP_URL = 'https://fresas-app-zeta.vercel.app';
+
 // Recomputes the cart subtotal server-side from the item list, using the
 // same shared pricing table the order page uses — this is what lets a
 // promo code's discount be checked against a real number instead of
@@ -91,9 +93,10 @@ async function sendConfirmationTextToCustomer(order) {
   if (!to) return;
   const dateLabel = formatDateKey(order.pickup_date || todayDateKey(), order.language);
   const address = '1526 W Bonnie View Dr, Rialto, CA 92376';
+  const arrivedLink = `${APP_URL}/arrived/${order.id}?lang=${order.language === 'es' ? 'es' : 'en'}`;
   const body = order.language === 'es'
-    ? `🍓 ¡Recibimos tu orden de Fresas con Crema (#${order.order_number})! Te enviaremos un mensaje cuando esté lista para recoger (${dateLabel}, ${order.pickup_time}). Recoger en: ${address}`
-    : `🍓 Got your Fresas con Crema order (#${order.order_number})! We'll text you when it's ready for pickup (${dateLabel}, ${order.pickup_time}). Pickup at: ${address}`;
+    ? `🍓 ¡Recibimos tu orden de Fresas con Crema (#${order.order_number})! Te enviaremos un mensaje cuando esté lista para recoger (${dateLabel}, ${order.pickup_time}). Recoger en: ${address}\n\nCuando llegues, avísanos aquí: ${arrivedLink}`
+    : `🍓 Got your Fresas con Crema order (#${order.order_number})! We'll text you when it's ready for pickup (${dateLabel}, ${order.pickup_time}). Pickup at: ${address}\n\nWhen you arrive, let us know here: ${arrivedLink}`;
   await sendSms(to, body);
 }
 

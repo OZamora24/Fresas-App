@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Custom Order App — Feature Overview</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Nunito:wght@400;600;700;800;900&display=swap');
+
+  :root {
+    --blue: #1f5fb8;
+    --blue-dark: #164a92;
+    --blue-pale: #eaf2fd;
+    --ink: #1c2733;
+    --ink-soft: #5b6b7a;
+    --bg: #f6f8fb;
+    --card: #ffffff;
+    --line: #e2e8f0;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    font-family: 'Nunito', sans-serif;
+    color: var(--ink);
+    width: 816px;
+    padding: 44px 48px 30px;
+  }
+
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    border-bottom: 3px solid var(--blue);
+    padding-bottom: 18px;
+    margin-bottom: 26px;
+  }
+
+  .brand {
+    font-family: 'Baloo 2', sans-serif;
+    font-weight: 800;
+    font-size: 30px;
+    color: var(--blue-dark);
+  }
+
+  .brand span { font-size: 15px; display: block; font-family: 'Nunito', sans-serif; font-weight: 700; color: var(--ink-soft); margin-top: 4px; }
+
+  .tag {
+    text-align: right;
+    font-size: 13px;
+    font-weight: 800;
+    color: #fff;
+    background: var(--blue);
+    padding: 7px 14px;
+    border-radius: 999px;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+
+  h1.title {
+    font-family: 'Baloo 2', sans-serif;
+    font-size: 25px;
+    font-weight: 700;
+    color: var(--ink);
+    margin-bottom: 6px;
+  }
+
+  .intro {
+    font-size: 14.5px;
+    color: var(--ink-soft);
+    font-weight: 600;
+    line-height: 1.55;
+    max-width: 680px;
+    margin-bottom: 26px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+  }
+
+  .section {
+    background: var(--card);
+    border: 1.5px solid var(--line);
+    border-radius: 16px;
+    padding: 18px 20px 16px;
+    break-inside: avoid;
+  }
+
+  .section.full { grid-column: 1 / -1; }
+
+  .section h2 {
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--blue-dark);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .section h2 .ic { font-size: 17px; }
+
+  ul.feat { list-style: none; }
+  ul.feat li {
+    font-size: 12.6px;
+    font-weight: 600;
+    color: var(--ink);
+    line-height: 1.5;
+    padding: 5px 0 5px 20px;
+    position: relative;
+  }
+  ul.feat li::before {
+    content: '✓';
+    position: absolute;
+    left: 0;
+    top: 5px;
+    color: var(--blue);
+    font-weight: 800;
+    font-size: 12px;
+  }
+  ul.feat li .note {
+    display: block;
+    font-weight: 600;
+    color: var(--ink-soft);
+    font-size: 11.3px;
+    margin-top: 1px;
+  }
+
+  .two-col-list { columns: 2; column-gap: 22px; }
+
+  .footer {
+    margin-top: 22px;
+    padding-top: 16px;
+    border-top: 1.5px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    font-size: 11.5px;
+    color: var(--ink-soft);
+    font-weight: 700;
+  }
+</style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="brand">📱 Custom Order App<span>Built for small businesses that take orders</span></div>
+    <div class="tag">Feature Overview</div>
+  </div>
+
+  <h1 class="title">Everything this app can do for your business</h1>
+  <p class="intro">A ready-to-customize ordering system — built once, adapted to fit your menu, your hours, and your workflow. Here's what's included.</p>
+
+  <div class="grid">
+
+    <div class="section">
+      <h2><span class="ic">🛒</span>Ordering — Customer Side</h2>
+      <ul class="feat">
+        <li>Fully bilingual site — customers switch languages anytime</li>
+        <li>Custom menu built around your products<span class="note">flavors, sizes, add-ons — whatever you sell</span></li>
+        <li>Multiple size/option tiers, with pricing that updates instantly</li>
+        <li>Pick toppings, extras, or add-ons, with items included free by default when you want</li>
+        <li>Optional prompts for special options<span class="note">e.g. a customer choosing an extra or upgrade before checkout</span></li>
+        <li>Automatic alerts for allergens or special ingredients</li>
+        <li>Repeat-customer shortcut<span class="note">auto-fills a returning customer's usual order by phone number</span></li>
+        <li>"Add to Home Screen" tutorial<span class="note">walks customers through installing the site like an app, right from their phone's browser</span></li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2><span class="ic">📅</span>Scheduling &amp; Payment</h2>
+      <ul class="feat">
+        <li>Pick a pickup or service date — today or scheduled ahead</li>
+        <li>Time slots generated from your own business hours<span class="note">weekday hours can differ from weekend hours</span></li>
+        <li>Time slots automatically hide once they're full or already passed</li>
+        <li>Pay by Zelle, cash, or card, with a confirmation step before the order sends</li>
+        <li>Promo code field right in the order review step<span class="note">instant discount, validated live against your active codes</span></li>
+        <li>Clean order confirmation screen with date, time &amp; details</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2><span class="ic">🔔</span>Automatic Notifications</h2>
+      <ul class="feat">
+        <li>Push notification to your phone the instant a new order comes in</li>
+        <li>Bilingual text to the customer when they order</li>
+        <li>A second text when their order is marked ready</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2><span class="ic">🔐</span>Admin Dashboard</h2>
+      <ul class="feat">
+        <li>Password-protected login, separate from the customer site</li>
+        <li>Live order feed that refreshes automatically</li>
+        <li>Mark orders ready/done and paid/unpaid with one tap</li>
+        <li>Edit any order's details after it's placed</li>
+        <li>Delete one or multiple orders at once</li>
+        <li>Open or close for business with a custom message &amp; "back at" time</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2><span class="ic">🧾</span>Menu &amp; Availability Controls</h2>
+      <ul class="feat">
+        <li>Mark any item sold out in real time — customers instantly can't select it</li>
+        <li>Set special availability windows &amp; a custom info message</li>
+        <li>Create &amp; manage promo codes<span class="note">percent or dollar off, optional expiration date, usage cap, and an on/off switch</span></li>
+        <li>Collapsible sections keep the dashboard tidy on a phone screen</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2><span class="ic">📊</span>Sales &amp; Reporting</h2>
+      <ul class="feat">
+        <li>Sales dashboard — today, last 7 days, and last 90 days at a glance</li>
+        <li>Best-sellers and busiest times, tracked automatically</li>
+        <li>Full order history exported to Excel, with date-range filters</li>
+      </ul>
+    </div>
+
+    <div class="section full">
+      <h2><span class="ic">🌐</span>Site Pages</h2>
+      <div class="two-col-list">
+        <ul class="feat">
+          <li>Home — hours, open/closed status, quick links to order or learn more</li>
+          <li>Order — the full order builder described above</li>
+        </ul>
+        <ul class="feat">
+          <li>Info page — availability &amp; details, shown automatically when set</li>
+          <li>Gallery — a photo gallery, updated right from the dashboard</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="footer">
+    <div>Built by Orlando</div>
+    <div>Let's talk about building yours</div>
+  </div>
+
+</body>
+</html>

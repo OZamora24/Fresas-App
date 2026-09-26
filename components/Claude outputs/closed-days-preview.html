@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Nunito:wght@400;600;700;800&display=swap');
+
+  :root {
+    --cream: #FFF7EC;
+    --cream-2: #FFFDF9;
+    --maroon: #7C1B2C;
+    --pink: #E4667E;
+    --pink-soft: #F7CCD6;
+    --pink-pale: #FCE9EE;
+    --ink: #3A0E17;
+    --ink-soft: #7A4550;
+    --line: rgba(124, 27, 44, 0.18);
+    --card-bg: var(--cream-2);
+    --chip-bg: #ffffff;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    font-family: 'Nunito', sans-serif;
+    color: var(--ink);
+    padding: 40px 20px;
+    display: flex;
+    justify-content: center;
+  }
+
+  .wrap { width: 100%; max-width: 480px; }
+
+  .demo-label {
+    text-align: center;
+    font-weight: 800;
+    color: var(--maroon);
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 14px;
+  }
+
+  .order-card {
+    background: var(--card-bg);
+    border: 2px solid var(--line);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+
+  .order-card label.title {
+    display: block;
+    font-weight: 700;
+    margin-bottom: 6px;
+    font-family: 'Baloo 2', sans-serif;
+    font-size: 1.05rem;
+    color: var(--ink);
+  }
+
+  .hint { margin: 0 0 14px; color: var(--ink-soft); font-size: 0.9rem; line-height: 1.4; }
+
+  .add-row { margin-bottom: 12px; position: relative; }
+
+  input[type="date"].hidden-picker {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .status-btn {
+    border: 2px solid var(--line);
+    background: transparent;
+    border-radius: 10px;
+    padding: 10px 16px;
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: var(--maroon);
+    cursor: pointer;
+    font-family: 'Nunito', sans-serif;
+  }
+  .status-btn:hover { background: var(--pink-pale); }
+  .status-btn:active { transform: scale(0.98); }
+
+  .chip-grid { display: flex; flex-wrap: wrap; gap: 9px; }
+  .chip {
+    background: var(--chip-bg);
+    border: 2px solid var(--line);
+    border-radius: 999px;
+    padding: 9px 15px;
+    font-size: 0.92rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    animation: pop-in 0.22s ease;
+  }
+  @keyframes pop-in {
+    from { transform: scale(0.85); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+  .chip button {
+    background: none; border: none; color: var(--maroon); font-weight: 800;
+    font-size: 1rem; cursor: pointer; padding: 0; line-height: 1;
+    font-family: 'Nunito', sans-serif;
+  }
+
+  .empty-note { margin: 0; color: var(--ink-soft); font-size: 0.9rem; }
+
+  .note-box {
+    margin-top: 22px;
+    background: #fff;
+    border: 1.5px dashed var(--line);
+    border-radius: 12px;
+    padding: 14px 16px;
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+    line-height: 1.5;
+  }
+  .note-box b { color: var(--maroon); }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="demo-label">Live preview — click the button below</div>
+
+    <div class="order-card">
+      <label class="title">Closed days</label>
+      <p class="hint">Know in advance you'll be closed a day — a trip, a holiday? Add the date here. Customers won't be able to pick it for pickup, and the home page shows "Closed" that day automatically — you don't have to remember to flip the shop switch.</p>
+
+      <div class="add-row">
+        <input type="date" class="hidden-picker" id="closedDateInput" min="" />
+        <button class="status-btn" id="addBtn">+ Add a closed day</button>
+      </div>
+
+      <div id="emptyNote"><p class="empty-note">No closed days scheduled.</p></div>
+      <div class="chip-grid" id="chipGrid"></div>
+    </div>
+
+    <div class="note-box">
+      This is a standalone preview so you can try the interaction before it's live — click <b>"+ Add a closed day"</b> and your browser's native calendar should pop open right away. Pick a date and it's added instantly below, no second click. Remove it with the <b>×</b> on the chip.
+    </div>
+  </div>
+
+  <script>
+    const input = document.getElementById('closedDateInput');
+    const btn = document.getElementById('addBtn');
+    const chipGrid = document.getElementById('chipGrid');
+    const emptyNote = document.getElementById('emptyNote');
+    let closedDates = [];
+
+    const today = new Date();
+    input.min = today.toISOString().slice(0, 10);
+
+    function formatLabel(dateStr) {
+      const [y, m, d] = dateStr.split('-').map(Number);
+      const dt = new Date(y, m - 1, d);
+      return dt.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    }
+
+    function render() {
+      chipGrid.innerHTML = '';
+      emptyNote.style.display = closedDates.length ? 'none' : 'block';
+      closedDates.slice().sort().forEach((d) => {
+        const chip = document.createElement('span');
+        chip.className = 'chip';
+        chip.innerHTML = `${formatLabel(d)} <button aria-label="Remove ${d}">×</button>`;
+        chip.querySelector('button').onclick = () => {
+          closedDates = closedDates.filter((x) => x !== d);
+          render();
+        };
+        chipGrid.appendChild(chip);
+      });
+    }
+
+    btn.addEventListener('click', () => {
+      if (typeof input.showPicker === 'function') {
+        try { input.showPicker(); return; } catch (e) {}
+      }
+      input.focus();
+    });
+
+    input.addEventListener('change', () => {
+      const picked = input.value;
+      if (picked && !closedDates.includes(picked)) {
+        closedDates.push(picked);
+        render();
+      }
+      input.value = '';
+    });
+
+    render();
+  </script>
+</body>
+</html>

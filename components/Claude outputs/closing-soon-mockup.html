@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Closing soon — mockup</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Nunito:wght@400;600;700;800&display=swap');
+
+  :root {
+    --cream: #FFF7EC;
+    --cream-2: #FFFDF9;
+    --maroon: #7C1B2C;
+    --maroon-deep: #56111E;
+    --pink-soft: #F7CCD6;
+    --ink-soft: #7A4550;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--cream); font-family: 'Nunito', sans-serif; }
+
+  .wrap { max-width: 640px; margin: 0 auto; padding: 40px 20px; }
+
+  .label { font-weight: 800; color: var(--ink-soft); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.04em; margin: 0 0 10px 4px; }
+
+  .home-hero {
+    background: linear-gradient(160deg, var(--maroon) 0%, var(--maroon-deep) 100%);
+    padding: 40px 32px 36px;
+    border-radius: 20px;
+    margin-bottom: 32px;
+  }
+  .home-status-row { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .home-status-badge {
+    display: inline-flex; align-items: center; gap: 7px; padding: 6px 14px; border-radius: 999px;
+    font-weight: 800; font-size: 0.82rem;
+    background: rgba(255,255,255,0.14); color: var(--cream-2); border: 1.5px solid rgba(255,255,255,0.3);
+  }
+  .home-status-badge.closed { background: rgba(0,0,0,0.18); color: var(--pink-soft); border-color: rgba(255,255,255,0.18); }
+  .home-status-badge.closing-soon { background: rgba(245,158,11,0.22); color: #FDE7B8; border-color: rgba(245,158,11,0.4); }
+  .home-status-dot { width: 8px; height: 8px; border-radius: 50%; background: #4ADE80; flex-shrink: 0; }
+  .home-status-badge.closed .home-status-dot { background: #F0879A; }
+  .home-status-badge.closing-soon .home-status-dot { background: #F5A623; }
+
+  .home-hero .eyebrow { color: var(--pink-soft); font-weight: 700; font-size: 0.85rem; margin-bottom: 8px; }
+  .home-hero h1 { color: var(--cream-2); font-family: 'Baloo 2', sans-serif; font-size: 1.7rem; font-weight: 800; line-height: 1.1; max-width: 480px; margin: 0; }
+
+  .note { text-align: center; color: var(--ink-soft); font-size: 0.85rem; margin-top: -12px; margin-bottom: 40px; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+
+    <div class="label">Right now (more than 30 min to close)</div>
+    <div class="home-hero">
+      <div class="home-status-row">
+        <span class="home-status-badge">
+          <span class="home-status-dot"></span> Open now
+        </span>
+      </div>
+      <div class="eyebrow">Rialto, CA · Fresh daily</div>
+      <h1>Handmade fresas con crema, made to order.</h1>
+    </div>
+
+    <div class="label">Inside the last 30 minutes before close — new</div>
+    <div class="home-hero">
+      <div class="home-status-row">
+        <span class="home-status-badge closing-soon">
+          <span class="home-status-dot"></span> Closing soon
+        </span>
+      </div>
+      <div class="eyebrow">Rialto, CA · Fresh daily</div>
+      <h1>Handmade fresas con crema, made to order.</h1>
+    </div>
+
+    <div class="label">Shop closed</div>
+    <div class="home-hero">
+      <div class="home-status-row">
+        <span class="home-status-badge closed">
+          <span class="home-status-dot"></span> Closed right now
+        </span>
+      </div>
+      <div class="eyebrow">Rialto, CA · Fresh daily</div>
+      <h1>Handmade fresas con crema, made to order.</h1>
+    </div>
+
+    <p class="note">This is a static mockup of the three badge states — not the live site.</p>
+  </div>
+</body>
+</html>

@@ -1147,6 +1147,15 @@ export default function Admin() {
                   #{o.order_number}{o.customer_name ? ` — ${o.customer_name}` : ''}
                 </div>
               )}
+              {o.arrived_at && (
+                <div style={{
+                  display: 'inline-block', background: 'var(--pink-pale)', border: '2px solid var(--pink)',
+                  borderRadius: 10, padding: '4px 10px', fontWeight: 800, color: 'var(--maroon)',
+                  fontSize: '0.82rem', marginBottom: 8,
+                }}>
+                  🚶 Arrived at {new Date(o.arrived_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                </div>
+              )}
               <div className="row">
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <input

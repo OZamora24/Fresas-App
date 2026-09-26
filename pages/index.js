@@ -4,6 +4,29 @@ import Link from 'next/link';
 import SiteNav from '../components/SiteNav';
 import AddToHomeBanner from '../components/AddToHomeBanner';
 import { buildPickupTimes, todayDateKey, nowMinutesInShopTz, timeStringToMinutes } from '../lib/menu';
+import { getSupabaseAdmin } from '../lib/supabaseAdmin';
+
+// Fetches the shop settings on the SERVER, before the page is ever sent to
+// the browser — same fix as the Catering page: with only a client-side
+// fetch, the browser paints once with no settings (badge missing, "Closed
+// today" shown), then again a beat later once the request resolves. That's
+// the lag when navigating back to Home from Order — Next.js briefly shows
+// this page's initial (settings-less) render before the client fetch below
+// has a chance to run. Baking the settings into the HTML up front removes
+// that gap entirely. Next.js excludes this function (and getSupabaseAdmin)
+// from the client-side JS bundle automatically.
+export async function getServerSideProps() {
+  let initialSettings = null;
+  try {
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase.from('shop_settings').select('*').eq('id', 1).single();
+    if (!error) initialSettings = data;
+  } catch (e) {
+    // Supabase env vars missing or unreachable — fall back to the
+    // client-side fetch below rather than failing the whole page.
+  }
+  return { props: { initialSettings } };
+}
 
 // Show "Closing soon" instead of "Open now" once we're inside this many
 // minutes of today's closing time (weekday and weekend hours can differ,
@@ -47,8 +70,8 @@ const STR = {
   },
 };
 
-export default function Home() {
-  const [settings, setSettings] = useState(null);
+export default function Home({ initialSettings }) {
+  const [settings, setSettings] = useState(initialSettings || null);
   const [lang, setLang] = useState('en');
   const t = STR[lang];
 
@@ -69,12 +92,16 @@ export default function Home() {
     try { window.localStorage.setItem('fresasLang', newLang); } catch (e) {}
   }
 
+  // Only needed as a fallback if the server-side fetch above came back
+  // empty (e.g. a transient Supabase hiccup) — normally `settings` is
+  // already set from initialSettings and this is a no-op.
   useEffect(() => {
+    if (settings) return;
     fetch('/api/settings')
       .then((r) => r.json())
       .then((j) => setSettings(j.settings))
       .catch(() => setSettings({ is_open: true }));
-  }, []);
+  }, [settings]);
 
   // Re-check every minute so "Open now" flips to "Closing soon" (and
   // eventually to whatever the shop status says after closing) without

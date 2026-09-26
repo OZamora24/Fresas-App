@@ -635,67 +635,6 @@ export default function Admin() {
 
             <div className="order-card" style={{ marginTop: 10 }}>
               <label style={{ display: 'block', fontWeight: 700, marginBottom: 6 }}>
-                Max orders per 15-min pickup slot
-              </label>
-              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                <input
-                  type="number"
-                  min="1"
-                  max="50"
-                  defaultValue={settings.slot_limit}
-                  style={{ width: 90, padding: '10px 12px', borderRadius: 10, border: '2px solid var(--line)', background: 'var(--card-bg)', color: 'var(--ink)' }}
-                  onBlur={(e) => {
-                    const val = parseInt(e.target.value, 10);
-                    if (val > 0) saveSettings({ slot_limit: val });
-                  }}
-                />
-                <span className="hint" style={{ margin: 0 }}>orders max per time slot</span>
-              </div>
-            </div>
-
-            <div className="order-card" style={{ marginTop: 10 }}>
-              <label style={{ display: 'block', fontWeight: 700, marginBottom: 10 }}>
-                Store hours (pickup window)
-              </label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div className="field" style={{ margin: 0 }}>
-                  <label>Mon–Fri start</label>
-                  <input
-                    type="time"
-                    defaultValue={settings.hours_weekday_start}
-                    onChange={(e) => saveSettings({ hours_weekday_start: e.target.value })}
-                  />
-                </div>
-                <div className="field" style={{ margin: 0 }}>
-                  <label>Mon–Fri end</label>
-                  <input
-                    type="time"
-                    defaultValue={settings.hours_weekday_end}
-                    onChange={(e) => saveSettings({ hours_weekday_end: e.target.value })}
-                  />
-                </div>
-                <div className="field" style={{ margin: 0 }}>
-                  <label>Sat–Sun start</label>
-                  <input
-                    type="time"
-                    defaultValue={settings.hours_weekend_start}
-                    onChange={(e) => saveSettings({ hours_weekend_start: e.target.value })}
-                  />
-                </div>
-                <div className="field" style={{ margin: 0 }}>
-                  <label>Sat–Sun end</label>
-                  <input
-                    type="time"
-                    defaultValue={settings.hours_weekend_end}
-                    onChange={(e) => saveSettings({ hours_weekend_end: e.target.value })}
-                  />
-                </div>
-              </div>
-              <p className="hint" style={{ marginTop: 10, marginBottom: 0 }}>Pickup times customers can pick from are generated from these — weekday and weekend hours can differ.</p>
-            </div>
-
-            <div className="order-card" style={{ marginTop: 10 }}>
-              <label style={{ display: 'block', fontWeight: 700, marginBottom: 6 }}>
                 Closed days
               </label>
               <p className="hint" style={{ marginTop: 0 }}>
@@ -767,6 +706,67 @@ export default function Admin() {
                   ))}
                 </div>
               )}
+            </div>
+
+            <div className="order-card" style={{ marginTop: 10 }}>
+              <label style={{ display: 'block', fontWeight: 700, marginBottom: 6 }}>
+                Max orders per 15-min pickup slot
+              </label>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                <input
+                  type="number"
+                  min="1"
+                  max="50"
+                  defaultValue={settings.slot_limit}
+                  style={{ width: 90, padding: '10px 12px', borderRadius: 10, border: '2px solid var(--line)', background: 'var(--card-bg)', color: 'var(--ink)' }}
+                  onBlur={(e) => {
+                    const val = parseInt(e.target.value, 10);
+                    if (val > 0) saveSettings({ slot_limit: val });
+                  }}
+                />
+                <span className="hint" style={{ margin: 0 }}>orders max per time slot</span>
+              </div>
+            </div>
+
+            <div className="order-card" style={{ marginTop: 10 }}>
+              <label style={{ display: 'block', fontWeight: 700, marginBottom: 10 }}>
+                Store hours (pickup window)
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="field" style={{ margin: 0 }}>
+                  <label>Mon–Fri start</label>
+                  <input
+                    type="time"
+                    defaultValue={settings.hours_weekday_start}
+                    onChange={(e) => saveSettings({ hours_weekday_start: e.target.value })}
+                  />
+                </div>
+                <div className="field" style={{ margin: 0 }}>
+                  <label>Mon–Fri end</label>
+                  <input
+                    type="time"
+                    defaultValue={settings.hours_weekday_end}
+                    onChange={(e) => saveSettings({ hours_weekday_end: e.target.value })}
+                  />
+                </div>
+                <div className="field" style={{ margin: 0 }}>
+                  <label>Sat–Sun start</label>
+                  <input
+                    type="time"
+                    defaultValue={settings.hours_weekend_start}
+                    onChange={(e) => saveSettings({ hours_weekend_start: e.target.value })}
+                  />
+                </div>
+                <div className="field" style={{ margin: 0 }}>
+                  <label>Sat–Sun end</label>
+                  <input
+                    type="time"
+                    defaultValue={settings.hours_weekend_end}
+                    onChange={(e) => saveSettings({ hours_weekend_end: e.target.value })}
+                  />
+                </div>
+              </div>
+              <p className="hint" style={{ marginTop: 10, marginBottom: 0 }}>Pickup times customers can pick from are generated from these — weekday and weekend hours can differ.</p>
             </div>
 
             <details className="order-card availability-dropdown" style={{ marginTop: 10 }}>

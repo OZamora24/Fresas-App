@@ -120,7 +120,10 @@ const STR = {
     namePlaceholder: "Who's this order for?",
     phone: 'Phone number',
     phonePlaceholder: 'Optional',
+    phonePlaceholderRequired: 'Required',
     phoneHint: "Optional — you can place an order without it. If you enter it, we'll text you an order confirmation and a message when your order is ready. Up to 2 messages per order. Msg & data rates may apply. Reply STOP to opt out.",
+    phoneHintRequired: "Required — we'll text you an order confirmation and a message when your order is ready. Up to 2 messages per order. Msg & data rates may apply. Reply STOP to opt out.",
+    phoneRequiredError: 'Please enter a valid phone number to place your order.',
     phonePolicyLinks: (privacyHref, termsHref) => (
       <>
         By entering your number, you agree to our <a href={privacyHref} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--maroon)', fontWeight: 700 }}>Privacy Policy</a> and <a href={termsHref} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--maroon)', fontWeight: 700 }}>Terms</a>.
@@ -229,7 +232,10 @@ const STR = {
     namePlaceholder: '¿Para quién es esta orden?',
     phone: 'Número de teléfono',
     phonePlaceholder: 'Opcional',
+    phonePlaceholderRequired: 'Requerido',
     phoneHint: 'Opcional — puedes ordenar sin él. Si lo ingresas, te enviaremos una confirmación de orden y un mensaje cuando esté lista para recoger. Hasta 2 mensajes por orden. Aplican tarifas de mensajes y datos. Responde STOP para cancelar.',
+    phoneHintRequired: 'Requerido — te enviaremos una confirmación de orden y un mensaje cuando esté lista para recoger. Hasta 2 mensajes por orden. Aplican tarifas de mensajes y datos. Responde STOP para cancelar.',
+    phoneRequiredError: 'Por favor ingresa un número de teléfono válido para hacer tu orden.',
     phonePolicyLinks: (privacyHref, termsHref) => (
       <>
         Al ingresar tu número, aceptas nuestra <a href={privacyHref} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--maroon)', fontWeight: 700 }}>Política de Privacidad</a> y <a href={termsHref} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--maroon)', fontWeight: 700 }}>Términos</a>.
@@ -790,6 +796,8 @@ export default function Home() {
         } else if (body.error === 'promo_invalid') {
           setErrorMsg(body.message || t.genericError);
           setAppliedPromo(null);
+        } else if (body.error === 'phone_required') {
+          setErrorMsg(body.message || t.phoneRequiredError);
         } else {
           setErrorMsg(t.genericError);
         }
@@ -1173,9 +1181,9 @@ export default function Home() {
             <input type="text" value={name} onChange={(e) => setName(capitalizeFirst(e.target.value))} placeholder={t.namePlaceholder} />
           </div>
           <div className="field">
-            <label>{t.phone}</label>
-            <input type="tel" value={phone} onChange={(e) => { setPhone(formatPhoneInput(e.target.value)); setRepeatDismissed(false); }} placeholder={t.phonePlaceholder} />
-            <p style={{ margin: '6px 0 0', fontSize: '0.78rem', color: 'var(--ink-soft)' }}>{t.phoneHint}</p>
+            <label>{t.phone}{shopStatus?.require_phone ? ' *' : ''}</label>
+            <input type="tel" value={phone} onChange={(e) => { setPhone(formatPhoneInput(e.target.value)); setRepeatDismissed(false); }} placeholder={shopStatus?.require_phone ? t.phonePlaceholderRequired : t.phonePlaceholder} />
+            <p style={{ margin: '6px 0 0', fontSize: '0.78rem', color: 'var(--ink-soft)' }}>{shopStatus?.require_phone ? t.phoneHintRequired : t.phoneHint}</p>
             <p style={{ margin: '4px 0 0', fontSize: '0.76rem', color: 'var(--ink-soft)' }}>{t.phonePolicyLinks('/privacy', '/terms')}</p>
           </div>
           {showRepeatPrompt && pastOrders.length > 0 && (
@@ -1259,7 +1267,7 @@ export default function Home() {
           <button className="btn-outline-dark" onClick={addCurrentCupToCart} style={{ padding: '13px 16px', fontSize: '0.85rem' }}>
             {t.addAnotherCup}
           </button>
-          <button className="btn-primary" onClick={() => setShowSheet(true)} disabled={!name.trim() || !pickup}>
+          <button className="btn-primary" onClick={() => setShowSheet(true)} disabled={!name.trim() || !pickup || (shopStatus?.require_phone && !phone.trim())}>
             {t.reviewOrder}
           </button>
         </div>
@@ -1404,7 +1412,7 @@ export default function Home() {
           </div>
           {errorMsg && <p className="login-box error" style={{ margin: '10px 0' }}>{errorMsg}</p>}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16 }}>
-            <button className="btn-primary" onClick={placeOrder} disabled={submitting || !paymentConfirmed}>
+            <button className="btn-primary" onClick={placeOrder} disabled={submitting || !paymentConfirmed || (shopStatus?.require_phone && !phone.trim())}>
               {submitting ? t.sending : paymentConfirmed ? t.placeOrder : t.confirmPaymentFirst}
             </button>
             <button className="btn-outline" onClick={() => setShowSheet(false)}>{t.keepEditing}</button>

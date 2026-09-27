@@ -1,5 +1,6 @@
 import { getSupabaseAdmin } from '../../lib/supabaseAdmin';
 import { isValidSession } from '../../lib/adminSession';
+import { todayDateKey, shopDateKeyForDate } from '../../lib/menu';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -13,8 +14,13 @@ export default async function handler(req, res) {
   const supabase = getSupabaseAdmin();
 
   const now = new Date();
-  const startOfToday = new Date(now);
-  startOfToday.setHours(0, 0, 0, 0);
+  // "Today" is compared by the shop's own calendar day (Pacific time), not
+  // a UTC start-of-day cutoff — this server runs in UTC, so a plain
+  // setHours(0,0,0,0) cutoff was actually UTC midnight, which is 5pm/4pm
+  // Pacific depending on daylight saving. That silently moved orders
+  // placed earlier the same shop-local day into "not today" until the UTC
+  // date finally rolled over, which is exactly the "today shows 0" bug.
+  const todayKey = todayDateKey();
   const startOfWeek = new Date(now);
   startOfWeek.setDate(startOfWeek.getDate() - 7);
 
@@ -51,7 +57,7 @@ export default async function handler(req, res) {
       weekRevenue += total;
       weekOrders += 1;
     }
-    if (created >= startOfToday) {
+    if (shopDateKeyForDate(created) === todayKey) {
       todayRevenue += total;
       todayOrders += 1;
     }

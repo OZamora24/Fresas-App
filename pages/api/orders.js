@@ -133,6 +133,15 @@ export default async function handler(req, res) {
       });
     }
 
+    // Reject orders with no usable phone number when the shop has phone
+    // numbers turned on as required (off by default) — this is what
+    // guarantees the "customer arrived" text and the ready-for-pickup
+    // text actually have somewhere to go, instead of silently no-opping
+    // like they do today when customer_phone is blank.
+    if (settingsRow?.require_phone && !normalizePhone(customer_phone)) {
+      return res.status(400).json({ error: 'phone_required', message: 'Please enter a valid phone number to place your order.' });
+    }
+
     // Reject if this pickup time has already passed (or is inside the
     // minimum lead-time window) on the shop's own clock — catches both a
     // stale page left open past closing and any direct API call.

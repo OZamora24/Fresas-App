@@ -475,10 +475,25 @@ export default function Home() {
   }, [draftReady, cupSize, base, toppings, syrups, qty, includeRim, cart, pickupDate, pickup, name, phone, notes, paymentMethod]);
 
   // Re-check which pickup times are still bookable once a minute, so a
-  // slot that just passed disappears from the list on its own.
+  // slot that just passed disappears from the list on its own. Browsers
+  // throttle setInterval heavily in a backgrounded tab, so a customer who
+  // leaves this page open in another tab for a while (then comes back and
+  // opens the dropdown) can otherwise still see already-passed times —
+  // harmless (the server re-validates on submit and rejects a stale time),
+  // but confusing. Recomputing immediately when the tab/window regains
+  // focus closes that gap without waiting for the next 60s tick.
   useEffect(() => {
     const id = setInterval(() => setNowTick((n) => n + 1), 60000);
-    return () => clearInterval(id);
+    const refreshNow = () => {
+      if (document.visibilityState === 'visible') setNowTick((n) => n + 1);
+    };
+    document.addEventListener('visibilitychange', refreshNow);
+    window.addEventListener('focus', refreshNow);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', refreshNow);
+      window.removeEventListener('focus', refreshNow);
+    };
   }, []);
 
   // Once an order is confirmed, count down 2 minutes then reload back to a
@@ -1159,7 +1174,11 @@ export default function Home() {
             </p>
           ) : (
             <div className="field">
-              <select value={pickup} onChange={(e) => setPickup(e.target.value)}>
+              <select
+                value={pickup}
+                onChange={(e) => setPickup(e.target.value)}
+                onFocus={() => setNowTick((n) => n + 1)}
+              >
                 {availableTimes.map((tm) => {
                   const isFull = (slotCounts[tm] || 0) >= slotLimit;
                   const isAlmostFull = !isFull && slotLimit - (slotCounts[tm] || 0) === 1;

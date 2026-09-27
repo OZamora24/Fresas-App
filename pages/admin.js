@@ -98,15 +98,20 @@ export default function Admin() {
     }
   }, []);
 
-  // Safety net: if OneSignal hasn't finished loading within 8 seconds
-  // (blocked by an ad blocker, network issue, etc.), stop showing
-  // "Loading notifications…" forever and say so instead.
+  // Safety net: if OneSignal hasn't finished loading within 20 seconds,
+  // stop showing "Loading notifications…" forever and say so instead. This
+  // only shows on a device/browser where push hasn't already been enabled
+  // (see the `!pushEnabled` check around the button below) — most likely
+  // cause in practice is a weak/cellular connection being slow to fetch
+  // the OneSignal script, not necessarily an ad blocker. 20s (up from an
+  // earlier 8s) gives slow mobile connections room to finish before this
+  // fires as a false alarm.
   useEffect(() => {
     const timeout = setTimeout(() => {
       if (!oneSignalReady && !needsHomeScreen) {
-        setPushError("Notifications are taking too long to load — this can happen if an ad blocker or browser privacy setting is blocking it. Try disabling any ad blocker for this site, or try a different browser.");
+        setPushError("Notifications are taking a while to load — usually just a slow or weak connection, but it can also be an ad blocker or browser privacy setting. Try again in a moment, switch to Wi-Fi if you're on cellular, or disable any ad blocker for this site.");
       }
-    }, 8000);
+    }, 20000);
     return () => clearTimeout(timeout);
   }, [oneSignalReady, needsHomeScreen]);
 
@@ -1113,7 +1118,19 @@ export default function Admin() {
                 <button className="btn-primary" onClick={enablePush} disabled={!oneSignalReady}>
                   🔔 {oneSignalReady ? 'Enable push notifications on this device' : 'Loading notifications…'}
                 </button>
-                {pushError && <p className="error" style={{ marginTop: 8 }}>{pushError}</p>}
+                {pushError && (
+                  <div style={{ marginTop: 8 }}>
+                    <p className="error" style={{ margin: 0 }}>{pushError}</p>
+                    <button
+                      type="button"
+                      className="status-btn"
+                      style={{ marginTop: 8 }}
+                      onClick={() => window.location.reload()}
+                    >
+                      🔄 Retry
+                    </button>
+                  </div>
+                )}
               </>
             )}
           </div>

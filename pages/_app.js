@@ -12,8 +12,11 @@ const SPLASH_MIN_MS = 2400;
 const SPLASH_MAX_MS = 3800;
 // How long the CSS fade-out transition takes (.app-splash-leaving in
 // globals.css) — kept in sync so the splash unmounts right as it finishes
-// fading rather than popping off mid-transition.
-const FADE_MS = 450;
+// fading rather than popping off mid-transition. Short on purpose: fading
+// a solid maroon panel over the cream page blends into a visible red wash
+// for as long as the fade runs, so 120ms keeps that blend down to a
+// couple of frames instead of something you actually notice.
+const FADE_MS = 120;
 
 export default function App({ Component, pageProps }) {
   // 'visible' -> 'leaving' (fading out) -> 'gone' (unmounted). Starting at

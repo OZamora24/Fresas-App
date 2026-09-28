@@ -489,24 +489,27 @@ body.splash-active {
   justify-content: center;
   gap: 24px;
   background: radial-gradient(circle at 50% 42%, var(--maroon) 0%, var(--maroon-deep) 72%);
-  /* Exits via a clip-path wipe, not opacity. Fading a solid dark-maroon
-     panel out with opacity necessarily passes through every in-between
-     alpha value, and a dark maroon at, say, 40% opacity over the cream
-     page underneath renders as a muddy pink/red — that's the "red in the
-     back, then it goes away" Orlando kept seeing right as the real page
-     appeared. clip-path has no in-between color: at every instant the
-     panel is either fully its own maroon or fully clipped away, so the
-     page underneath is revealed with a clean top-down wipe instead of a
-     colored blend. */
-  clip-path: inset(0 0 0 0);
-  transition: clip-path 0.45s ease;
+  /* Two earlier approaches here both had a real problem. A plain opacity
+     fade blends the solid maroon panel with the cream page underneath at
+     every in-between alpha value, which reads as a muddy red wash before
+     it clears. A clip-path wipe avoids any color blending, but it reveals
+     the real page from the top while the bottom of the screen is still
+     solid maroon (with the icon on it) for the whole transition — a hard
+     split that read as even more "off" than the blend did. The fix is
+     duration, not technique: opacity is back, but at 120ms (down from
+     450ms) the blended pink only exists for a couple of frames — too
+     brief to register as "red in the back", while still reading as a
+     soft fade rather than an abrupt pop. Keep this in sync with FADE_MS
+     in _app.js. */
+  opacity: 1;
+  transition: opacity 0.12s ease;
   /* Forces its own GPU compositing layer so iOS keeps it painted as a
      stable top layer instead of re-flowing it with the rest of the page
      — belt-and-suspenders against the same fixed-position flash. */
   transform: translateZ(0);
   -webkit-transform: translateZ(0);
 }
-.app-splash-leaving { clip-path: inset(100% 0 0 0); pointer-events: none; }
+.app-splash-leaving { opacity: 0; pointer-events: none; }
 
 .app-splash-ringwrap {
   position: relative;

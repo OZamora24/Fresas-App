@@ -67,22 +67,31 @@ export default function App({ Component, pageProps }) {
     return () => clearTimeout(t);
   }, [phase]);
 
-  // On iPhone, Safari paints the safe-area strip behind the home indicator
-  // using <html>'s own background-color — that strip sits outside the
-  // normal DOM paint order, so no z-index on the splash overlay can cover
-  // it. html/body are cream the rest of the time (see globals.css), which
-  // is what showed through as a pale bar under the splash. Swapping the
-  // root background to match the splash for as long as it's on screen
-  // closes that gap; .splash-active is removed the moment the splash is
-  // gone, so every other page keeps its normal cream edge.
+  // On iPhone, the safe-area strip behind the home indicator sits outside
+  // where the splash overlay's own fixed positioning reliably reaches, so
+  // no z-index on the splash can guarantee covering it — whatever <html>
+  // and <body>'s own background color is shows through there instead.
+  // <body> is normally much taller than the screen (it's the actual
+  // scrollable page), so IT'S the one that actually paints that strip, not
+  // <html> — an earlier version of this only swapped <html>'s color, which
+  // did nothing since <body>'s own cream background was what was showing.
+  // Swapping both for as long as the splash is on screen closes the gap;
+  // .splash-active comes off the moment it's gone, so every other page
+  // keeps its normal cream edge.
   useEffect(() => {
     const root = document.documentElement;
+    const body = document.body;
     if (phase === 'gone') {
       root.classList.remove('splash-active');
+      body.classList.remove('splash-active');
     } else {
       root.classList.add('splash-active');
+      body.classList.add('splash-active');
     }
-    return () => root.classList.remove('splash-active');
+    return () => {
+      root.classList.remove('splash-active');
+      body.classList.remove('splash-active');
+    };
   }, [phase]);
 
   return (

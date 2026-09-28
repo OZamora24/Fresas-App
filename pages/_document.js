@@ -17,13 +17,16 @@ export default function Document() {
             have the splash's maroon background for the very first frame —
             without this, that only happened once _app.js's useEffect ran
             a beat later, and the gap showed as a pale flash on iPhone's
-            safe-area strip (the strip is painted from <html>'s own
-            background-color, outside normal DOM stacking, so nothing else
-            can cover it). _app.js still owns removing this class once the
-            splash actually finishes. */}
+            safe-area strip. Both elements need the class: <body> is the
+            one that actually paints that strip in practice (it's normally
+            taller than the screen, being the real scrollable page, so its
+            own background is what's visible there — <html>'s background
+            only shows wherever <body> doesn't reach). _app.js still owns
+            removing this class once the splash actually finishes. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: "document.documentElement.classList.add('splash-active');",
+            __html:
+              "document.documentElement.classList.add('splash-active');document.body.classList.add('splash-active');",
           }}
         />
         <Main />

@@ -488,6 +488,18 @@ body.splash-active {
   align-items: center;
   justify-content: center;
   gap: 24px;
+  /* mix-blend-mode on the ::before noise layer below is supposed to
+     blend with .app-splash's own background only — but a blend mode
+     is only guaranteed to stay that contained when its ancestor forms
+     an isolated group. Without this, Safari on iOS has a known bug
+     where the blend can reach past .app-splash entirely and composite
+     with whatever real page content sits behind this fixed layer —
+     which is almost certainly what Orlando's screenshot caught: actual
+     admin-page text and an input box legible through the splash,
+     right where the noise layer sits. isolation: isolate pins the
+     blend to this element's own stacking context so it can never
+     reach outside it. */
+  isolation: isolate;
   /* "ellipse" (the default shape, named here for clarity) scales
      independently on each axis to match the box itself, instead of
      "circle" forcing a shape sized to the farthest corner in both

@@ -395,6 +395,12 @@ export default function Home() {
   const [showRimAlert, setShowRimAlert] = useState(false);
   const [includeRim, setIncludeRim] = useState(true);
   const [shopStatus, setShopStatus] = useState(null); // null = still checking
+  // Distinguishes "we asked and nothing's sold out" from "we haven't asked
+  // yet" — shopStatus?.sold_out_flavors falls back to [] in both cases, so
+  // without this the base/topping list would render as fully available for
+  // the brief moment before /api/settings resolves, then flip to "Sold out
+  // today" once it does. See the skeleton placeholders below.
+  const settingsLoaded = shopStatus !== null;
   const [slotCounts, setSlotCounts] = useState({});
   const [slotLimit, setSlotLimit] = useState(3);
   const [pastOrders, setPastOrders] = useState([]);
@@ -1115,6 +1121,12 @@ export default function Home() {
           <h2>{t.pickBase}</h2>
           <p className="hint">{t.pickBaseHint}</p>
           {BASES.map((b) => {
+            // Until shopStatus has loaded, we don't actually know yet
+            // whether this flavor is sold out — showing a price here that
+            // then flips to "Sold out today" a moment later (once the
+            // fetch resolves) is exactly the flash customers were seeing.
+            // A neutral pulsing placeholder in that same spot never claims
+            // availability it isn't sure of.
             const isSoldOut = (shopStatus?.sold_out_flavors || []).includes(b.id);
             return (
               <label
@@ -1127,7 +1139,13 @@ export default function Home() {
                   <div style={{ display: 'flex' }}>
                     <span className="name">{b.name}</span>
                     <span className="price" style={{ marginLeft: 'auto' }}>
-                      {isSoldOut ? t.soldOut : `$${PRICES[cupSize][b.id].toFixed(2)}`}
+                      {!settingsLoaded ? (
+                        <span className="skeleton-line skeleton-line--price" />
+                      ) : isSoldOut ? (
+                        t.soldOut
+                      ) : (
+                        `$${PRICES[cupSize][b.id].toFixed(2)}`
+                      )}
                     </span>
                   </div>
                   <div className="desc">{BASE_DESC[b.id][lang]}</div>
@@ -1190,7 +1208,11 @@ export default function Home() {
                     onClick={() => addToppingUnit(tp.name)}
                   >
                     <span>{label}</span>
-                    <span className="badge">{isSoldOut ? t.soldOut : '+$1'}</span>
+                    {!settingsLoaded ? (
+                      <span className="skeleton-line skeleton-line--badge" />
+                    ) : (
+                      <span className="badge">{isSoldOut ? t.soldOut : '+$1'}</span>
+                    )}
                   </button>
                 );
               }

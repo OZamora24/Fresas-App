@@ -755,22 +755,6 @@ export default function Admin() {
             </div>
 
             <div className="order-card" style={{ marginTop: 10 }}>
-              <div className="row">
-                <span className="pickup">{settings.require_phone ? '📵 Phone number required' : '📱 Phone number optional'}</span>
-                <button
-                  className="status-btn"
-                  onClick={() => saveSettings({ require_phone: !settings.require_phone })}
-                  disabled={savingSettings}
-                >
-                  {settings.require_phone ? 'Make optional' : 'Require it'}
-                </button>
-              </div>
-              <p className="hint" style={{ marginTop: 8, marginBottom: 0 }}>
-                When required, customers can't submit an order without a valid phone number — so every order can get a confirmation text and the "I'm here" arrival link. Off by default, so nothing changes for customers until you turn this on.
-              </p>
-            </div>
-
-            <div className="order-card" style={{ marginTop: 10 }}>
               <label style={{ display: 'block', fontWeight: 700, marginBottom: 6 }}>
                 Closed days
               </label>
@@ -904,6 +888,22 @@ export default function Admin() {
                 </div>
               </div>
               <p className="hint" style={{ marginTop: 10, marginBottom: 0 }}>Pickup times customers can pick from are generated from these — weekday and weekend hours can differ.</p>
+            </div>
+
+            <div className="order-card" style={{ marginTop: 10 }}>
+              <div className="row">
+                <span className="pickup">{settings.require_phone ? '📵 Phone number required' : '📱 Phone number optional'}</span>
+                <button
+                  className="status-btn"
+                  onClick={() => saveSettings({ require_phone: !settings.require_phone })}
+                  disabled={savingSettings}
+                >
+                  {settings.require_phone ? 'Make optional' : 'Require it'}
+                </button>
+              </div>
+              <p className="hint" style={{ marginTop: 8, marginBottom: 0 }}>
+                When required, customers can't submit an order without a valid phone number — so every order can get a confirmation text and the "I'm here" arrival link. Off by default, so nothing changes for customers until you turn this on.
+              </p>
             </div>
 
             <div className="order-card" style={{ marginTop: 10 }}>

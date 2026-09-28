@@ -22,11 +22,17 @@ export default function App({ Component, pageProps }) {
   // splash never reappears just from clicking around the site.
   const [phase, setPhase] = useState('visible');
   const router = useRouter();
-  // The splash's caption should match what's actually loading — the admin
-  // dashboard isn't a menu, so it gets its own label. router.pathname is
+  // The splash's caption should match what's actually loading — "LOADING
+  // THE MENU" is only true on the order-builder page. router.pathname is
   // already known on the very first render (no loading flicker between
   // labels), since Next resolves it before _app ever mounts.
-  const splashLabel = router.pathname.startsWith('/admin') ? 'LOADING ADMIN' : 'LOADING THE MENU';
+  const splashLabel = router.pathname.startsWith('/admin')
+    ? 'LOADING ADMIN'
+    : router.pathname === '/order'
+    ? 'LOADING THE MENU'
+    : router.pathname === '/'
+    ? 'WELCOME'
+    : 'LOADING...';
 
   useEffect(() => {
     let minDone = false;

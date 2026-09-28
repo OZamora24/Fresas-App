@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import Script from 'next/script';
-import { BASES, PRICES, TOPPINGS, SYRUPS, toppingsCost, todayDateKey, maxPreorderDateKey, formatDateKey, getAvailablePickupTimes, buildPickupTimes, formatWeekdaysList } from '../lib/menu';
+import { BASES, PRICES, TOPPINGS, SYRUPS, toppingsCost, todayDateKey, maxPreorderDateKey, formatDateKey, getAvailablePickupTimes, buildPickupTimes, formatWeekdaysList, MAX_EXTRA_TOPPING_QTY } from '../lib/menu';
 import AddToHomeBanner from '../components/AddToHomeBanner';
 
 const ONESIGNAL_APP_ID = process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID;
@@ -69,6 +69,28 @@ const SYRUP_LABELS = {
   Strawberry: { en: 'Strawberry', es: 'Fresa' },
 };
 
+// A cup's `toppings` array can carry the same "always extra" topping name
+// more than once (one entry per unit — see addToppingUnit below). This
+// turns that into a readable list like "Sprinkles, Cheesecake ×2" instead
+// of listing the same name twice, for every place a topping list is shown
+// back to the customer (the cart so far, a past-order suggestion, the
+// final review sheet).
+function summarizeToppings(list, lang) {
+  const order = [];
+  const counts = new Map();
+  (list || []).forEach((name) => {
+    if (!counts.has(name)) { counts.set(name, 0); order.push(name); }
+    counts.set(name, counts.get(name) + 1);
+  });
+  return order
+    .map((name) => {
+      const label = TOPPING_LABELS[name] ? TOPPING_LABELS[name][lang] : name;
+      const count = counts.get(name);
+      return count > 1 ? `${label} ×${count}` : label;
+    })
+    .join(', ');
+}
+
 const PICKUP_ADDRESS = '1526 W Bonnie View Dr, Rialto, CA 92376';
 const ZELLE_PHONE = '(909) 725-2384';
 
@@ -102,8 +124,10 @@ const STR = {
     pickBaseHint: 'Includes homemade sweet cream',
     soldOut: 'Sold out today',
     toppings: 'Toppings',
-    toppingsHint: 'Cheesecake & Ice Cream are always +$1. Any other extra topping is +$1.',
+    toppingsHint: 'Cheesecake & Ice Cream are always +$1 — tap +/- to add extra scoops. Any other extra topping is +$1.',
     freeNote: (used, total) => `${used} of ${total} free toppings used`,
+    addOneTopping: (name) => `Add one more ${name}`,
+    removeOneTopping: (name) => `Remove one ${name}`,
     syrup: 'Syrup',
     syrupHint: "Pick as many as you'd like — no extra charge",
     howMany: 'How many cups?',
@@ -214,8 +238,10 @@ const STR = {
     pickBaseHint: 'Incluye crema dulce casera',
     soldOut: 'Agotado hoy',
     toppings: 'Toppings',
-    toppingsHint: 'Pastel de queso y helado siempre son +$1. Cualquier otro topping extra es +$1.',
+    toppingsHint: 'Pastel de queso y helado siempre son +$1 — toca +/- para agregar más. Cualquier otro topping extra es +$1.',
     freeNote: (used, total) => `${used} de ${total} toppings gratis usados`,
+    addOneTopping: (name) => `Agregar otro ${name}`,
+    removeOneTopping: (name) => `Quitar un ${name}`,
     syrup: 'Jarabe',
     syrupHint: 'Elige los que quieras — sin costo extra',
     howMany: '¿Cuántos vasos?',
@@ -703,6 +729,21 @@ export default function Home() {
   function toggleTopping(tp) {
     setToppings((prev) => (prev.includes(tp) ? prev.filter((x) => x !== tp) : [...prev, tp]));
   }
+  // "Always extra" toppings (Cheesecake, Ice Cream) use +/- instead of a
+  // plain toggle, so more than one unit can be requested — each unit is
+  // just another entry of that name in the array (see toppingsCost).
+  function addToppingUnit(tp) {
+    setToppings((prev) => (prev.filter((x) => x === tp).length >= MAX_EXTRA_TOPPING_QTY ? prev : [...prev, tp]));
+  }
+  function removeToppingUnit(tp) {
+    setToppings((prev) => {
+      const idx = prev.indexOf(tp);
+      if (idx === -1) return prev;
+      const next = [...prev];
+      next.splice(idx, 1);
+      return next;
+    });
+  }
   function toggleSyrup(s) {
     setSyrups((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
   }
@@ -1023,7 +1064,7 @@ export default function Home() {
                     >
                       <div style={{ fontSize: '0.85rem' }}>
                         <strong>{item.qty}x {itemBase.name}</strong> ({item.cupSize} oz)
-                        {item.toppings.length ? ` · ${item.toppings.join(', ')}` : ''}
+                        {item.toppings.length ? ` · ${summarizeToppings(item.toppings, lang)}` : ''}
                       </div>
                       <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                         <button type="button" className="status-btn" style={{ padding: '6px 10px', fontSize: '0.78rem' }} onClick={() => editCartItem(i)}>
@@ -1083,6 +1124,58 @@ export default function Home() {
           <div className="chip-grid">
             {TOPPINGS.map((tp) => {
               const isSoldOut = (shopStatus?.sold_out_toppings || []).includes(tp.name);
+              const label = TOPPING_LABELS[tp.name][lang];
+
+              // Cheesecake / Ice Cream: once at least one unit is added, the
+              // chip turns into a +/- stepper in place, instead of a plain
+              // checkbox — that's how a customer asks for more than one.
+              if (tp.alwaysExtra) {
+                const count = toppings.filter((x) => x === tp.name).length;
+                if (count > 0) {
+                  return (
+                    <div
+                      key={tp.name}
+                      className="chip checked chip-stepper"
+                      style={isSoldOut ? { opacity: 0.45 } : {}}
+                    >
+                      <span>{label}</span>
+                      <div className="mini-stepper">
+                        <button
+                          type="button"
+                          onClick={() => removeToppingUnit(tp.name)}
+                          disabled={isSoldOut}
+                          aria-label={t.removeOneTopping(label)}
+                        >
+                          −
+                        </button>
+                        <span>{count}</span>
+                        <button
+                          type="button"
+                          onClick={() => addToppingUnit(tp.name)}
+                          disabled={isSoldOut || count >= MAX_EXTRA_TOPPING_QTY}
+                          aria-label={t.addOneTopping(label)}
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                  );
+                }
+                return (
+                  <button
+                    key={tp.name}
+                    type="button"
+                    className="chip"
+                    style={isSoldOut ? { opacity: 0.45, cursor: 'not-allowed' } : {}}
+                    disabled={isSoldOut}
+                    onClick={() => addToppingUnit(tp.name)}
+                  >
+                    <span>{label}</span>
+                    <span className="badge">{isSoldOut ? t.soldOut : '+$1'}</span>
+                  </button>
+                );
+              }
+
               return (
                 <label
                   key={tp.name}
@@ -1090,8 +1183,8 @@ export default function Home() {
                   style={isSoldOut ? { opacity: 0.45, cursor: 'not-allowed' } : {}}
                 >
                   <input type="checkbox" style={{ display: 'none' }} checked={toppings.includes(tp.name)} disabled={isSoldOut} onChange={() => toggleTopping(tp.name)} />
-                  <span>{TOPPING_LABELS[tp.name][lang]}</span>
-                  {isSoldOut ? <span className="badge">{t.soldOut}</span> : tp.alwaysExtra && <span className="badge">+$1</span>}
+                  <span>{label}</span>
+                  {isSoldOut && <span className="badge">{t.soldOut}</span>}
                 </label>
               );
             })}
@@ -1222,7 +1315,7 @@ export default function Home() {
                   >
                     <div style={{ fontSize: '0.85rem' }}>
                       <strong>{o.base}</strong>{o.cup_size ? ` (${o.cup_size})` : ''}
-                      {o.toppings?.length ? ` · ${o.toppings.join(', ')}` : ''}
+                      {o.toppings?.length ? ` · ${summarizeToppings(o.toppings, lang)}` : ''}
                     </div>
                     <button type="button" className="btn-primary" style={{ padding: '6px 12px', fontSize: '0.8rem', flexShrink: 0 }} onClick={() => useLastOrder(o)}>
                       {t.repeatUse}
@@ -1315,7 +1408,7 @@ export default function Home() {
                   </div>
                 )}
                 <div className="line" style={{ borderBottom: 'none', paddingBottom: 2 }}>
-                  <span>{t.toppings}</span><strong>{item.toppings.length ? item.toppings.map((tp) => TOPPING_LABELS[tp][lang]).join(', ') : t.none}</strong>
+                  <span>{t.toppings}</span><strong>{item.toppings.length ? summarizeToppings(item.toppings, lang) : t.none}</strong>
                 </div>
                 <div className="line" style={{ borderBottom: 'none' }}>
                   <span>{t.syrup}</span><strong>{item.syrups.length ? item.syrups.map((s) => SYRUP_LABELS[s][lang]).join(', ') : t.none}</strong>

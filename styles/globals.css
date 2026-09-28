@@ -85,6 +85,21 @@ button {
 .chip.checked { border-color: var(--pink); background: var(--pink-pale); }
 .chip .badge { font-size: 0.72rem; font-weight: 800; color: var(--maroon); background: var(--pink-soft); border-radius: 999px; padding: 1px 7px; }
 
+/* An "always extra" topping chip (Cheesecake, Ice Cream) once it has at
+   least one unit — the chip itself stays a pill, but its content switches
+   from a checkbox to this compact +/- control so a customer can ask for
+   more than one, using the same visual language as the full-size .stepper
+   used for cup quantity below. */
+.chip.chip-stepper { padding: 6px 8px 6px 15px; gap: 10px; cursor: default; }
+.mini-stepper { display: inline-flex; align-items: center; gap: 3px; }
+.mini-stepper button {
+  width: 26px; height: 26px; border: none; border-radius: 50%;
+  background: var(--maroon); color: var(--cream-2); font-size: 1rem; font-weight: 800;
+  display: flex; align-items: center; justify-content: center; cursor: pointer; line-height: 1;
+}
+.mini-stepper button:disabled { opacity: 0.4; cursor: not-allowed; }
+.mini-stepper span { display: inline-block; min-width: 18px; text-align: center; font-weight: 800; font-size: 0.88rem; color: var(--maroon); }
+
 .free-note {
   display: inline-block; margin-top: 12px; font-size: 0.85rem; font-weight: 700;
   color: var(--maroon); background: var(--pink-soft); padding: 5px 12px; border-radius: 999px;

@@ -2,6 +2,20 @@ import ExcelJS from 'exceljs';
 import { getSupabaseAdmin } from '../../lib/supabaseAdmin';
 import { isValidSession } from '../../lib/adminSession';
 
+// An "always extra" topping (Cheesecake, Ice Cream) can appear more than
+// once in a toppings array — one entry per unit the customer added with the
+// +/- stepper on the order page. Collapses that into "Cheesecake ×2" for a
+// readable export cell instead of "Cheesecake, Cheesecake".
+function summarizeToppingsForExport(list) {
+  const order = [];
+  const counts = new Map();
+  (list || []).forEach((name) => {
+    if (!counts.has(name)) { counts.set(name, 0); order.push(name); }
+    counts.set(name, counts.get(name) + 1);
+  });
+  return order.map((name) => (counts.get(name) > 1 ? `${name} ×${counts.get(name)}` : name)).join(', ');
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     res.setHeader('Allow', ['GET']);
@@ -79,8 +93,8 @@ export default async function handler(req, res) {
           .map((it) => `${it.base}: ${it.include_rim === false ? 'No' : 'Yes'}`).join('; ')
       : ((o.base === 'Banana Pudding' || o.base === 'Gansito') ? (o.include_rim === false ? 'No' : 'Yes') : '');
     const toppingsCell = isMultiCup
-      ? o.items.map((it) => `[${it.base}] ${(it.toppings || []).join(', ') || 'None'}`).join(' | ')
-      : (o.toppings || []).join(', ');
+      ? o.items.map((it) => `[${it.base}] ${summarizeToppingsForExport(it.toppings) || 'None'}`).join(' | ')
+      : summarizeToppingsForExport(o.toppings);
     const syrupCell = isMultiCup
       ? o.items.map((it) => `[${it.base}] ${(it.syrups || []).join(', ') || 'None'}`).join(' | ')
       : (o.syrups || []).join(', ');

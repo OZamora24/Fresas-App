@@ -2,9 +2,30 @@ import { useEffect, useRef, useState } from 'react';
 import Head from 'next/head';
 import Script from 'next/script';
 import Link from 'next/link';
-import { BASES, PRICES, TOPPINGS, SYRUPS, orderTotal, buildPickupTimes, baseIdFromName, formatDateKey, todayDateKey, maxPreorderDateKey } from '../lib/menu';
+import { BASES, PRICES, TOPPINGS, SYRUPS, orderTotal, buildPickupTimes, baseIdFromName, formatDateKey, todayDateKey, maxPreorderDateKey, MAX_EXTRA_TOPPING_QTY } from '../lib/menu';
 
 const ONESIGNAL_APP_ID = process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID;
+
+// An "always extra" topping (Cheesecake, Ice Cream) can appear more than
+// once in a `toppings` array — one entry per unit the customer added with
+// the +/- stepper on the order page (see pages/order.js). This turns that
+// into [{ name, count }] pairs so the kitchen-facing order view can show
+// "Cheesecake ×2" instead of printing "Cheesecake" twice in a row.
+function groupToppingCounts(list) {
+  const order = [];
+  const counts = new Map();
+  (list || []).forEach((name) => {
+    if (!counts.has(name)) { counts.set(name, 0); order.push(name); }
+    counts.set(name, counts.get(name) + 1);
+  });
+  return order.map((name) => ({ name, count: counts.get(name) }));
+}
+
+function toppingsSummaryText(list) {
+  return groupToppingCounts(list)
+    .map(({ name, count }) => (count > 1 ? `${name} ×${count}` : name))
+    .join(', ');
+}
 
 export default function Admin() {
   const [authed, setAuthed] = useState(false);
@@ -213,6 +234,25 @@ export default function Admin() {
       ...f,
       toppings: f.toppings.includes(name) ? f.toppings.filter((x) => x !== name) : [...f.toppings, name],
     }));
+  }
+  // "Always extra" toppings (Cheesecake, Ice Cream) can carry more than one
+  // unit — same +/- pattern as the customer order page — so an order can be
+  // corrected to the right quantity instead of only on/off.
+  function addEditToppingUnit(name) {
+    setEditForm((f) => (
+      f.toppings.filter((x) => x === name).length >= MAX_EXTRA_TOPPING_QTY
+        ? f
+        : { ...f, toppings: [...f.toppings, name] }
+    ));
+  }
+  function removeEditToppingUnit(name) {
+    setEditForm((f) => {
+      const idx = f.toppings.indexOf(name);
+      if (idx === -1) return f;
+      const next = [...f.toppings];
+      next.splice(idx, 1);
+      return { ...f, toppings: next };
+    });
   }
   function toggleEditSyrup(name) {
     setEditForm((f) => ({
@@ -1213,7 +1253,9 @@ export default function Admin() {
                         )}
                         <div><strong>Toppings:</strong></div>
                         {item.toppings?.length
-                          ? item.toppings.map((t) => <div key={t}>- {t}</div>)
+                          ? groupToppingCounts(item.toppings).map(({ name, count }) => (
+                              <div key={name}>- {name}{count > 1 ? ` ×${count}` : ''}</div>
+                            ))
                           : <div>- None</div>}
                         <div><strong>Syrup:</strong></div>
                         {item.syrups?.length
@@ -1232,7 +1274,9 @@ export default function Admin() {
                     )}
                     <div><strong>Toppings:</strong></div>
                     {o.toppings?.length
-                      ? o.toppings.map((t) => <div key={t}>- {t}</div>)
+                      ? groupToppingCounts(o.toppings).map(({ name, count }) => (
+                          <div key={name}>- {name}{count > 1 ? ` ×${count}` : ''}</div>
+                        ))
                       : <div>- None</div>}
                     <div><strong>Syrup:</strong></div>
                     {o.syrups?.length
@@ -1292,7 +1336,7 @@ export default function Admin() {
                   {editForm.items.map((item, i) => (
                     <div key={i} style={{ marginBottom: i < editForm.items.length - 1 ? 8 : 0 }}>
                       <div><strong>{item.qty}x {item.base}</strong>{item.cup_size ? ` (${item.cup_size})` : ''}</div>
-                      <div>Toppings: {item.toppings?.length ? item.toppings.join(', ') : 'None'} · Syrup: {item.syrups?.length ? item.syrups.join(', ') : 'None'}</div>
+                      <div>Toppings: {item.toppings?.length ? toppingsSummaryText(item.toppings) : 'None'} · Syrup: {item.syrups?.length ? item.syrups.join(', ') : 'None'}</div>
                     </div>
                   ))}
                 </div>
@@ -1346,13 +1390,35 @@ export default function Admin() {
                 <div className="field">
                   <label>Toppings</label>
                   <div className="chip-grid">
-                    {TOPPINGS.map((tp) => (
-                      <label key={tp.name} className={`chip${editForm.toppings.includes(tp.name) ? ' checked' : ''}`}>
-                        <input type="checkbox" style={{ display: 'none' }} checked={editForm.toppings.includes(tp.name)} onChange={() => toggleEditTopping(tp.name)} />
-                        <span>{tp.name}</span>
-                        {tp.alwaysExtra && <span className="badge">+$1</span>}
-                      </label>
-                    ))}
+                    {TOPPINGS.map((tp) => {
+                      if (tp.alwaysExtra) {
+                        const count = editForm.toppings.filter((x) => x === tp.name).length;
+                        if (count > 0) {
+                          return (
+                            <div key={tp.name} className="chip checked chip-stepper">
+                              <span>{tp.name}</span>
+                              <div className="mini-stepper">
+                                <button type="button" onClick={() => removeEditToppingUnit(tp.name)} aria-label={`Remove one ${tp.name}`}>−</button>
+                                <span>{count}</span>
+                                <button type="button" onClick={() => addEditToppingUnit(tp.name)} disabled={count >= MAX_EXTRA_TOPPING_QTY} aria-label={`Add one more ${tp.name}`}>+</button>
+                              </div>
+                            </div>
+                          );
+                        }
+                        return (
+                          <button key={tp.name} type="button" className="chip" onClick={() => addEditToppingUnit(tp.name)}>
+                            <span>{tp.name}</span>
+                            <span className="badge">+$1</span>
+                          </button>
+                        );
+                      }
+                      return (
+                        <label key={tp.name} className={`chip${editForm.toppings.includes(tp.name) ? ' checked' : ''}`}>
+                          <input type="checkbox" style={{ display: 'none' }} checked={editForm.toppings.includes(tp.name)} onChange={() => toggleEditTopping(tp.name)} />
+                          <span>{tp.name}</span>
+                        </label>
+                      );
+                    })}
                   </div>
                 </div>
 

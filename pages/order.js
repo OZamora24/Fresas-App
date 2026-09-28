@@ -549,9 +549,22 @@ export default function Home() {
     }
   }, [redirectSeconds]);
 
+  // Before /api/settings resolves, shopStatus is still null, and
+  // getAvailablePickupTimes/buildPickupTimes quietly fall back to
+  // lib/menu.js's hardcoded DEFAULT_HOURS (a weekday start of 5:00 PM) so
+  // there's always *something* to show. That's fine for display, but it's
+  // exactly what caused the pickup time to default to 5:00 PM even after
+  // the shop's real hours were changed to start at 3pm: the "keep pickup
+  // valid" effect below ran on that first, fallback-based render, picked
+  // 5:00 PM as the default, and then — once the real 3pm-start hours
+  // loaded a moment later — left it alone, because 5:00 PM was *also* a
+  // valid slot under the real schedule. Gating this on settingsLoaded
+  // means availableTimes stays empty until the real hours are in hand, so
+  // the very first real pick is always the real earliest slot, not
+  // whatever the placeholder schedule happened to suggest first.
   const availableTimes = useMemo(
-    () => getAvailablePickupTimes(pickupDate, shopStatus),
-    [pickupDate, nowTick, shopStatus]
+    () => (settingsLoaded ? getAvailablePickupTimes(pickupDate, shopStatus) : []),
+    [pickupDate, nowTick, shopStatus, settingsLoaded]
   );
 
   // Keep the selected time valid: default to the first bookable slot, and

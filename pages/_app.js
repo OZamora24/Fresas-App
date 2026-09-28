@@ -2,13 +2,13 @@ import { useEffect, useState } from 'react';
 import '../styles/globals.css';
 import SplashScreen from '../components/SplashScreen';
 
-// The launch splash always stays up at least this long, so on a fast
-// connection it still reads as an intentional brand moment instead of a
-// one-frame flash.
-const SPLASH_MIN_MS = 900;
+// The launch splash always stays up at least this long — long enough for
+// the pulse rings to complete a couple of full cycles (each ring takes
+// 2.4s) rather than getting cut off mid-animation.
+const SPLASH_MIN_MS = 2400;
 // Safety cap: even if the page is unusually slow to finish loading, the
 // splash never blocks the app for longer than this.
-const SPLASH_MAX_MS = 2500;
+const SPLASH_MAX_MS = 3800;
 // How long the CSS fade-out transition takes (.app-splash-leaving in
 // globals.css) — kept in sync so the splash unmounts right as it finishes
 // fading rather than popping off mid-transition.

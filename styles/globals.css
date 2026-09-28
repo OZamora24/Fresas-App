@@ -434,6 +434,17 @@ button {
 /* Launch splash (see components/SplashScreen.js and pages/_app.js) — a
    full-screen overlay shown briefly on a fresh page load, matching the
    "Pulse Ring" concept picked from the design preview. */
+
+/* On iPhone, Safari fills the safe-area strip behind the home indicator
+   using <html>'s background-color directly, bypassing normal DOM
+   stacking — so the splash's own z-index can't cover it. _app.js adds
+   this class for as long as the splash is on screen so that strip reads
+   as part of the splash instead of a pale seam under it. */
+html.splash-active,
+body.splash-active {
+  background: var(--maroon-deep);
+}
+
 .app-splash {
   position: fixed;
   inset: 0;

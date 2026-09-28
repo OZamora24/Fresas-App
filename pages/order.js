@@ -793,7 +793,26 @@ export default function Home() {
     setPromoError('');
   }
 
+  // Browsers only allow audio to play when it's triggered directly by a
+  // user gesture (a tap), not on page load or after an `await` — Safari on
+  // iPhone enforces this strictly. So this has to be called synchronously,
+  // as the very first thing placeOrder does, while we're still inside the
+  // click's own call stack. A blocked or missing sound should never stop
+  // the order from going through, hence the try/catch and the swallowed
+  // play() rejection.
+  function playOrderChime() {
+    try {
+      if (typeof Audio === 'undefined') return;
+      const chime = new Audio('/order-chime.mp3');
+      chime.volume = 0.6;
+      chime.play().catch(() => {});
+    } catch (e) {
+      // ignore
+    }
+  }
+
   async function placeOrder() {
+    playOrderChime();
     setSubmitting(true);
     setErrorMsg('');
     try {

@@ -36,6 +36,10 @@ async function sendPushToAdmin(order) {
     contents: {
       en: summaryLine,
     },
+    // Without this, OneSignal opens the site's root URL on tap — the
+    // customer home page — instead of where the person tapping an admin
+    // alert actually needs to go.
+    url: `${APP_URL}/admin`,
   };
 
   try {

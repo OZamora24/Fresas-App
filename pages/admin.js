@@ -942,6 +942,10 @@ export default function Admin() {
               <p className="hint" style={{ marginTop: 10, marginBottom: 0 }}>Tap the days you're available for catering. Leave all off to hide the catering section from customers.</p>
             </div>
 
+            <p style={{ fontWeight: 700, marginTop: 20, marginBottom: 0 }}>
+              Mark items sold out
+            </p>
+
             <details className="order-card availability-dropdown" style={{ marginTop: 10 }}>
               <summary style={{ fontWeight: 700 }}>
                 Flavor availability

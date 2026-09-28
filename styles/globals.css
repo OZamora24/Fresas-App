@@ -482,6 +482,26 @@ body.splash-active {
 .app-splash {
   position: fixed;
   inset: 0;
+  /* This app is installed to the home screen as a standalone PWA
+     (manifest.json's "display": "standalone") — no Safari address bar
+     at all, so there's no toolbar collapsing/expanding to blame. But
+     "inset: 0" still sizes this element against the browser's own idea
+     of the viewport at layout time, and on iOS that can end up shorter
+     than the screen's actual visible height — which is exactly what
+     Orlando's screenshots caught: real admin-page content (the store
+     hours fields) sitting fully exposed in a clean strip at the very
+     bottom, the whole time the splash was up, not a blend or a flash.
+     A short-and-persistent gap like that, not a one-frame flicker,
+     points at a sizing mismatch rather than a timing race. "dvh" units
+     were added specifically to fix this class of bug: unlike inset's
+     old fallback, 100dvh always tracks the real, currently-visible
+     viewport rather than whatever the browser guessed at layout time.
+     Repeating height with the plain vh version first means a browser
+     without dvh support just keeps that instead of dropping the
+     declaration — same safety net "inset: 0" was already providing,
+     now backed up by something that actually tracks the true height. */
+  height: 100vh;
+  height: 100dvh;
   z-index: 9999;
   display: flex;
   flex-direction: column;

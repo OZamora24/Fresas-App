@@ -65,6 +65,25 @@ button {
 .section h2 { font-weight: 700; font-size: 1.25rem; color: var(--maroon); margin: 0 0 4px; }
 .section .hint { margin: 0 0 14px; color: var(--ink-soft); font-size: 0.9rem; }
 
+/* Admin dashboard: lets the reorderable sections (Shop status, sales link,
+   Promo codes, Site photos, Export order history) be visually reordered
+   via CSS `order` without moving their JSX — each section just gets an
+   inline order index from sectionOrder. Orders isn't part of this wrap, so
+   it always stays put at the bottom regardless of how the rest are moved. */
+.admin-reorder-wrap { display: flex; flex-direction: column; }
+
+.section-header-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.section-header-row h2 { margin: 0; }
+
+.section-reorder-controls { display: inline-flex; gap: 4px; flex-shrink: 0; }
+.reorder-btn {
+  width: 30px; height: 30px; padding: 0; border-radius: 8px; border: 2px solid var(--line);
+  background: var(--card-bg); color: var(--maroon); font-size: 0.8rem; line-height: 1;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.reorder-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.reorder-btn:not(:disabled):active { background: var(--pink-pale); }
+
 .base-card {
   display: flex; align-items: flex-start; gap: 12px;
   background: var(--card-bg); border: 2px solid var(--line); border-radius: 16px;

@@ -6,6 +6,12 @@ import { BASES, PRICES, TOPPINGS, SYRUPS, orderTotal, buildPickupTimes, baseIdFr
 
 const ONESIGNAL_APP_ID = process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID;
 
+// Dashboard sections Orlando can reorder with the up/down arrows, top to
+// bottom by default. The Orders queue below them is intentionally left out
+// — it always stays last and never gets arrows.
+const SECTION_KEYS = ['shopStatus', 'salesLink', 'promoCodes', 'sitePhotos', 'exportHistory'];
+const SECTION_ORDER_STORAGE_KEY = 'fresasAdminSectionOrder';
+
 // An "always extra" topping (Cheesecake, Ice Cream) can appear more than
 // once in a `toppings` array — one entry per unit the customer added with
 // the +/- stepper on the order page (see pages/order.js). This turns that
@@ -62,8 +68,74 @@ export default function Admin() {
   const [sendingNotify, setSendingNotify] = useState(false);
   const [notifyResult, setNotifyResult] = useState(null);
   const [newClosedDate, setNewClosedDate] = useState('');
+  // Which order the reorderable dashboard sections render in — persisted to
+  // this browser's localStorage (not the shop_settings table), so it's
+  // per-device rather than synced across every phone/computer Orlando uses.
+  const [sectionOrder, setSectionOrder] = useState(SECTION_KEYS);
   const closedDateInputRef = useRef(null);
   const pollRef = useRef(null);
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(SECTION_ORDER_STORAGE_KEY);
+      if (!saved) return;
+      const parsed = JSON.parse(saved);
+      // Only trust a saved order if it's the exact same set of sections we
+      // know about today — guards against a stale list from before a
+      // section was added or removed.
+      if (Array.isArray(parsed) && parsed.length === SECTION_KEYS.length && SECTION_KEYS.every((k) => parsed.includes(k))) {
+        setSectionOrder(parsed);
+      }
+    } catch (e) {
+      // ignore — falls back to the default order
+    }
+  }, []);
+
+  function moveSection(key, direction) {
+    setSectionOrder((prev) => {
+      const idx = prev.indexOf(key);
+      const swapWith = idx + direction;
+      if (idx === -1 || swapWith < 0 || swapWith >= prev.length) return prev;
+      const next = [...prev];
+      [next[idx], next[swapWith]] = [next[swapWith], next[idx]];
+      try {
+        window.localStorage.setItem(SECTION_ORDER_STORAGE_KEY, JSON.stringify(next));
+      } catch (e) {
+        // ignore — reordering still works for this visit even if it can't be saved
+      }
+      return next;
+    });
+  }
+
+  // Small up/down arrow pair for a section header. Disabled at whichever
+  // end of the list that section is currently at.
+  function SectionArrows({ sectionKey }) {
+    const idx = sectionOrder.indexOf(sectionKey);
+    return (
+      <span className="section-reorder-controls">
+        <button
+          type="button"
+          className="reorder-btn"
+          onClick={() => moveSection(sectionKey, -1)}
+          disabled={idx <= 0}
+          aria-label="Move section up"
+          title="Move up"
+        >
+          ▲
+        </button>
+        <button
+          type="button"
+          className="reorder-btn"
+          onClick={() => moveSection(sectionKey, 1)}
+          disabled={idx === -1 || idx >= sectionOrder.length - 1}
+          aria-label="Move section down"
+          title="Move down"
+        >
+          ▼
+        </button>
+      </span>
+    );
+  }
 
   async function fetchSettings() {
     const res = await fetch('/api/settings');
@@ -638,9 +710,13 @@ export default function Admin() {
       </div>
 
       <div className="wrap">
+        <div className="admin-reorder-wrap">
         {settings && (
-          <div className="section">
-            <h2>Shop status</h2>
+          <div className="section" style={{ order: sectionOrder.indexOf('shopStatus') }}>
+            <div className="section-header-row">
+              <h2>Shop status</h2>
+              <SectionArrows sectionKey="shopStatus" />
+            </div>
             <div className="order-card">
               <div className="row" style={{ marginBottom: settings.is_open ? 0 : 10 }}>
                 <span className="pickup">{settings.is_open ? '🟢 Open for orders' : '🔴 Closed'}</span>
@@ -952,14 +1028,20 @@ export default function Admin() {
           </div>
         )}
 
-        <div className="section">
-          <Link href="/admin/sales" style={{ color: 'var(--maroon)', fontWeight: 700, textDecoration: 'none' }}>
-            📊 View sales dashboard →
-          </Link>
+        <div className="section" style={{ order: sectionOrder.indexOf('salesLink') }}>
+          <div className="section-header-row">
+            <Link href="/admin/sales" style={{ color: 'var(--maroon)', fontWeight: 700, textDecoration: 'none' }}>
+              📊 View sales dashboard →
+            </Link>
+            <SectionArrows sectionKey="salesLink" />
+          </div>
         </div>
 
-        <div className="section">
-          <h2>Promo codes</h2>
+        <div className="section" style={{ order: sectionOrder.indexOf('promoCodes') }}>
+          <div className="section-header-row">
+            <h2>Promo codes</h2>
+            <SectionArrows sectionKey="promoCodes" />
+          </div>
           <p className="hint">Create a code and turn it on — customers enter it on the order page for an automatic discount.</p>
           <p className="hint" style={{ marginTop: -8 }}>
             Turning a code on doesn't notify anyone by itself — use "Notify customers" on a code below, or the general button underneath the list, to actually push it out to whoever opted into "Get notified about deals."
@@ -1109,8 +1191,11 @@ export default function Admin() {
           </div>
         </div>
 
-        <div className="section">
-          <h2>Site photos</h2>
+        <div className="section" style={{ order: sectionOrder.indexOf('sitePhotos') }}>
+          <div className="section-header-row">
+            <h2>Site photos</h2>
+            <SectionArrows sectionKey="sitePhotos" />
+          </div>
           <p className="hint">These show up on the public Photos page. Max 4MB per photo.</p>
           <div className="order-card">
             <label className="btn-primary" style={{ display: 'inline-block', cursor: 'pointer' }}>
@@ -1138,6 +1223,37 @@ export default function Admin() {
               </div>
             )}
           </div>
+        </div>
+
+        <div className="section" style={{ order: sectionOrder.indexOf('exportHistory') }}>
+          <div className="section-header-row">
+            <h2>Export order history</h2>
+            <SectionArrows sectionKey="exportHistory" />
+          </div>
+          <div className="field">
+            <select value={exportRange} onChange={(e) => setExportRange(e.target.value)}>
+              <option value="all">All orders ever</option>
+              <option value="7days">Last 7 days</option>
+              <option value="30days">Last 30 days</option>
+              <option value="custom">Custom date range</option>
+            </select>
+          </div>
+          {exportRange === 'custom' && (
+            <div style={{ display: 'flex', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
+              <div className="field" style={{ flex: 1, minWidth: 140, marginBottom: 0 }}>
+                <label>From</label>
+                <input type="date" value={exportStart} onChange={(e) => setExportStart(e.target.value)} />
+              </div>
+              <div className="field" style={{ flex: 1, minWidth: 140, marginBottom: 0 }}>
+                <label>To</label>
+                <input type="date" value={exportEnd} onChange={(e) => setExportEnd(e.target.value)} />
+              </div>
+            </div>
+          )}
+          <button className="btn-primary" onClick={exportOrders} disabled={exporting}>
+            {exporting ? 'Preparing…' : '⬇️ Export Excel file'}
+          </button>
+        </div>
         </div>
 
         {!pushEnabled && (
@@ -1175,33 +1291,6 @@ export default function Admin() {
             )}
           </div>
         )}
-
-        <div className="section">
-          <h2>Export order history</h2>
-          <div className="field">
-            <select value={exportRange} onChange={(e) => setExportRange(e.target.value)}>
-              <option value="all">All orders ever</option>
-              <option value="7days">Last 7 days</option>
-              <option value="30days">Last 30 days</option>
-              <option value="custom">Custom date range</option>
-            </select>
-          </div>
-          {exportRange === 'custom' && (
-            <div style={{ display: 'flex', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
-              <div className="field" style={{ flex: 1, minWidth: 140, marginBottom: 0 }}>
-                <label>From</label>
-                <input type="date" value={exportStart} onChange={(e) => setExportStart(e.target.value)} />
-              </div>
-              <div className="field" style={{ flex: 1, minWidth: 140, marginBottom: 0 }}>
-                <label>To</label>
-                <input type="date" value={exportEnd} onChange={(e) => setExportEnd(e.target.value)} />
-              </div>
-            </div>
-          )}
-          <button className="btn-primary" onClick={exportOrders} disabled={exporting}>
-            {exporting ? 'Preparing…' : '⬇️ Export Excel file'}
-          </button>
-        </div>
 
         <div className="section">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>

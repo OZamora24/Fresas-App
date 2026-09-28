@@ -488,29 +488,40 @@ body.splash-active {
   align-items: center;
   justify-content: center;
   gap: 24px;
-  background: radial-gradient(circle at 50% 42%, var(--maroon) 0%, var(--maroon-deep) 72%);
+  /* "circle" forces the gradient into a true circle sized to reach the
+     farthest corner. On a phone screen — much taller than it is wide —
+     that circle is far wider than the screen, so its dark outer edge
+     exits through the left/right sides well before it curves, and what's
+     left above and below reads as a flat, almost hard-edged band instead
+     of a gradient — that's the static line Orlando saw sitting near the
+     bottom even before any fade started. "ellipse" (the default shape,
+     named here for clarity) scales independently on each axis to match
+     the box itself, so the same 72% stop lands as an actual curve at
+     every edge instead of a straight cap. */
+  background: radial-gradient(ellipse at 50% 42%, var(--maroon) 0%, var(--maroon-deep) 72%);
   /* Two earlier approaches here both had a real problem. A plain opacity
      fade blends the solid maroon panel with the cream page underneath at
      every in-between alpha value, which reads as a muddy red wash before
      it clears. A clip-path wipe avoids any color blending, but it reveals
      the real page from the top while the bottom of the screen is still
      solid maroon (with the icon on it) for the whole transition — a hard
-     split that read as even more "off" than the blend did. Opacity is the
-     right technique; it just needed to spend less time in the blended
-     middle. ease-out front-loads the drop — it leaves full opacity almost
-     immediately (rushing through the visible red zone) and only slows
-     down once it's nearly transparent, where the tint is negligible — and
-     90ms trims the couple of still-visible frames further. Keep this in
-     sync with FADE_MS in _app.js. */
+     split that read as even more "off" than the blend did. A pure 90ms
+     opacity cut minimized the red but read as stiff/mechanical — there
+     was nothing to soften the snap. Pairing the fade with a slight scale
+     gives the eye some motion to follow (the panel feels like it's
+     releasing outward, not just blinking off), so 160ms — longer than
+     90ms but nowhere near the original 450ms — reads as an intentional
+     soft dissolve rather than either a flicker or a lingering wash. Keep
+     this in sync with FADE_MS in _app.js. */
   opacity: 1;
-  transition: opacity 0.09s ease-out;
-  /* Forces its own GPU compositing layer so iOS keeps it painted as a
-     stable top layer instead of re-flowing it with the rest of the page
-     — belt-and-suspenders against the same fixed-position flash. */
-  transform: translateZ(0);
-  -webkit-transform: translateZ(0);
+  transform: translateZ(0) scale(1);
+  transition: opacity 0.16s ease-out, transform 0.16s ease-out;
+  /* translateZ(0) also forces its own GPU compositing layer so iOS keeps
+     it painted as a stable top layer instead of re-flowing it with the
+     rest of the page — belt-and-suspenders against the same fixed-
+     position flash. */
 }
-.app-splash-leaving { opacity: 0; pointer-events: none; }
+.app-splash-leaving { opacity: 0; transform: translateZ(0) scale(1.04); pointer-events: none; }
 
 .app-splash-ringwrap {
   position: relative;

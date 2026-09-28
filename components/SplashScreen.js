@@ -3,7 +3,7 @@
 // _app.js so it can coordinate with actual page-load state). `label` lets
 // _app.js swap the caption based on which page is actually loading (the
 // admin dashboard doesn't have a "menu" to load).
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 // Reads a CSS custom property (in px) off <html> — used below to pull in
 // the safe-area inset values that globals.css exposes as --safe-area-top /
@@ -15,21 +15,6 @@ function readRootPx(varName) {
   return Number.isFinite(n) ? n : 0;
 }
 
-// Measures the true full screen height as generously as possible. Plain
-// window.innerHeight was the first thing tried here, and on paper it
-// should already be correct — but on iOS, specifically in this app's
-// installed, standalone, home-screen mode (never in a plain Safari tab),
-// it was still coming up short by almost exactly the height of the
-// status-bar/Dynamic-Island overlay, leaving that strip of the real page
-// exposed at the bottom the whole time the splash was up. Rather than
-// trust any single number, this takes the tallest of several different
-// ways the browser might report "the screen" (innerHeight, the root
-// element's own clientHeight, and the physical screen resolution divided
-// by pixel ratio, which isn't affected by any viewport reporting quirk at
-// all) and then pads that with the safe-area insets on top, so the result
-// can only ever end up too generous, never too short. A splash a few
-// pixels taller than the screen is invisible — clipped by the edge of the
-// device — so there's no real downside to over-covering here.
 function measureFullHeight() {
   if (typeof window === 'undefined') return null;
   const candidates = [
@@ -46,14 +31,42 @@ function measureFullHeight() {
   return base + safeTop + safeBottom;
 }
 
+// TEMPORARY — diagnostic only. Three straight attempts at fixing the splash
+// not covering the full screen on Orlando's installed iOS app (dvh, plain
+// innerHeight, then this generous multi-source measurement) have all
+// produced the exact same gap, which means the real cause isn't "which
+// number we measure" at all — something else is going on. Rather than
+// guess a fourth time, this prints what the device actually sees directly
+// on the splash itself, so the next screenshot carries the real numbers
+// instead of another blind guess. Remove this block (and the readout div
+// below) once the real cause is found.
+function useDebugInfo(vh) {
+  const [info, setInfo] = useState('');
+  const ref = useRef(null);
+  useEffect(() => {
+    const rect = ref.current ? ref.current.getBoundingClientRect() : null;
+    setInfo(
+      [
+        `iH:${window.innerHeight}`,
+        `cH:${document.documentElement.clientHeight}`,
+        `sH:${window.screen ? window.screen.height : '?'}`,
+        `dpr:${window.devicePixelRatio}`,
+        `sT:${readRootPx('--safe-area-top')}`,
+        `sB:${readRootPx('--safe-area-bottom')}`,
+        `vh:${vh}`,
+        `rect:${rect ? Math.round(rect.top) + '/' + Math.round(rect.height) + '/' + Math.round(rect.bottom) : '?'}`,
+        `sa:${window.navigator.standalone}`,
+      ].join(' ')
+    );
+  });
+  return [info, ref];
+}
+
 export default function SplashScreen({ leaving, label = 'LOADING THE MENU' }) {
   const [vh, setVh] = useState(null);
   useEffect(() => {
     const update = () => setVh(measureFullHeight());
     update();
-    // A couple of follow-up measurements shortly after mount, in case iOS
-    // hasn't finished settling the real viewport size on the very first
-    // read right after a standalone-app launch.
     const t1 = setTimeout(update, 50);
     const t2 = setTimeout(update, 300);
     window.addEventListener('resize', update);
@@ -66,8 +79,11 @@ export default function SplashScreen({ leaving, label = 'LOADING THE MENU' }) {
     };
   }, []);
 
+  const [debugInfo, debugRef] = useDebugInfo(vh);
+
   return (
     <div
+      ref={debugRef}
       className={`app-splash${leaving ? ' app-splash-leaving' : ''}`}
       style={vh ? { height: `${vh}px` } : undefined}
       aria-hidden="true"
@@ -81,6 +97,25 @@ export default function SplashScreen({ leaving, label = 'LOADING THE MENU' }) {
       <div className="app-splash-text">
         Fresas con Crema
         <small>{label}</small>
+      </div>
+      {/* TEMPORARY debug readout — see comment above useDebugInfo */}
+      <div
+        style={{
+          position: 'absolute',
+          left: 8,
+          bottom: 8,
+          right: 8,
+          fontSize: '10px',
+          fontFamily: 'monospace',
+          color: 'rgba(255,255,255,0.85)',
+          background: 'rgba(0,0,0,0.35)',
+          padding: '4px 6px',
+          borderRadius: '4px',
+          wordBreak: 'break-all',
+          lineHeight: 1.4,
+        }}
+      >
+        {debugInfo}
       </div>
     </div>
   );

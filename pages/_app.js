@@ -14,9 +14,10 @@ const SPLASH_MAX_MS = 3800;
 // globals.css) — kept in sync so the splash unmounts right as it finishes
 // fading rather than popping off mid-transition. Short on purpose: fading
 // a solid maroon panel over the cream page blends into a visible red wash
-// for as long as the fade runs, so 120ms keeps that blend down to a
-// couple of frames instead of something you actually notice.
-const FADE_MS = 120;
+// for as long as the fade runs, so 90ms (with an ease-out curve that
+// rushes through the blended middle) keeps that wash down to something
+// too brief to register.
+const FADE_MS = 90;
 
 export default function App({ Component, pageProps }) {
   // 'visible' -> 'leaving' (fading out) -> 'gone' (unmounted). Starting at

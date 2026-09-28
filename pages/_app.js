@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/router';
 import '../styles/globals.css';
 import SplashScreen from '../components/SplashScreen';
 
@@ -20,6 +21,12 @@ export default function App({ Component, pageProps }) {
   // navigation between pages (via next/link) doesn't remount _app, so the
   // splash never reappears just from clicking around the site.
   const [phase, setPhase] = useState('visible');
+  const router = useRouter();
+  // The splash's caption should match what's actually loading — the admin
+  // dashboard isn't a menu, so it gets its own label. router.pathname is
+  // already known on the very first render (no loading flicker between
+  // labels), since Next resolves it before _app ever mounts.
+  const splashLabel = router.pathname.startsWith('/admin') ? 'LOADING ADMIN' : 'LOADING THE MENU';
 
   useEffect(() => {
     let minDone = false;
@@ -57,7 +64,7 @@ export default function App({ Component, pageProps }) {
   return (
     <>
       <Component {...pageProps} />
-      {phase !== 'gone' && <SplashScreen leaving={phase === 'leaving'} />}
+      {phase !== 'gone' && <SplashScreen leaving={phase === 'leaving'} label={splashLabel} />}
     </>
   );
 }

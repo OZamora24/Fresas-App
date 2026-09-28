@@ -488,17 +488,29 @@ body.splash-active {
   align-items: center;
   justify-content: center;
   gap: 24px;
-  /* "circle" forces the gradient into a true circle sized to reach the
-     farthest corner. On a phone screen — much taller than it is wide —
-     that circle is far wider than the screen, so its dark outer edge
-     exits through the left/right sides well before it curves, and what's
-     left above and below reads as a flat, almost hard-edged band instead
-     of a gradient — that's the static line Orlando saw sitting near the
-     bottom even before any fade started. "ellipse" (the default shape,
-     named here for clarity) scales independently on each axis to match
-     the box itself, so the same 72% stop lands as an actual curve at
-     every edge instead of a straight cap. */
-  background: radial-gradient(ellipse at 50% 42%, var(--maroon) 0%, var(--maroon-deep) 72%);
+  /* "ellipse" (the default shape, named here for clarity) scales
+     independently on each axis to match the box itself, instead of
+     "circle" forcing a shape sized to the farthest corner in both
+     directions — on a phone screen that's much wider than the screen,
+     so its dark edge would exit through the sides before it curves.
+     That was step one. The actual static line Orlando kept seeing,
+     though, was the color stop below: with only two stops, everything
+     past the last one (previously 72%) renders as flat, constant
+     color — right up to the ellipse's own edge, which by default
+     ("farthest-corner") lands past every edge of the box. So the
+     gradient was doing its job out to 72% of the way to the corner,
+     then suddenly doing nothing at all for the rest of the way — a
+     real kink in the color ramp. The color on either side of that kink
+     matches almost exactly (the flat part IS var(--maroon-deep), same
+     as the last stop), so it never shows up as a visible seam in a
+     screenshot or in devtools — but the eye is very sensitive to
+     exactly this kind of "gradient suddenly flatlines" edge (a Mach
+     band), especially on a real phone screen, which is what made it
+     read as a hard line even though no two adjacent pixels differ by
+     much. Moving the last stop out to 100% keeps the color changing,
+     however subtly, all the way to the ellipse's own edge, so there's
+     no more kink for the eye to catch on. */
+  background: radial-gradient(ellipse at 50% 42%, var(--maroon) 0%, var(--maroon-deep) 100%);
   /* Two earlier approaches here both had a real problem. A plain opacity
      fade blends the solid maroon panel with the cream page underneath at
      every in-between alpha value, which reads as a muddy red wash before

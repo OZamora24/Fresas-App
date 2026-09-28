@@ -443,7 +443,10 @@ export default function Home() {
           if (draft.qty) setQty(draft.qty);
           if (draft.includeRim !== undefined) setIncludeRim(draft.includeRim);
           if (Array.isArray(draft.cart)) setCart(draft.cart);
-          if (draft.pickupDate) setPickupDate(draft.pickupDate);
+          // A saved draft's pickup date can be yesterday's (or older) by the
+          // time someone comes back to it — roll it forward to today rather
+          // than restoring a date that's already passed.
+          if (draft.pickupDate) setPickupDate(draft.pickupDate < todayDateKey() ? todayDateKey() : draft.pickupDate);
           if (draft.pickup) setPickup(draft.pickup);
           if (draft.name) setName(draft.name);
           if (draft.phone) setPhone(draft.phone);

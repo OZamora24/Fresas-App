@@ -415,3 +415,75 @@ button {
 .promo-status-pill.inactive { background: var(--pink-pale); color: var(--maroon); }
 
 .lightbox-video { display: block; max-width: 92vw; max-height: 88vh; width: auto; height: auto; border-radius: 14px; box-shadow: 0 12px 40px rgba(0,0,0,0.4); background: #000; }
+
+/* Launch splash (see components/SplashScreen.js and pages/_app.js) — a
+   full-screen overlay shown briefly on a fresh page load, matching the
+   "Pulse Ring" concept picked from the design preview. */
+.app-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  background: radial-gradient(circle at 50% 42%, var(--maroon) 0%, var(--maroon-deep) 72%);
+  transition: opacity 0.45s ease;
+}
+.app-splash-leaving { opacity: 0; pointer-events: none; }
+
+.app-splash-ringwrap {
+  position: relative;
+  width: 140px;
+  height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.app-splash-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1.5px solid var(--pink-soft);
+  opacity: 0;
+  animation: appSplashPulse 2.4s ease-out infinite;
+}
+.app-splash-ring.r2 { animation-delay: 0.8s; }
+.app-splash-ring.r3 { animation-delay: 1.6s; }
+@keyframes appSplashPulse {
+  0% { transform: scale(0.35); opacity: 0.8; }
+  100% { transform: scale(1); opacity: 0; }
+}
+.app-splash-core {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--cream-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+.app-splash-text {
+  font-family: 'Baloo 2', sans-serif;
+  font-weight: 700;
+  color: var(--cream-2);
+  font-size: 1.15rem;
+  text-align: center;
+}
+.app-splash-text small {
+  display: block;
+  font-family: 'Nunito', sans-serif;
+  font-weight: 700;
+  font-size: 0.68rem;
+  color: rgba(255, 253, 249, 0.75);
+  letter-spacing: 0.12em;
+  margin-top: 6px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-splash-ring { animation: none; opacity: 0.5; }
+  .app-splash { transition: none; }
+}

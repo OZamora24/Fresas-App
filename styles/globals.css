@@ -15,6 +15,13 @@
   --page-bg: var(--cream);
   --chip-bg: #ffffff;
   --shadow: 0 10px 24px rgba(90, 20, 30, 0.10);
+  /* Exposed so SplashScreen.js can read the real safe-area inset values
+     from JS (env() itself isn't readable there) and add them on top of
+     whatever height it measures, as a buffer against exactly the kind
+     of shortfall that kept leaving a strip of the real page exposed at
+     the bottom of the standalone home-screen app. */
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 * { box-sizing: border-box; }

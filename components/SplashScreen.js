@@ -50,7 +50,25 @@ export default function SplashScreen({ leaving, label = 'LOADING THE MENU' }) {
   // which is the "flinch" Orlando kept seeing even after the sustained gap
   // itself was fixed.
   useLayoutEffect(() => {
-    const update = () => setVh(measureFullHeight());
+    // Right after a standalone iOS app launches from the home screen, the
+    // window's reported size settles over the first several frames rather
+    // than being correct immediately — it can fire an extra 'resize' event
+    // mid-launch that briefly reports a smaller size than the real screen,
+    // before a follow-up event lands on the true value a moment later.
+    // That's what the frame-by-frame video showed: one single frame with
+    // a sliver of the real page exposed, gone again the very next frame —
+    // not a sustained gap, just one bad in-between reading. Since this
+    // splash only ever needs to get taller, never shorter, only accepting
+    // a new measurement when it's at least as tall as what's already in
+    // place makes that one bad reading harmless: it's simply ignored, and
+    // the next (correct) reading still comes through normally.
+    const update = () => {
+      setVh((prev) => {
+        const next = measureFullHeight();
+        if (next == null) return prev;
+        return prev != null ? Math.max(prev, next) : next;
+      });
+    };
     update();
     window.addEventListener('resize', update);
     window.addEventListener('orientationchange', update);

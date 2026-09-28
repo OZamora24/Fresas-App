@@ -37,9 +37,29 @@ export default function App({ Component, pageProps }) {
   useEffect(() => {
     let minDone = false;
     let pageLoaded = document.readyState === 'complete';
+    // Guards against the splash reappearing a second time. Without this,
+    // once the normal minTimer path already called setPhase('leaving') and
+    // the splash finished fading away, the maxTimer safety-cap (still
+    // pending, since nothing had cancelled it) fired on its own a moment
+    // later and called setPhase('leaving') again — remounting the splash
+    // for another ~450ms, invisible but still swapping <html>/<body>'s
+    // background back to the splash's maroon underneath it. That's the
+    // "loads fine, then a quick glitch, then loads normally" flash Orlando
+    // kept seeing on every device: a real timing bug, not a rendering
+    // quirk. leaveOnce() cancels whichever timer didn't win the race, so
+    // only one of them can ever move the splash into 'leaving'.
+    let left = false;
+
+    function leaveOnce() {
+      if (left) return;
+      left = true;
+      clearTimeout(minTimer);
+      clearTimeout(maxTimer);
+      setPhase('leaving');
+    }
 
     function tryLeave() {
-      if (minDone && pageLoaded) setPhase('leaving');
+      if (minDone && pageLoaded) leaveOnce();
     }
     function onWindowLoad() {
       pageLoaded = true;
@@ -50,7 +70,7 @@ export default function App({ Component, pageProps }) {
       minDone = true;
       tryLeave();
     }, SPLASH_MIN_MS);
-    const maxTimer = setTimeout(() => setPhase('leaving'), SPLASH_MAX_MS);
+    const maxTimer = setTimeout(leaveOnce, SPLASH_MAX_MS);
 
     if (!pageLoaded) window.addEventListener('load', onWindowLoad);
 

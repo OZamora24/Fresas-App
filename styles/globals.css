@@ -463,10 +463,20 @@ button {
    using <html>'s background-color directly, bypassing normal DOM
    stacking — so the splash's own z-index can't cover it. _app.js adds
    this class for as long as the splash is on screen so that strip reads
-   as part of the splash instead of a pale seam under it. */
+   as part of the splash instead of a pale seam under it.
+   overflow: hidden here is a separate fix: the real page underneath is
+   often 5-10x taller than the screen, and with nothing blocking scroll,
+   any layout shift while it's mounting (fonts/images finishing, initial
+   scroll-position restore) can trigger a scroll event during the splash.
+   iOS has a known bug where a position:fixed element can momentarily let
+   the scrolled content underneath show through during exactly that kind
+   of scroll/repaint — which is what showed up as a one-frame flash of
+   real page text at the very start of load. Locking scroll for as long
+   as the splash is up removes the trigger. */
 html.splash-active,
 body.splash-active {
   background: var(--maroon-deep);
+  overflow: hidden;
 }
 
 .app-splash {
@@ -480,6 +490,11 @@ body.splash-active {
   gap: 24px;
   background: radial-gradient(circle at 50% 42%, var(--maroon) 0%, var(--maroon-deep) 72%);
   transition: opacity 0.45s ease;
+  /* Forces its own GPU compositing layer so iOS keeps it painted as a
+     stable top layer instead of re-flowing it with the rest of the page
+     — belt-and-suspenders against the same fixed-position flash. */
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
 }
 .app-splash-leaving { opacity: 0; pointer-events: none; }
 

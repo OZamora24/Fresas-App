@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Admin section reorder — preview</title>
+<style>
+  :root {
+    --cream: #FFF7EC;
+    --cream-2: #FFFDF9;
+    --maroon: #7C1B2C;
+    --maroon-deep: #56111E;
+    --pink: #E4667E;
+    --pink-pale: #FCE9EE;
+    --ink: #3A0E17;
+    --ink-soft: #7A4550;
+    --line: rgba(124, 27, 44, 0.18);
+    --card-bg: var(--cream-2);
+    --page-bg: var(--cream);
+    --shadow: 0 10px 24px rgba(90, 20, 30, 0.10);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--page-bg);
+    color: var(--ink);
+    font-family: 'Nunito', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+  .banner {
+    background: var(--maroon);
+    color: #fff;
+    text-align: center;
+    padding: 10px 16px;
+    font-size: 0.85rem;
+    font-weight: 700;
+  }
+  .hero {
+    background: linear-gradient(180deg, #8f2436 0%, var(--maroon-deep) 100%);
+    padding: 30px 20px 40px;
+    color: #fff;
+  }
+  .hero h1 { margin: 0; font-size: 1.6rem; }
+  .hero p { margin: 6px 0 0; opacity: 0.85; font-size: 0.9rem; }
+  .wrap { max-width: 640px; margin: 0 auto; padding: 0 20px 60px; }
+  .reorder-wrap { display: flex; flex-direction: column; }
+  .section { padding: 26px 0 6px; border-bottom: 1px solid var(--line); }
+  .section:last-child { border-bottom: none; }
+  .section-header-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .section-header-row h2 { margin: 0; font-weight: 700; font-size: 1.25rem; color: var(--maroon); }
+  .hint { margin: 6px 0 14px; color: var(--ink-soft); font-size: 0.9rem; }
+  .section-reorder-controls { display: inline-flex; gap: 4px; flex-shrink: 0; }
+  .reorder-btn {
+    width: 30px; height: 30px; padding: 0; border-radius: 8px; border: 2px solid var(--line);
+    background: var(--card-bg); color: var(--maroon); font-size: 0.8rem; line-height: 1;
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+  }
+  .reorder-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .reorder-btn:not(:disabled):hover { background: var(--pink-pale); }
+  .reorder-btn:not(:disabled):active { background: var(--pink-pale); transform: scale(0.95); }
+  .card {
+    background: var(--card-bg); border: 2px solid var(--line); border-radius: 14px;
+    padding: 14px; box-shadow: var(--shadow);
+  }
+  .row { display: flex; align-items: center; justify-content: space-between; }
+  .status-btn {
+    border: 2px solid var(--line); background: #fff; color: var(--maroon); font-weight: 700;
+    padding: 6px 14px; border-radius: 999px; font-size: 0.85rem; cursor: pointer;
+  }
+  .promo-pill {
+    display: inline-block; background: var(--pink-pale); color: var(--maroon); font-weight: 700;
+    font-size: 0.75rem; padding: 3px 10px; border-radius: 999px; margin-top: 6px;
+  }
+  .photo-grid { display: flex; gap: 8px; margin-top: 10px; }
+  .photo-tile {
+    width: 60px; height: 60px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--pink-soft, #F7CCD6), var(--pink));
+  }
+  .btn-primary {
+    background: var(--maroon); color: #fff; border: none; font-weight: 700;
+    padding: 10px 16px; border-radius: 999px; cursor: pointer; font-size: 0.9rem;
+  }
+  .flash {
+    text-align: center; font-size: 0.8rem; color: var(--ink-soft); margin-top: 18px;
+    opacity: 0; transition: opacity 0.2s;
+  }
+  .flash.show { opacity: 1; }
+  .note {
+    max-width: 640px; margin: 18px auto 0; padding: 0 20px; font-size: 0.85rem; color: var(--ink-soft);
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+  <div class="banner">PREVIEW — not live yet, tap the arrows below to try it</div>
+  <div class="hero">
+    <h1>Admin</h1>
+    <p>Live orders · refreshes every few seconds</p>
+  </div>
+  <div class="wrap">
+    <div class="reorder-wrap" id="reorderWrap"></div>
+    <p class="flash" id="flash">Order saved to this browser</p>
+  </div>
+  <p class="note">Orders always stays fixed at the very bottom, below everything here — no arrows on it.</p>
+
+<script>
+  const SECTIONS = {
+    shopStatus: {
+      label: 'Shop status',
+      render: () => `
+        <div class="card">
+          <div class="row">
+            <span style="font-weight:700;">🟢 Open for orders</span>
+            <button class="status-btn">Close shop</button>
+          </div>
+        </div>
+        <p class="hint" style="margin-bottom:0;">Hours, sold-out toggles, and catering settings live here.</p>
+      `,
+    },
+    salesLink: {
+      label: 'Sales dashboard link',
+      render: () => `<a href="#" style="color:var(--maroon);font-weight:700;text-decoration:none;">📊 View sales dashboard →</a>`,
+    },
+    promoCodes: {
+      label: 'Promo codes',
+      render: () => `
+        <p class="hint">Create a code and turn it on — customers enter it at checkout.</p>
+        <div class="card">
+          <div style="font-weight:800;color:var(--maroon);">FRESA10</div>
+          <div style="font-size:0.85rem;">10% off</div>
+          <span class="promo-pill">Active</span>
+        </div>
+      `,
+    },
+    sitePhotos: {
+      label: 'Site photos',
+      render: () => `
+        <p class="hint">These show up on the public Photos page.</p>
+        <div class="photo-grid"><div class="photo-tile"></div><div class="photo-tile"></div><div class="photo-tile"></div></div>
+      `,
+    },
+    exportHistory: {
+      label: 'Export order history',
+      render: () => `
+        <p class="hint" style="margin-bottom:10px;">Download orders as an Excel file.</p>
+        <button class="btn-primary">⬇️ Export Excel file</button>
+      `,
+    },
+  };
+
+  let order = ['shopStatus', 'salesLink', 'promoCodes', 'sitePhotos', 'exportHistory'];
+
+  function move(key, dir) {
+    const idx = order.indexOf(key);
+    const swap = idx + dir;
+    if (swap < 0 || swap >= order.length) return;
+    [order[idx], order[swap]] = [order[swap], order[idx]];
+    render();
+    const flash = document.getElementById('flash');
+    flash.classList.add('show');
+    clearTimeout(window._flashT);
+    window._flashT = setTimeout(() => flash.classList.remove('show'), 1200);
+  }
+
+  function render() {
+    const wrap = document.getElementById('reorderWrap');
+    wrap.innerHTML = order.map((key, idx) => {
+      const s = SECTIONS[key];
+      return `
+        <div class="section">
+          <div class="section-header-row">
+            <h2>${s.label}</h2>
+            <span class="section-reorder-controls">
+              <button class="reorder-btn" data-key="${key}" data-dir="-1" ${idx === 0 ? 'disabled' : ''} title="Move up">▲</button>
+              <button class="reorder-btn" data-key="${key}" data-dir="1" ${idx === order.length - 1 ? 'disabled' : ''} title="Move down">▼</button>
+            </span>
+          </div>
+          ${s.render()}
+        </div>
+      `;
+    }).join('');
+    wrap.querySelectorAll('.reorder-btn').forEach((btn) => {
+      btn.addEventListener('click', () => move(btn.dataset.key, Number(btn.dataset.dir)));
+    });
+  }
+
+  render();
+</script>
+</body>
+</html>

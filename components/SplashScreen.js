@@ -15,25 +15,54 @@ function readRootPx(varName) {
   return Number.isFinite(n) ? n : 0;
 }
 
-// Measures the true full screen height as generously as possible. The
-// debug readout that briefly lived here confirmed the actual cause: on
-// Orlando's installed, standalone, home-screen iOS app, window.innerHeight
-// only covers the space below the status-bar/Dynamic-Island overlay —
-// screen.height is the one number that already reports the true full
-// screen. Taking the tallest of all three and adding the safe-area insets
-// on top means the result can only ever end up too generous, never too
-// short — a splash a few pixels taller than the screen is invisible,
-// clipped by the edge of the device, so there's no downside to
-// over-covering here.
+// Measures the true full screen height — but "full" means something
+// different depending on how the app is running, which is exactly what the
+// live debug readout on Orlando's phone (DBGV2) caught:
+//
+// - Installed, standalone, home-screen app (navigator.standalone === true):
+//   there's no browser chrome at all, so window.screen.height already IS
+//   the true full screen, and it never changes. window.innerHeight can
+//   transiently under-report by a few pixels while the app is still
+//   settling right after launch (see the resize-settling comment in the
+//   effect below), so taking the tallest of innerHeight/clientHeight/
+//   screen.height is safe here: it can only end up too generous, never too
+//   short, and a splash a few px taller than the screen is simply clipped
+//   at the device edge — invisible, no downside.
+//
+// - A regular Safari tab (navigator.standalone is false/undefined):
+//   window.screen.height is STILL the full physical screen size, but now
+//   that's the wrong number to chase, because Safari's own address-bar/
+//   toolbar chrome can be occupying real screen space on top of the page.
+//   Orlando's own readout proved this directly: iH:650 cH:650 vvH:650 all
+//   agreed on the actual visible area while sH:874 (the fixed physical
+//   screen) sat far above it. The old code's Math.max(...) picked 874,
+//   sized the splash to that, and pushed its centered content down off the
+//   bottom of the 650px that was actually visible — the exact "pushed
+//   down" bug Orlando reported. window.visualViewport.height is the API
+//   built specifically to track the currently-visible area net of that
+//   chrome, so in this branch it's used directly (not maxed against
+//   screen.height), with innerHeight as a fallback for the rare browser
+//   without visualViewport support.
 function measureFullHeight() {
   if (typeof window === 'undefined') return null;
-  const candidates = [
-    window.innerHeight,
-    document.documentElement.clientHeight,
-    window.screen ? window.screen.height : 0,
-  ].filter((n) => Number.isFinite(n) && n > 0);
-  if (!candidates.length) return null;
-  const base = Math.max(...candidates);
+  const isStandalone = !!(window.navigator && window.navigator.standalone === true);
+  let base = null;
+  if (isStandalone) {
+    const candidates = [
+      window.innerHeight,
+      document.documentElement.clientHeight,
+      window.screen ? window.screen.height : 0,
+    ].filter((n) => Number.isFinite(n) && n > 0);
+    if (candidates.length) base = Math.max(...candidates);
+  } else {
+    const vv = window.visualViewport;
+    if (vv && Number.isFinite(vv.height) && vv.height > 0) {
+      base = vv.height;
+    } else if (Number.isFinite(window.innerHeight) && window.innerHeight > 0) {
+      base = window.innerHeight;
+    }
+  }
+  if (base == null) return null;
   const safeTop = readRootPx('--safe-area-top');
   const safeBottom = readRootPx('--safe-area-bottom');
   return base + safeTop + safeBottom;

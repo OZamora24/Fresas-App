@@ -3,7 +3,7 @@
 // _app.js so it can coordinate with actual page-load state). `label` lets
 // _app.js swap the caption based on which page is actually loading (the
 // admin dashboard doesn't have a "menu" to load).
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useState } from 'react';
 
 // Reads a CSS custom property (in px) off <html> — used below to pull in
 // the safe-area inset values that globals.css exposes as --safe-area-top /
@@ -39,42 +39,44 @@ function measureFullHeight() {
   return base + safeTop + safeBottom;
 }
 
-// TEMPORARY — diagnostic only. The standalone home-screen gap turned out to
-// need a debug readout to actually pin down (guessing at the fix three
-// times in a row all landed on the same wrong symptom). The same gap is
-// now showing up in regular Safari too — sustained, not just a one-frame
-// flash — which points to something specific to Safari's own address-bar/
-// toolbar chrome that this component doesn't currently account for at all.
-// Rather than guess a fourth time, this prints the real numbers (including
-// window.visualViewport, which is the one API specifically meant to track
-// how much of the screen Safari's chrome is currently covering) directly
-// on the splash. Remove this block and the readout div below once the
-// real cause is confirmed.
+// TEMPORARY — diagnostic only, v2. The first version of this readout was
+// nested inside .app-splash and anchored to ITS bottom edge — which means
+// if the real bug turns out to be that .app-splash itself never mounts
+// tall enough (or gets covered by something with a higher effective stack
+// order in Safari), the readout would be exactly as invisible as the gap
+// it was trying to explain, which is exactly what happened: three
+// screenshots in a row (normal Safari, private browsing, a never-before-
+// requested URL) showed no readout anywhere, not even as an empty box —
+// ruling out ordinary caching as the explanation. This version is its own
+// independent, top-anchored, maximum-z-index, solid-background element —
+// a sibling of .app-splash, not a child of it — so it can't be hidden by
+// anything going wrong with the splash's own height or stacking. If THIS
+// still doesn't show up, the problem isn't the splash at all, it's that
+// this build genuinely isn't the one running yet. "DBGV2" in the text is
+// the tell: if a screenshot doesn't say that, it's an old build.
 function useDebugInfo(vh) {
-  const [info, setInfo] = useState('');
-  const ref = useRef(null);
+  const [info, setInfo] = useState('DBGV2 (waiting for layout effect...)');
   useLayoutEffect(() => {
-    const rect = ref.current ? ref.current.getBoundingClientRect() : null;
     const vv = window.visualViewport;
     setInfo(
       [
+        'DBGV2',
         `iH:${window.innerHeight}`,
         `cH:${document.documentElement.clientHeight}`,
         `sH:${window.screen ? window.screen.height : '?'}`,
         `dpr:${window.devicePixelRatio}`,
         `vvH:${vv ? Math.round(vv.height) : '?'}`,
         `vvOffT:${vv ? Math.round(vv.offsetTop) : '?'}`,
-        `vvScale:${vv ? vv.scale : '?'}`,
         `sT:${readRootPx('--safe-area-top')}`,
         `sB:${readRootPx('--safe-area-bottom')}`,
         `vh:${vh}`,
-        `rect:${rect ? Math.round(rect.top) + '/' + Math.round(rect.height) + '/' + Math.round(rect.bottom) : '?'}`,
         `sa:${window.navigator.standalone}`,
         `scrollY:${window.scrollY}`,
+        `ua:${navigator.userAgent.slice(0, 40)}`,
       ].join(' ')
     );
   });
-  return [info, ref];
+  return info;
 }
 
 export default function SplashScreen({ leaving, label = 'LOADING THE MENU' }) {
@@ -116,44 +118,49 @@ export default function SplashScreen({ leaving, label = 'LOADING THE MENU' }) {
     };
   }, []);
 
-  const [debugInfo, debugRef] = useDebugInfo(vh);
+  const debugInfo = useDebugInfo(vh);
 
   return (
-    <div
-      ref={debugRef}
-      className={`app-splash${leaving ? ' app-splash-leaving' : ''}`}
-      style={vh ? { height: `${vh}px` } : undefined}
-      aria-hidden="true"
-    >
-      <div className="app-splash-ringwrap">
-        <div className="app-splash-ring r1" />
-        <div className="app-splash-ring r2" />
-        <div className="app-splash-ring r3" />
-        <div className="app-splash-core">🍓</div>
-      </div>
-      <div className="app-splash-text">
-        Fresas con Crema
-        <small>{label}</small>
-      </div>
-      {/* TEMPORARY debug readout — see comment above useDebugInfo */}
+    <>
+      {/* TEMPORARY diagnostic — see comment above useDebugInfo. Deliberately
+          NOT inside .app-splash: independent element, top-anchored (doesn't
+          depend on any height calculation), higher z-index than the splash
+          itself, solid (not translucent) background so it can't blend into
+          anything behind it. */}
       <div
         style={{
-          position: 'absolute',
-          left: 8,
-          bottom: 8,
-          right: 8,
-          fontSize: '10px',
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 2147483647,
+          fontSize: '11px',
           fontFamily: 'monospace',
-          color: 'rgba(255,255,255,0.85)',
-          background: 'rgba(0,0,0,0.35)',
-          padding: '4px 6px',
-          borderRadius: '4px',
+          color: '#000',
+          background: '#ffe600',
+          padding: '6px 8px',
           wordBreak: 'break-all',
           lineHeight: 1.4,
         }}
       >
         {debugInfo}
       </div>
-    </div>
+      <div
+        className={`app-splash${leaving ? ' app-splash-leaving' : ''}`}
+        style={vh ? { height: `${vh}px` } : undefined}
+        aria-hidden="true"
+      >
+        <div className="app-splash-ringwrap">
+          <div className="app-splash-ring r1" />
+          <div className="app-splash-ring r2" />
+          <div className="app-splash-ring r3" />
+          <div className="app-splash-core">🍓</div>
+        </div>
+        <div className="app-splash-text">
+          Fresas con Crema
+          <small>{label}</small>
+        </div>
+      </div>
+    </>
   );
 }

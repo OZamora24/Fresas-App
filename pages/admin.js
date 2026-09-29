@@ -199,13 +199,38 @@ export default function Admin() {
   // the OneSignal script, not necessarily an ad blocker. 20s (up from an
   // earlier 8s) gives slow mobile connections room to finish before this
   // fires as a false alarm.
+  //
+  // Restart that 20s clock every time the page becomes visible again,
+  // instead of letting it run continuously from mount. Orlando hit this on
+  // his phone's installed Home Screen app: he tapped "Export Excel file"
+  // moments after opening /admin, which hands the page off to iOS's native
+  // Save-to-Files sheet — and iOS pauses JS execution in the background
+  // while that sheet is up, but real wall-clock time keeps passing. If the
+  // OneSignal SDK was still loading at that moment, the 20s timer kept
+  // counting that backgrounded time, so by the time he returned to the
+  // page it had already run out and showed the "taking a while" error —
+  // even though the SDK had barely had a real chance to load in the
+  // foreground. A manual refresh "fixed" it only because it restarted the
+  // whole 20s window uninterrupted. Resetting the timer on every
+  // visibilitychange back to 'visible' means the message only ever appears
+  // after 20 real seconds of the page actually being on screen.
   useEffect(() => {
-    const timeout = setTimeout(() => {
-      if (!oneSignalReady && !needsHomeScreen) {
-        setPushError("Notifications are taking a while to load — usually just a slow or weak connection, but it can also be an ad blocker or browser privacy setting. Try again in a moment, switch to Wi-Fi if you're on cellular, or disable any ad blocker for this site.");
+    if (oneSignalReady || needsHomeScreen) return undefined;
+    function fire() {
+      setPushError("Notifications are taking a while to load — usually just a slow or weak connection, but it can also be an ad blocker or browser privacy setting. Try again in a moment, switch to Wi-Fi if you're on cellular, or disable any ad blocker for this site.");
+    }
+    let timeout = setTimeout(fire, 20000);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        clearTimeout(timeout);
+        timeout = setTimeout(fire, 20000);
       }
-    }, 20000);
-    return () => clearTimeout(timeout);
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearTimeout(timeout);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [oneSignalReady, needsHomeScreen]);
 
   useEffect(() => {

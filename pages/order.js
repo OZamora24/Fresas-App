@@ -17,8 +17,8 @@ const BASE_DESC = {
     es: 'Crema dulce de chocolate blanco, coco y almendras + crema dulce casera',
   },
   biscoff: {
-    en: 'Homemade sweet cream + cookie crumbs + cookie butter drizzle, topped with Biscoff cookie',
-    es: 'Crema dulce casera + migas de galleta + drizzle de mantequilla de galleta, cubierto con galleta Biscoff',
+    en: 'Homemade sweet cream + cookie crumbs + cookie butter drizzle, topped with a Biscoff cookie',
+    es: 'Crema dulce casera + migas de galleta + drizzle de mantequilla de galleta, cubierto con una galleta Biscoff',
   },
   ferrero: {
     en: 'Homemade sweet cream + walnuts + Nutella drizzle topped with whipped cream and a Ferrero Rocher chocolate',

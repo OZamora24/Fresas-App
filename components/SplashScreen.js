@@ -81,17 +81,28 @@ export default function SplashScreen({ leaving, label = 'LOADING THE MENU' }) {
   useLayoutEffect(() => {
     // Right after a standalone iOS app launches from the home screen, the
     // window's reported size settles over the first several frames rather
-    // than being correct immediately — it can fire an extra 'resize' event
-    // mid-launch that briefly reports a smaller size than the real screen,
-    // before a follow-up event lands on the true value a moment later.
-    // That's what an earlier frame-by-frame video showed: one single frame
-    // with a sliver of the real page exposed, gone again the very next
-    // frame — not a sustained gap, just one bad in-between reading. Since
-    // this splash only ever needs to get taller, never shorter, only
-    // accepting a new measurement when it's at least as tall as what's
-    // already in place makes that one bad reading harmless: it's simply
-    // ignored, and the next (correct) reading still comes through
-    // normally.
+    // than being correct immediately. Since this splash only ever needs to
+    // get taller, never shorter, only accepting a new measurement when it's
+    // at least as tall as what's already in place makes any bad early
+    // reading harmless — it's simply ignored, and the next (correct)
+    // reading still comes through normally.
+    //
+    // The open question was always *how* to catch that correct reading.
+    // The original approach — re-measure only on the browser's own
+    // 'resize'/'orientationchange' events — assumed the settling would
+    // show up as a resize event firing a moment after mount. On the /admin
+    // page specifically, a frame-by-frame video showed that's often too
+    // slow: the gap was visibly there for a few hundred milliseconds (not
+    // one throwaway frame) before anything corrected it, meaning either no
+    // resize event fired in that window at all, or it fired later than a
+    // human can un-notice. Polling every animation frame for the first
+    // second and a half after mount closes that gap regardless of whether
+    // the browser ever fires a matching event: whatever the true
+    // measurement turns out to be, this catches it within about one frame
+    // of it becoming available. It's cheap (measureFullHeight is a handful
+    // of property reads) and harmless to run this often, since the
+    // monotonic-max guard means extra calls can only ever confirm the
+    // current height or grow it — never cause a flicker.
     const update = () => {
       setVh((prev) => {
         const next = measureFullHeight();
@@ -100,9 +111,23 @@ export default function SplashScreen({ leaving, label = 'LOADING THE MENU' }) {
       });
     };
     update();
+
+    let rafId = null;
+    const settleDeadline = Date.now() + 1500;
+    const poll = () => {
+      update();
+      if (Date.now() < settleDeadline) {
+        rafId = requestAnimationFrame(poll);
+      } else {
+        rafId = null;
+      }
+    };
+    rafId = requestAnimationFrame(poll);
+
     window.addEventListener('resize', update);
     window.addEventListener('orientationchange', update);
     return () => {
+      if (rafId != null) cancelAnimationFrame(rafId);
       window.removeEventListener('resize', update);
       window.removeEventListener('orientationchange', update);
     };

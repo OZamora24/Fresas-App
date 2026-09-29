@@ -105,11 +105,39 @@ export default function Home({ initialSettings }) {
 
   // Re-check every minute so "Open now" flips to "Closing soon" (and
   // eventually to whatever the shop status says after closing) without
-  // needing a page reload.
+  // needing a page reload. This used to only bump nowTick to force a
+  // re-render — it never actually re-fetched settings, so it could flip
+  // the badge's wording based on the current time, but a change made in
+  // /admin (e.g. moving today's closing time from 9pm to 10pm) never
+  // reached an already-open Home tab: `settings` was fetched once
+  // (server-side above, or the one-time fallback right above this) and
+  // then just sat there. Orlando caught this directly — he changed the
+  // closing time around 9pm and the home screen he already had open kept
+  // showing the old hours indefinitely. Now this re-fetches `/api/settings`
+  // on the same 60s tick, plus immediately whenever the tab regains focus
+  // or comes back into view (covers a phone screen waking up, not just a
+  // desktop tab switch), so an already-open Home page picks up an admin
+  // change within a minute at most instead of never.
   const [nowTick, setNowTick] = useState(0);
   useEffect(() => {
-    const id = setInterval(() => setNowTick((n) => n + 1), 60000);
-    return () => clearInterval(id);
+    const refresh = () => {
+      setNowTick((n) => n + 1);
+      fetch('/api/settings')
+        .then((r) => r.json())
+        .then((j) => setSettings(j.settings))
+        .catch(() => {});
+    };
+    const id = setInterval(refresh, 60000);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') refresh();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
+    };
   }, []);
 
   const isOpen = settings ? settings.is_open !== false : null;

@@ -9,28 +9,28 @@ const ONESIGNAL_APP_ID = process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID;
 
 const BASE_DESC = {
   regular: {
-    en: 'Homemade sweet cream + 3 toppings included',
-    es: 'Crema dulce casera + 3 toppings incluidos',
+    en: 'Homemade sweet cream + 3 toppings of your choice',
+    es: 'Crema dulce casera + 3 toppings a tu elección',
   },
   raffaello: {
     en: 'White chocolate sweet cream, coconut & almonds + homemade sweet cream',
     es: 'Crema dulce de chocolate blanco, coco y almendras + crema dulce casera',
   },
   biscoff: {
-    en: 'Biscoff cookie butter fresas con crema',
-    es: 'Fresas con crema con mantequilla de galleta Biscoff',
+    en: 'Homemade sweet cream + cookie crumbs + cookie butter drizzle, topped with Biscoff cookie',
+    es: 'Crema dulce casera + migas de galleta + drizzle de mantequilla de galleta, cubierto con galleta Biscoff',
   },
   ferrero: {
-    en: 'Ferrero Rocher fresas con crema',
-    es: 'Fresas con crema estilo Ferrero Rocher',
+    en: 'Homemade sweet cream + walnuts + Nutella drizzle topped with whipped cream and a Ferrero Rocher chocolate',
+    es: 'Crema dulce casera + nueces + drizzle de Nutella, cubierto con crema batida y un chocolate Ferrero Rocher',
   },
   bananapudding: {
-    en: 'Banana pudding fresas con crema',
-    es: 'Fresas con crema con pudín de plátano',
+    en: 'Homemade sweet cream + banana pudding topped with Nilla wafer cookie crumbs',
+    es: 'Crema dulce casera + pudín de plátano, cubierto con migas de galleta Nilla wafer',
   },
   gansito: {
-    en: 'Gansito fresas con crema',
-    es: 'Fresas con crema estilo Gansito',
+    en: 'Homemade sweet cream + chocolate chips + chocolate & strawberry drizzle topped with a Gansito',
+    es: 'Crema dulce casera + chispas de chocolate + drizzle de chocolate y fresa, cubierto con un Gansito',
   },
 };
 

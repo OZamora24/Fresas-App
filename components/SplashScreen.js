@@ -3,7 +3,7 @@
 // _app.js so it can coordinate with actual page-load state). `label` lets
 // _app.js swap the caption based on which page is actually loading (the
 // admin dashboard doesn't have a "menu" to load).
-import { useLayoutEffect, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 
 // Reads a CSS custom property (in px) off <html> — used below to pull in
 // the safe-area inset values that globals.css exposes as --safe-area-top /
@@ -37,6 +37,44 @@ function measureFullHeight() {
   const safeTop = readRootPx('--safe-area-top');
   const safeBottom = readRootPx('--safe-area-bottom');
   return base + safeTop + safeBottom;
+}
+
+// TEMPORARY — diagnostic only. The standalone home-screen gap turned out to
+// need a debug readout to actually pin down (guessing at the fix three
+// times in a row all landed on the same wrong symptom). The same gap is
+// now showing up in regular Safari too — sustained, not just a one-frame
+// flash — which points to something specific to Safari's own address-bar/
+// toolbar chrome that this component doesn't currently account for at all.
+// Rather than guess a fourth time, this prints the real numbers (including
+// window.visualViewport, which is the one API specifically meant to track
+// how much of the screen Safari's chrome is currently covering) directly
+// on the splash. Remove this block and the readout div below once the
+// real cause is confirmed.
+function useDebugInfo(vh) {
+  const [info, setInfo] = useState('');
+  const ref = useRef(null);
+  useLayoutEffect(() => {
+    const rect = ref.current ? ref.current.getBoundingClientRect() : null;
+    const vv = window.visualViewport;
+    setInfo(
+      [
+        `iH:${window.innerHeight}`,
+        `cH:${document.documentElement.clientHeight}`,
+        `sH:${window.screen ? window.screen.height : '?'}`,
+        `dpr:${window.devicePixelRatio}`,
+        `vvH:${vv ? Math.round(vv.height) : '?'}`,
+        `vvOffT:${vv ? Math.round(vv.offsetTop) : '?'}`,
+        `vvScale:${vv ? vv.scale : '?'}`,
+        `sT:${readRootPx('--safe-area-top')}`,
+        `sB:${readRootPx('--safe-area-bottom')}`,
+        `vh:${vh}`,
+        `rect:${rect ? Math.round(rect.top) + '/' + Math.round(rect.height) + '/' + Math.round(rect.bottom) : '?'}`,
+        `sa:${window.navigator.standalone}`,
+        `scrollY:${window.scrollY}`,
+      ].join(' ')
+    );
+  });
+  return [info, ref];
 }
 
 export default function SplashScreen({ leaving, label = 'LOADING THE MENU' }) {
@@ -78,8 +116,11 @@ export default function SplashScreen({ leaving, label = 'LOADING THE MENU' }) {
     };
   }, []);
 
+  const [debugInfo, debugRef] = useDebugInfo(vh);
+
   return (
     <div
+      ref={debugRef}
       className={`app-splash${leaving ? ' app-splash-leaving' : ''}`}
       style={vh ? { height: `${vh}px` } : undefined}
       aria-hidden="true"
@@ -93,6 +134,25 @@ export default function SplashScreen({ leaving, label = 'LOADING THE MENU' }) {
       <div className="app-splash-text">
         Fresas con Crema
         <small>{label}</small>
+      </div>
+      {/* TEMPORARY debug readout — see comment above useDebugInfo */}
+      <div
+        style={{
+          position: 'absolute',
+          left: 8,
+          bottom: 8,
+          right: 8,
+          fontSize: '10px',
+          fontFamily: 'monospace',
+          color: 'rgba(255,255,255,0.85)',
+          background: 'rgba(0,0,0,0.35)',
+          padding: '4px 6px',
+          borderRadius: '4px',
+          wordBreak: 'break-all',
+          lineHeight: 1.4,
+        }}
+      >
+        {debugInfo}
       </div>
     </div>
   );

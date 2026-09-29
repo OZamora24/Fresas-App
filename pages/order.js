@@ -517,10 +517,28 @@ export default function Home() {
   // harmless (the server re-validates on submit and rejects a stale time),
   // but confusing. Recomputing immediately when the tab/window regains
   // focus closes that gap without waiting for the next 60s tick.
+  //
+  // This also re-fetches /api/settings on the same schedule now — same fix
+  // as the Home page. Before, shopStatus was only ever fetched once (right
+  // below, on mount), so an admin-side change (hours, open/closed, sold-out
+  // flavors) made while a customer already had this page open never showed
+  // up here until they reloaded. Orlando caught the same gap on Home when
+  // he changed the closing time around 9pm and an already-open tab kept
+  // showing the old hours; the order page had the identical gap underneath
+  // its existing tick/visibility/focus machinery, which only forced a
+  // re-render, so folding the settings re-fetch into it closes the gap here
+  // too — within a minute at most instead of never.
   useEffect(() => {
-    const id = setInterval(() => setNowTick((n) => n + 1), 60000);
+    const refresh = () => {
+      setNowTick((n) => n + 1);
+      fetch('/api/settings')
+        .then((r) => r.json())
+        .then((j) => setShopStatus(j.settings))
+        .catch(() => {});
+    };
+    const id = setInterval(refresh, 60000);
     const refreshNow = () => {
-      if (document.visibilityState === 'visible') setNowTick((n) => n + 1);
+      if (document.visibilityState === 'visible') refresh();
     };
     document.addEventListener('visibilitychange', refreshNow);
     window.addEventListener('focus', refreshNow);

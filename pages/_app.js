@@ -120,7 +120,16 @@ export default function App({ Component, pageProps }) {
 
   return (
     <>
-      <Component {...pageProps} />
+      {/* Hidden (not unmounted) for as long as phase is 'visible' — see the
+          comment on .app-content-hidden in globals.css for why this exists:
+          it makes the splash's own height accuracy a non-issue, because
+          there's nothing real behind it to leak through in the first
+          place. It's lifted the instant phase becomes 'leaving', which is
+          also the instant SplashScreen starts its fade-out below, so the
+          two happen as one crossfade rather than a hide-then-reveal pop. */}
+      <div className={phase === 'visible' ? 'app-content-hidden' : undefined}>
+        <Component {...pageProps} />
+      </div>
       {phase !== 'gone' && <SplashScreen leaving={phase === 'leaving'} label={splashLabel} />}
     </>
   );

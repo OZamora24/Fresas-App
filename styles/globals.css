@@ -486,6 +486,28 @@ body.splash-active {
   overflow: hidden;
 }
 
+/* Every fix so far for the "real page peeks through under the splash" bug
+   has been about getting .app-splash's own height exactly right — CSS
+   dvh, then a JS measurement, then polling that measurement faster. Each
+   one narrowed the window but never fully closed it, because the root
+   cause was never really about measurement accuracy: on a cold
+   standalone-app launch, iOS itself can take a few hundred milliseconds
+   to settle on the screen's true reported size, and nothing running in
+   JS can measure a number before the OS has decided what it is. Chasing
+   that measurement was always going to be a step behind.
+   This rule sidesteps the whole problem instead of trying to win that
+   race: the real page underneath is invisible for as long as the splash
+   is meant to be the only thing on screen, so it doesn't matter anymore
+   whether .app-splash's box is a few hundred pixels short — there's
+   nothing back there to show through until _app.js lifts this class,
+   which happens at the exact same moment the splash starts its fade-out.
+   visibility (not display: none) keeps the page's layout intact — it
+   keeps loading and sizing itself normally, just unpainted — so nothing
+   has to re-flow when it reappears. */
+.app-content-hidden {
+  visibility: hidden;
+}
+
 .app-splash {
   position: fixed;
   inset: 0;

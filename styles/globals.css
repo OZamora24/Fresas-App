@@ -111,6 +111,55 @@ button {
 .chip.checked { border-color: var(--pink); background: var(--pink-pale); }
 .chip .badge { font-size: 0.72rem; font-weight: 800; color: var(--maroon); background: var(--pink-soft); border-radius: 999px; padding: 1px 7px; }
 
+/* Compact "at a glance" styling for the Hours & availability drawer row —
+   pale pill boxes for store hours, small always-visible chip rows for
+   flavor/topping/syrup availability, and an inline toggle for the phone
+   requirement, instead of raw form inputs and nested dropdowns. */
+.field-lbl { font-size: 0.7rem; font-weight: 800; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.02em; margin: 14px 0 6px; }
+.field-lbl:first-child { margin-top: 0; }
+
+.hours-grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
+.hours-grid .hbox { background: var(--pink-pale); border-radius: 12px; padding: 9px 11px; }
+.hours-grid .hbox .lbl { font-size: 0.68rem; font-weight: 800; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.02em; }
+.hours-grid .hbox .val { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 3px; }
+.hours-grid .hbox .val input[type="time"] {
+  border: none; background: transparent; padding: 0; margin: 0; width: auto; max-width: 118px;
+  font-weight: 800; color: var(--maroon); font-size: 0.86rem; font-family: 'Nunito', sans-serif;
+  -webkit-appearance: none; appearance: none;
+}
+.hours-grid .hbox .val span { font-weight: 800; color: var(--maroon); font-size: 0.86rem; }
+
+.mini-card-inline {
+  background: var(--pink-pale); border-radius: 12px; padding: 9px 12px;
+  display: flex; align-items: center; gap: 8px;
+}
+.mini-card-inline input[type="number"] {
+  border: none; background: transparent; padding: 0; margin: 0; width: 46px;
+  font-weight: 800; color: var(--maroon); font-size: 0.92rem; font-family: 'Nunito', sans-serif;
+}
+.mini-card-inline span { font-weight: 700; color: var(--ink-soft); font-size: 0.82rem; }
+
+.hint-sm { color: var(--ink-soft); font-size: 0.76rem; font-weight: 600; margin: 6px 0 0; line-height: 1.4; }
+.hint-sm.warn { color: #8a5b00; }
+
+.chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip-sm {
+  font-size: 0.74rem; font-weight: 700; padding: 5px 10px; border-radius: 999px;
+  border: 1.5px solid var(--line); background: var(--cream-2); color: var(--ink);
+  cursor: pointer; display: inline-flex; align-items: center; gap: 4px;
+}
+.chip-sm.off { border-color: var(--maroon); background: var(--pink-pale); color: var(--maroon); }
+.chip-sm:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.toggle-inline { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.toggle-inline .ti-label { font-weight: 700; font-size: 0.85rem; }
+.pill-btn {
+  font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 0.76rem;
+  background: var(--card-bg); border: 2px solid var(--line); border-radius: 999px;
+  padding: 6px 14px; color: var(--maroon); white-space: nowrap; cursor: pointer;
+}
+.pill-btn.primary { background: var(--maroon); color: var(--cream-2); border-color: var(--maroon); }
+
 /* An "always extra" topping chip (Cheesecake, Ice Cream) once it has at
    least one unit — the chip itself stays a pill, but its content switches
    from a checkbox to this compact +/- control so a customer can ask for

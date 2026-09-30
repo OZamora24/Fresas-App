@@ -912,80 +912,76 @@ export default function Admin() {
             </div>
 
             <div className="order-card" style={{ marginTop: 10 }}>
-              <label style={{ display: 'block', fontWeight: 700, marginBottom: 6 }}>
-                Max orders per 15-min pickup slot
-              </label>
-              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              <div className="field-lbl" style={{ marginTop: 0 }}>Max per 15-min slot</div>
+              <div className="mini-card-inline">
                 <input
                   type="number"
                   min="1"
                   max="50"
                   defaultValue={settings.slot_limit}
-                  style={{ width: 90, padding: '10px 12px', borderRadius: 10, border: '2px solid var(--line)', background: 'var(--card-bg)', color: 'var(--ink)' }}
                   onBlur={(e) => {
                     const val = parseInt(e.target.value, 10);
                     if (val > 0) saveSettings({ slot_limit: val });
                   }}
                 />
-                <span className="hint" style={{ margin: 0 }}>orders max per time slot</span>
+                <span>orders max per slot</span>
               </div>
-            </div>
 
-            <div className="order-card" style={{ marginTop: 10 }}>
-              <label style={{ display: 'block', fontWeight: 700, marginBottom: 10 }}>
-                Store hours (pickup window)
-              </label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div className="field" style={{ margin: 0 }}>
-                  <label>Mon–Fri start</label>
-                  <input
-                    type="time"
-                    defaultValue={settings.hours_weekday_start}
-                    onChange={(e) => saveSettings({ hours_weekday_start: e.target.value })}
-                  />
+              <div className="field-lbl">Store hours</div>
+              <div className="hours-grid">
+                <div className="hbox">
+                  <div className="lbl">Mon–Fri</div>
+                  <div className="val">
+                    <input
+                      type="time"
+                      defaultValue={settings.hours_weekday_start}
+                      onChange={(e) => saveSettings({ hours_weekday_start: e.target.value })}
+                    />
+                    <span>–</span>
+                    <input
+                      type="time"
+                      defaultValue={settings.hours_weekday_end}
+                      onChange={(e) => saveSettings({ hours_weekday_end: e.target.value })}
+                    />
+                  </div>
                 </div>
-                <div className="field" style={{ margin: 0 }}>
-                  <label>Mon–Fri end</label>
-                  <input
-                    type="time"
-                    defaultValue={settings.hours_weekday_end}
-                    onChange={(e) => saveSettings({ hours_weekday_end: e.target.value })}
-                  />
-                </div>
-                <div className="field" style={{ margin: 0 }}>
-                  <label>Sat–Sun start</label>
-                  <input
-                    type="time"
-                    defaultValue={settings.hours_weekend_start}
-                    onChange={(e) => saveSettings({ hours_weekend_start: e.target.value })}
-                  />
-                </div>
-                <div className="field" style={{ margin: 0 }}>
-                  <label>Sat–Sun end</label>
-                  <input
-                    type="time"
-                    defaultValue={settings.hours_weekend_end}
-                    onChange={(e) => saveSettings({ hours_weekend_end: e.target.value })}
-                  />
+                <div className="hbox">
+                  <div className="lbl">Sat–Sun</div>
+                  <div className="val">
+                    <input
+                      type="time"
+                      defaultValue={settings.hours_weekend_start}
+                      onChange={(e) => saveSettings({ hours_weekend_start: e.target.value })}
+                    />
+                    <span>–</span>
+                    <input
+                      type="time"
+                      defaultValue={settings.hours_weekend_end}
+                      onChange={(e) => saveSettings({ hours_weekend_end: e.target.value })}
+                    />
+                  </div>
                 </div>
               </div>
-              <p className="hint" style={{ marginTop: 10, marginBottom: 0 }}>Pickup times customers can pick from are generated from these — weekday and weekend hours can differ.</p>
-            </div>
+              {settings.hours_weekend_start && settings.hours_weekend_start === settings.hours_weekend_end && (
+                <p className="hint-sm warn">
+                  ⚠️ Sat–Sun start and end are both set to the same time right now — that's probably not intended. Update the Sat–Sun times above to fix it.
+                </p>
+              )}
+              <p className="hint-sm">Pickup times customers can pick from are generated from these — weekday and weekend hours can differ.</p>
 
-            <div className="order-card" style={{ marginTop: 10 }}>
-              <div className="row">
-                <span className="pickup">{settings.require_phone ? '📵 Phone number required' : '📱 Phone number optional'}</span>
+              <div className="field-lbl">Phone number</div>
+              <div className="toggle-inline">
+                <span className="ti-label">{settings.require_phone ? '📵 Required at checkout' : '📱 Required at checkout'}</span>
                 <button
-                  className="status-btn"
+                  type="button"
+                  className={`pill-btn${settings.require_phone ? ' primary' : ''}`}
                   onClick={() => saveSettings({ require_phone: !settings.require_phone })}
                   disabled={savingSettings}
                 >
-                  {settings.require_phone ? 'Make optional' : 'Require it'}
+                  {settings.require_phone ? 'On' : 'Off'}
                 </button>
               </div>
-              <p className="hint" style={{ marginTop: 8, marginBottom: 0 }}>
-                When required, customers can't submit an order without a valid phone number — so every order can get a confirmation text and the "I'm here" arrival link. Off by default, so nothing changes for customers until you turn this on.
-              </p>
+              <p className="hint-sm">When on, customers can't submit an order without a valid phone number — so every order can get a confirmation text and the "I'm here" arrival link.</p>
             </div>
 
             <div className="order-card" style={{ marginTop: 10 }}>
@@ -1024,23 +1020,18 @@ export default function Admin() {
               <p className="hint" style={{ marginTop: 10, marginBottom: 0 }}>Tap the days you're available for catering. Leave all off to hide the catering section from customers.</p>
             </div>
 
-            <p style={{ fontWeight: 700, marginTop: 20, marginBottom: 0 }}>
-              Mark items sold out
-            </p>
+            <div className="order-card" style={{ marginTop: 10 }}>
+              <p className="hint-sm" style={{ margin: '0 0 2px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.02em', fontSize: '0.7rem' }}>Mark items sold out</p>
 
-            <details className="order-card availability-dropdown" style={{ marginTop: 10 }}>
-              <summary style={{ fontWeight: 700 }}>
-                Flavor availability
-              </summary>
-              <div className="chip-grid" style={{ marginTop: 10 }}>
+              <div className="field-lbl">Flavors</div>
+              <div className="chip-row">
                 {BASES.map((b) => {
                   const isSoldOut = (settings.sold_out_flavors || []).includes(b.id);
                   return (
                     <button
                       key={b.id}
                       type="button"
-                      className={`chip${isSoldOut ? ' checked' : ''}`}
-                      style={isSoldOut ? { borderColor: 'var(--maroon)', background: 'var(--pink-pale)' } : {}}
+                      className={`chip-sm${isSoldOut ? ' off' : ''}`}
                       onClick={() => {
                         const current = settings.sold_out_flavors || [];
                         const next = isSoldOut ? current.filter((x) => x !== b.id) : [...current, b.id];
@@ -1053,22 +1044,16 @@ export default function Admin() {
                   );
                 })}
               </div>
-              <p className="hint" style={{ marginTop: 10, marginBottom: 0 }}>Tap a flavor to mark it sold out — customers won't be able to select it.</p>
-            </details>
 
-            <details className="order-card availability-dropdown" style={{ marginTop: 10 }}>
-              <summary style={{ fontWeight: 700 }}>
-                Topping availability
-              </summary>
-              <div className="chip-grid" style={{ marginTop: 10 }}>
+              <div className="field-lbl">Toppings</div>
+              <div className="chip-row">
                 {TOPPINGS.map((tp) => {
                   const isSoldOut = (settings.sold_out_toppings || []).includes(tp.name);
                   return (
                     <button
                       key={tp.name}
                       type="button"
-                      className={`chip${isSoldOut ? ' checked' : ''}`}
-                      style={isSoldOut ? { borderColor: 'var(--maroon)', background: 'var(--pink-pale)' } : {}}
+                      className={`chip-sm${isSoldOut ? ' off' : ''}`}
                       onClick={() => {
                         const current = settings.sold_out_toppings || [];
                         const next = isSoldOut ? current.filter((x) => x !== tp.name) : [...current, tp.name];
@@ -1081,22 +1066,16 @@ export default function Admin() {
                   );
                 })}
               </div>
-              <p className="hint" style={{ marginTop: 10, marginBottom: 0 }}>Tap a topping to mark it sold out.</p>
-            </details>
 
-            <details className="order-card availability-dropdown" style={{ marginTop: 10 }}>
-              <summary style={{ fontWeight: 700 }}>
-                Syrup availability
-              </summary>
-              <div className="chip-grid" style={{ marginTop: 10 }}>
+              <div className="field-lbl">Syrups</div>
+              <div className="chip-row">
                 {SYRUPS.map((s) => {
                   const isSoldOut = (settings.sold_out_syrups || []).includes(s);
                   return (
                     <button
                       key={s}
                       type="button"
-                      className={`chip${isSoldOut ? ' checked' : ''}`}
-                      style={isSoldOut ? { borderColor: 'var(--maroon)', background: 'var(--pink-pale)' } : {}}
+                      className={`chip-sm${isSoldOut ? ' off' : ''}`}
                       onClick={() => {
                         const current = settings.sold_out_syrups || [];
                         const next = isSoldOut ? current.filter((x) => x !== s) : [...current, s];
@@ -1109,8 +1088,8 @@ export default function Admin() {
                   );
                 })}
               </div>
-              <p className="hint" style={{ marginTop: 10, marginBottom: 0 }}>Tap a syrup to mark it sold out.</p>
-            </details>
+              <p className="hint-sm">Tap an item to mark it sold out — customers won't be able to select it.</p>
+            </div>
             </div>
           </details>
         )}

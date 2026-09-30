@@ -94,6 +94,8 @@ export default function Admin() {
   const [exporting, setExporting] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
   const [deleting, setDeleting] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false); // delete bar is asking "are you sure?"
+  const [deleteError, setDeleteError] = useState('');
   const [settings, setSettings] = useState(null);
   const [savingSettings, setSavingSettings] = useState(false);
   const [photos, setPhotos] = useState([]);
@@ -554,16 +556,22 @@ export default function Admin() {
 
   function toggleSelect(id) {
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+    setConfirmingDelete(false);
+    setDeleteError('');
+  }
+
+  function clearSelection() {
+    setSelectedIds([]);
+    setConfirmingDelete(false);
+    setDeleteError('');
   }
 
   async function deleteSelected() {
     if (selectedIds.length === 0) return;
-    const ok = window.confirm(
-      `Delete ${selectedIds.length} order${selectedIds.length > 1 ? 's' : ''}? This cannot be undone.`
-    );
-    if (!ok) return;
-
+    // The "are you sure?" step happens in the delete bar itself (see
+    // confirmingDelete), so by the time this runs it's already confirmed.
     setDeleting(true);
+    setDeleteError('');
     try {
       const res = await fetch('/api/orders', {
         method: 'DELETE',
@@ -573,8 +581,9 @@ export default function Admin() {
       if (!res.ok) throw new Error('Delete failed');
       setOrders((prev) => prev.filter((o) => !selectedIds.includes(o.id)));
       setSelectedIds([]);
+      setConfirmingDelete(false);
     } catch (e) {
-      alert('Could not delete the selected order(s) — please try again.');
+      setDeleteError('Could not delete. Check your connection and try again.');
     } finally {
       setDeleting(false);
     }
@@ -809,7 +818,7 @@ export default function Admin() {
     return (
       <div
         key={o.id}
-        className={`order-card${o.status === 'done' && !inCompletedList ? ' done' : ''}${isNewOrder(o) ? ' is-new' : ''}`}
+        className={`order-card${o.status === 'done' && !inCompletedList ? ' done' : ''}${isNewOrder(o) ? ' is-new' : ''}${selectedIds.includes(o.id) ? ' selected' : ''}`}
         onClick={() => { if (isNewOrder(o)) markOrderSeen(o.id); }}
       >
         {o.order_number && (
@@ -1656,14 +1665,9 @@ export default function Admin() {
             now lives in the Manage shop drawer below it. Nothing about how
             orders render or the actions on them changed — only where this
             block sits on the page. */}
-        <div className="section">
+        <div className="section" style={selectedIds.length > 0 ? { paddingBottom: 96 } : undefined}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
             <h2>Orders</h2>
-            {selectedIds.length > 0 && (
-              <button className="status-btn" style={{ color: '#fff', background: 'var(--maroon)', borderColor: 'var(--maroon)' }} onClick={deleteSelected} disabled={deleting}>
-                {deleting ? 'Deleting…' : `🗑️ Delete selected (${selectedIds.length})`}
-              </button>
-            )}
           </div>
           {orders.length > 0 && (
             <div className="order-tabs" role="tablist">
@@ -1719,6 +1723,34 @@ export default function Admin() {
         </div>
 
       </div>
+
+      {selectedIds.length > 0 && (() => {
+        const n = selectedIds.length;
+        const selectedTotal = orders.filter((o) => selectedIds.includes(o.id)).reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+        return (
+          <div className={`delete-bar${confirmingDelete ? ' confirm' : ''}`} role="region" aria-label="Selected orders">
+            <div style={{ minWidth: 0 }}>
+              <div className="db-count">{confirmingDelete ? `Delete ${n} order${n === 1 ? '' : 's'}?` : `${n} selected`}</div>
+              <div className="db-sub">
+                {deleteError || (confirmingDelete ? "This can't be undone." : `$${selectedTotal.toFixed(2)} in orders`)}
+              </div>
+            </div>
+            <div className="db-actions">
+              {confirmingDelete ? (
+                <>
+                  <button type="button" className="db-ghost" onClick={() => { setConfirmingDelete(false); setDeleteError(''); }} disabled={deleting}>Cancel</button>
+                  <button type="button" className="db-yes" onClick={deleteSelected} disabled={deleting}>{deleting ? 'Deleting…' : 'Yes, delete'}</button>
+                </>
+              ) : (
+                <>
+                  <button type="button" className="db-ghost" onClick={clearSelection}>Clear</button>
+                  <button type="button" className="db-del" onClick={() => setConfirmingDelete(true)}>🗑️ Delete</button>
+                </>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {editForm && (
         <div className="overlay open" onClick={(e) => e.target === e.currentTarget && closeEdit()}>

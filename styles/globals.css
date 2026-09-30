@@ -818,3 +818,25 @@ body.splash-active {
 .paid-tag.unpaid { background: #FBE3E1; color: #B3261E; }
 .done-expanded { background: var(--pink-pale); padding: 0 10px 10px; }
 .done-expanded .order-card { margin: 0; }
+
+/* Admin: bar that slides up while orders are checked for deleting. */
+.order-card.selected { border: 2px solid var(--maroon); background: var(--pink-pale); box-shadow: 0 4px 12px rgba(124, 27, 44, 0.12); opacity: 1; }
+.delete-bar {
+  position: fixed; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); z-index: 40;
+  max-width: 616px; margin: 0 auto;
+  background: linear-gradient(180deg, var(--maroon), var(--maroon-deep)); color: var(--cream-2);
+  border-radius: 20px; padding: 10px 10px 10px 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  box-shadow: 0 10px 24px rgba(58, 14, 23, 0.35); animation: delete-bar-rise 0.22s ease-out;
+}
+.delete-bar.confirm { background: linear-gradient(180deg, #8E1D1A, #5E1210); }
+@keyframes delete-bar-rise { from { transform: translateY(16px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .delete-bar { animation: none; } }
+.delete-bar .db-count { font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 1.15rem; line-height: 1.1; }
+.delete-bar .db-sub { font-size: 0.76rem; color: var(--pink-soft); font-weight: 700; }
+.delete-bar .db-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.delete-bar button { border-radius: 999px; font-weight: 800; font-size: 0.85rem; padding: 10px 14px; }
+.delete-bar .db-ghost { background: transparent; color: var(--cream-2); border: 2px solid rgba(255, 253, 249, 0.35); }
+.delete-bar .db-del { background: var(--cream-2); color: #B3261E; border: 2px solid var(--cream-2); }
+.delete-bar .db-yes { background: #B3261E; color: #fff; border: 2px solid #fff; }
+.delete-bar button:disabled { opacity: 0.6; }
+.delete-bar button:focus-visible { outline: 2px solid var(--pink-soft); outline-offset: 2px; }

@@ -42,12 +42,13 @@ Paste this whole doc into a new chat (and upload the attached code files) to con
 18. **Draft auto-save on the order page — confirmed intentional, not a bug.** User reported that refreshing or closing/reopening the order page still shows their name/choices. This is `localStorage`-backed draft persistence (`fresasOrderDraft`), working as designed. User decided to leave it as-is unless real customer feedback says otherwise.
 19. **Launch promo video** (delivered, not code): a ~30s silent vertical (1080×1920) marketing video recorded against the live UI — 12 oz cup, name "Diego Hernandez" + a made-up phone number, full order flow through to the "🍓 Order sent!" confirmation screen, real 🍓 emoji (matching the site's own) in the branded intro/outro cards. Built by cloning the repo locally, adding a local-only `DEMO_MODE` short-circuit (never committed) so a fake order could be submitted safely without touching production Supabase/Twilio/OneSignal, and recording with Playwright. File not stored in this project — was delivered directly to Orlando.
 
-## Twilio A2P 10DLC Campaign — STATUS AS OF LAST CHECK: PENDING, NEEDS USER TO CHECK
+## Twilio A2P 10DLC Campaign — ✅ APPROVED
 - Brand: "Fresas con Crema", SID `BNb26907bb27958867375dff54dc6dc7c4` — **Approved**, Sole Proprietor type.
-- Campaign SID: `CM840d575e827fefc7476de07f18eaac85`, use case `SOLE_PROPRIETOR`.
-- Final resubmitted Campaign Description (already submitted):
+- Campaign SID: `CM840d575e827fefc7476de07f18eaac85`, use case `SOLE_PROPRIETOR` — **Approved** (week of Sep 21, 2026; confirmed by Orlando on Sep 30, 2026).
+- Approved Campaign Description:
   > "Orlando Zamora, a sole proprietor doing business as Fresas con Crema in Rialto, CA, sends order-status text messages to his own customers. Customers opt in by voluntarily entering their phone number in an optional field on the online order form; a phone number is never required to place an order. Recipients receive up to 2 messages per order: an order-received confirmation and a pickup-ready notice. No marketing or promotional messages are sent. Reply STOP to opt out, HELP for help. Msg & data rates may apply."
-- **Next step**: user needs to log into Twilio Console → Messaging → Regulatory Compliance → Campaigns → check status of the campaign SID above. Until approved, SMS sends may silently fail (code doesn't block order creation either way). Not re-checked since the last handoff — ask Orlando for current status if this matters for the task at hand.
+- ⚠️ Keep the admin "phone required at checkout" switch (`shop_settings.require_phone`) **OFF** — the approved description promises a phone number is never required. Turned off Sep 30, 2026.
+- Order-confirmation and pickup-ready texts are cleared to send. If SMS ever fails, check the Twilio Console message logs. A failed send never blocks order creation.
 
 ## Ideas Floated, Not Built
 - Customer-facing push notifications tied to promo activation (needs an opt-in flow first — see item 16 above).
@@ -59,4 +60,4 @@ Paste this whole doc into a new chat (and upload the attached code files) to con
 The current live source code has been attached alongside this doc:
 `menu.js`, `settings.js`, `orders.js`, `admin.js`, `index.js`, `order.js`, `catering.js`, `photos.js`, `slots.js`, `login.js`, `adminSession.js`, `supabaseAdmin.js`, `sales.js`, `sales-summary.js`, `export.js`, `last-order.js`, `promo-codes.js`, `promo/check.js`, `AddToHomeBanner.js`, `globals.css`, and all `supabase-migration-*.sql` files plus the base `supabase-schema.sql`.
 
-When continuing in a new chat: upload this doc + the code files, and say what you'd like to work on next (e.g. "let's build the promo push-notification opt-in flow" or "check if Twilio approved yet").
+When continuing in a new chat: upload this doc + the code files, and say what you'd like to work on next (e.g. "let's build the promo push-notification opt-in flow").

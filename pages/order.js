@@ -29,7 +29,7 @@ const BASE_DESC = {
     es: 'Crema dulce casera + pudín de plátano, cubierto con migas de galleta Nilla wafer',
   },
   gansito: {
-    en: 'Homemade sweet cream + chocolate chips + chocolate & strawberry drizzle topped with a Gansito',
+    en: 'Homemade sweet cream + chocolate sprinkles + chocolate & strawberry drizzle topped with a Gansito',
     es: 'Crema dulce casera + chispas de chocolate + drizzle de chocolate y fresa, cubierto con un Gansito',
   },
 };

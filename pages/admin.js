@@ -817,173 +817,6 @@ export default function Admin() {
           </div>
         )}
 
-        {!pushEnabled && (
-          <div className="section">
-            {needsHomeScreen ? (
-              <div className="order-card">
-                <p style={{ margin: '0 0 8px', fontWeight: 700, color: 'var(--maroon)' }}>
-                  📲 One extra step on iPhone/iPad
-                </p>
-                <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--ink-soft)' }}>
-                  Apple only allows notifications for sites added to your Home Screen. Tap the Share button
-                  in Safari, choose <strong>"Add to Home Screen"</strong>, then open Admin from that new icon
-                  instead of Safari — you'll be able to enable notifications from there.
-                </p>
-              </div>
-            ) : (
-              <>
-                <button className="btn-primary" onClick={enablePush} disabled={!oneSignalReady}>
-                  🔔 {oneSignalReady ? 'Enable push notifications on this device' : 'Loading notifications…'}
-                </button>
-                {pushError && (
-                  <div style={{ marginTop: 8 }}>
-                    <p className="error" style={{ margin: 0 }}>{pushError}</p>
-                    <button
-                      type="button"
-                      className="status-btn"
-                      style={{ marginTop: 8 }}
-                      onClick={() => window.location.reload()}
-                    >
-                      🔄 Retry
-                    </button>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        )}
-
-        {/* Orders queue — moved up front, right under the open/closed
-            toggle. This is what gets checked most; everything settings-ish
-            now lives in the Manage shop drawer below it. Nothing about how
-            orders render or the actions on them changed — only where this
-            block sits on the page. */}
-        <div className="section">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
-            <h2>Orders ({orders.filter((o) => o.status !== 'done').length} open)</h2>
-            {selectedIds.length > 0 && (
-              <button className="status-btn" style={{ color: '#fff', background: 'var(--maroon)', borderColor: 'var(--maroon)' }} onClick={deleteSelected} disabled={deleting}>
-                {deleting ? 'Deleting…' : `🗑️ Delete selected (${selectedIds.length})`}
-              </button>
-            )}
-          </div>
-          {orders.length === 0 && <p className="hint">No orders yet.</p>}
-          {orders.length > 0 && orders.filter((o) => o.status !== 'done').length === 0 && (
-            <div className="all-caught-up">
-              <div className="act-title">🎉 All caught up</div>
-              <p>No orders waiting right now. Completed orders are still listed below.</p>
-            </div>
-          )}
-          {orders.map((o) => (
-            <div key={o.id} className={`order-card${o.status === 'done' ? ' done' : ''}`}>
-              {o.order_number && (
-                <div style={{ fontWeight: 800, color: 'var(--maroon)', fontSize: '1.05rem', marginBottom: 6 }}>
-                  #{o.order_number}{o.customer_name ? ` — ${o.customer_name}` : ''}
-                </div>
-              )}
-              {o.arrived_at && (
-                <div style={{
-                  display: 'inline-block', background: 'var(--pink-pale)', border: '2px solid var(--pink)',
-                  borderRadius: 10, padding: '4px 10px', fontWeight: 800, color: 'var(--maroon)',
-                  fontSize: '0.82rem', marginBottom: 8,
-                }}>
-                  🚶 Arrived at {new Date(o.arrived_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-                </div>
-              )}
-              <div className="row">
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <input
-                    type="checkbox"
-                    style={{ width: 18, height: 18, accentColor: 'var(--maroon)' }}
-                    checked={selectedIds.includes(o.id)}
-                    onChange={() => toggleSelect(o.id)}
-                  />
-                  <span className="pickup">Pickup {formatDateKey(o.pickup_date || todayDateKey())}, {o.pickup_time}</span>
-                </label>
-                <span className="total">${Number(o.total).toFixed(2)}</span>
-              </div>
-              {Array.isArray(o.items) && o.items.length > 0 ? (
-                <>
-                  <div className="meta">{o.items.length} cup{o.items.length === 1 ? '' : 's'} in this order</div>
-                  <div className="order-details-body order-details-body-static">
-                    {o.items.map((item, i) => (
-                      <div key={i} style={{ marginBottom: i < o.items.length - 1 ? 10 : 0, paddingBottom: i < o.items.length - 1 ? 10 : 0, borderBottom: i < o.items.length - 1 ? '1px dashed var(--line)' : 'none' }}>
-                        <div><strong>{item.qty}x {item.base}</strong>{item.cup_size ? ` (${item.cup_size})` : ''}</div>
-                        {(item.base === 'Banana Pudding' || item.base === 'Gansito') && (
-                          <div><strong>Rim:</strong> {item.include_rim === false ? '🚫 No rim' : '✅ Yes'}</div>
-                        )}
-                        <div><strong>Toppings:</strong></div>
-                        {item.toppings?.length
-                          ? groupToppingCounts(item.toppings).map(({ name, count }) => (
-                              <div key={name}>- {name}{count > 1 ? ` ×${count}` : ''}</div>
-                            ))
-                          : <div>- None</div>}
-                        <div><strong>Syrup:</strong></div>
-                        {item.syrups?.length
-                          ? item.syrups.map((s) => <div key={s}>- {s}</div>)
-                          : <div>- None</div>}
-                      </div>
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="meta">{o.qty}x {o.base}{o.cup_size ? ` (${o.cup_size})` : ''}</div>
-                  <div className="order-details-body order-details-body-static">
-                    {(o.base === 'Banana Pudding' || o.base === 'Gansito') && (
-                      <div><strong>Rim:</strong> {o.include_rim === false ? '🚫 No rim' : '✅ Yes'}</div>
-                    )}
-                    <div><strong>Toppings:</strong></div>
-                    {o.toppings?.length
-                      ? groupToppingCounts(o.toppings).map(({ name, count }) => (
-                          <div key={name}>- {name}{count > 1 ? ` ×${count}` : ''}</div>
-                        ))
-                      : <div>- None</div>}
-                    <div><strong>Syrup:</strong></div>
-                    {o.syrups?.length
-                      ? o.syrups.map((s) => <div key={s}>- {s}</div>)
-                      : <div>- None</div>}
-                  </div>
-                </>
-              )}
-              {o.notes && (
-                <div className="meta">{o.notes}</div>
-              )}
-              {o.customer_phone && (
-                <div className="meta">
-                  📞 <a href={`tel:${o.customer_phone}`} style={{ color: 'var(--maroon)', fontWeight: 700 }}>{o.customer_phone}</a>
-                </div>
-              )}
-              <div className="meta">{new Date(o.created_at).toLocaleString()}</div>
-              {o.status === 'done' && o.customer_phone && (
-                <div className="meta">📲 Ready text sent ({o.language === 'es' ? 'Español' : 'English'})</div>
-              )}
-              <div className="meta">
-                {o.paid
-                  ? `✅ Paid${o.payment_method === 'cash' ? ' (cash)' : ' (Zelle)'}`
-                  : o.payment_method === 'cash'
-                  ? '💵 Cash — pay at pickup'
-                  : o.customer_confirmed_payment
-                  ? '💸 Customer said they sent Zelle — not yet confirmed'
-                  : '⏳ Payment not confirmed'}
-              </div>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
-                {o.status !== 'done' ? (
-                  <button className="status-btn" onClick={() => markStatus(o.id, 'done')}>Mark ready / done</button>
-                ) : (
-                  <button className="status-btn" onClick={() => markStatus(o.id, 'new')}>Reopen</button>
-                )}
-                {!o.paid ? (
-                  <button className="status-btn" onClick={() => markPaid(o.id, true)}>Mark as paid</button>
-                ) : (
-                  <button className="status-btn" onClick={() => markPaid(o.id, false)}>Undo paid</button>
-                )}
-                <button className="status-btn" onClick={() => openEdit(o)}>✏️ Edit order</button>
-              </div>
-            </div>
-          ))}
-        </div>
-
         {/* Everything below is settings/admin tools rather than day-to-day
             queue work — tucked into one collapsible drawer so it stops
             competing with Orders for space. The individual rows inside
@@ -1551,6 +1384,174 @@ export default function Admin() {
         </details>
           </div>
         </details>
+
+        {!pushEnabled && (
+          <div className="section">
+            {needsHomeScreen ? (
+              <div className="order-card">
+                <p style={{ margin: '0 0 8px', fontWeight: 700, color: 'var(--maroon)' }}>
+                  📲 One extra step on iPhone/iPad
+                </p>
+                <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--ink-soft)' }}>
+                  Apple only allows notifications for sites added to your Home Screen. Tap the Share button
+                  in Safari, choose <strong>"Add to Home Screen"</strong>, then open Admin from that new icon
+                  instead of Safari — you'll be able to enable notifications from there.
+                </p>
+              </div>
+            ) : (
+              <>
+                <button className="btn-primary" onClick={enablePush} disabled={!oneSignalReady}>
+                  🔔 {oneSignalReady ? 'Enable push notifications on this device' : 'Loading notifications…'}
+                </button>
+                {pushError && (
+                  <div style={{ marginTop: 8 }}>
+                    <p className="error" style={{ margin: 0 }}>{pushError}</p>
+                    <button
+                      type="button"
+                      className="status-btn"
+                      style={{ marginTop: 8 }}
+                      onClick={() => window.location.reload()}
+                    >
+                      🔄 Retry
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Orders queue — moved up front, right under the open/closed
+            toggle. This is what gets checked most; everything settings-ish
+            now lives in the Manage shop drawer below it. Nothing about how
+            orders render or the actions on them changed — only where this
+            block sits on the page. */}
+        <div className="section">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+            <h2>Orders ({orders.filter((o) => o.status !== 'done').length} open)</h2>
+            {selectedIds.length > 0 && (
+              <button className="status-btn" style={{ color: '#fff', background: 'var(--maroon)', borderColor: 'var(--maroon)' }} onClick={deleteSelected} disabled={deleting}>
+                {deleting ? 'Deleting…' : `🗑️ Delete selected (${selectedIds.length})`}
+              </button>
+            )}
+          </div>
+          {orders.length === 0 && <p className="hint">No orders yet.</p>}
+          {orders.length > 0 && orders.filter((o) => o.status !== 'done').length === 0 && (
+            <div className="all-caught-up">
+              <div className="act-title">🎉 All caught up</div>
+              <p>No orders waiting right now. Completed orders are still listed below.</p>
+            </div>
+          )}
+          {orders.map((o) => (
+            <div key={o.id} className={`order-card${o.status === 'done' ? ' done' : ''}`}>
+              {o.order_number && (
+                <div style={{ fontWeight: 800, color: 'var(--maroon)', fontSize: '1.05rem', marginBottom: 6 }}>
+                  #{o.order_number}{o.customer_name ? ` — ${o.customer_name}` : ''}
+                </div>
+              )}
+              {o.arrived_at && (
+                <div style={{
+                  display: 'inline-block', background: 'var(--pink-pale)', border: '2px solid var(--pink)',
+                  borderRadius: 10, padding: '4px 10px', fontWeight: 800, color: 'var(--maroon)',
+                  fontSize: '0.82rem', marginBottom: 8,
+                }}>
+                  🚶 Arrived at {new Date(o.arrived_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                </div>
+              )}
+              <div className="row">
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <input
+                    type="checkbox"
+                    style={{ width: 18, height: 18, accentColor: 'var(--maroon)' }}
+                    checked={selectedIds.includes(o.id)}
+                    onChange={() => toggleSelect(o.id)}
+                  />
+                  <span className="pickup">Pickup {formatDateKey(o.pickup_date || todayDateKey())}, {o.pickup_time}</span>
+                </label>
+                <span className="total">${Number(o.total).toFixed(2)}</span>
+              </div>
+              {Array.isArray(o.items) && o.items.length > 0 ? (
+                <>
+                  <div className="meta">{o.items.length} cup{o.items.length === 1 ? '' : 's'} in this order</div>
+                  <div className="order-details-body order-details-body-static">
+                    {o.items.map((item, i) => (
+                      <div key={i} style={{ marginBottom: i < o.items.length - 1 ? 10 : 0, paddingBottom: i < o.items.length - 1 ? 10 : 0, borderBottom: i < o.items.length - 1 ? '1px dashed var(--line)' : 'none' }}>
+                        <div><strong>{item.qty}x {item.base}</strong>{item.cup_size ? ` (${item.cup_size})` : ''}</div>
+                        {(item.base === 'Banana Pudding' || item.base === 'Gansito') && (
+                          <div><strong>Rim:</strong> {item.include_rim === false ? '🚫 No rim' : '✅ Yes'}</div>
+                        )}
+                        <div><strong>Toppings:</strong></div>
+                        {item.toppings?.length
+                          ? groupToppingCounts(item.toppings).map(({ name, count }) => (
+                              <div key={name}>- {name}{count > 1 ? ` ×${count}` : ''}</div>
+                            ))
+                          : <div>- None</div>}
+                        <div><strong>Syrup:</strong></div>
+                        {item.syrups?.length
+                          ? item.syrups.map((s) => <div key={s}>- {s}</div>)
+                          : <div>- None</div>}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="meta">{o.qty}x {o.base}{o.cup_size ? ` (${o.cup_size})` : ''}</div>
+                  <div className="order-details-body order-details-body-static">
+                    {(o.base === 'Banana Pudding' || o.base === 'Gansito') && (
+                      <div><strong>Rim:</strong> {o.include_rim === false ? '🚫 No rim' : '✅ Yes'}</div>
+                    )}
+                    <div><strong>Toppings:</strong></div>
+                    {o.toppings?.length
+                      ? groupToppingCounts(o.toppings).map(({ name, count }) => (
+                          <div key={name}>- {name}{count > 1 ? ` ×${count}` : ''}</div>
+                        ))
+                      : <div>- None</div>}
+                    <div><strong>Syrup:</strong></div>
+                    {o.syrups?.length
+                      ? o.syrups.map((s) => <div key={s}>- {s}</div>)
+                      : <div>- None</div>}
+                  </div>
+                </>
+              )}
+              {o.notes && (
+                <div className="meta">{o.notes}</div>
+              )}
+              {o.customer_phone && (
+                <div className="meta">
+                  📞 <a href={`tel:${o.customer_phone}`} style={{ color: 'var(--maroon)', fontWeight: 700 }}>{o.customer_phone}</a>
+                </div>
+              )}
+              <div className="meta">{new Date(o.created_at).toLocaleString()}</div>
+              {o.status === 'done' && o.customer_phone && (
+                <div className="meta">📲 Ready text sent ({o.language === 'es' ? 'Español' : 'English'})</div>
+              )}
+              <div className="meta">
+                {o.paid
+                  ? `✅ Paid${o.payment_method === 'cash' ? ' (cash)' : ' (Zelle)'}`
+                  : o.payment_method === 'cash'
+                  ? '💵 Cash — pay at pickup'
+                  : o.customer_confirmed_payment
+                  ? '💸 Customer said they sent Zelle — not yet confirmed'
+                  : '⏳ Payment not confirmed'}
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+                {o.status !== 'done' ? (
+                  <button className="status-btn" onClick={() => markStatus(o.id, 'done')}>Mark ready / done</button>
+                ) : (
+                  <button className="status-btn" onClick={() => markStatus(o.id, 'new')}>Reopen</button>
+                )}
+                {!o.paid ? (
+                  <button className="status-btn" onClick={() => markPaid(o.id, true)}>Mark as paid</button>
+                ) : (
+                  <button className="status-btn" onClick={() => markPaid(o.id, false)}>Undo paid</button>
+                )}
+                <button className="status-btn" onClick={() => openEdit(o)}>✏️ Edit order</button>
+              </div>
+            </div>
+          ))}
+        </div>
+
       </div>
 
       {editForm && (

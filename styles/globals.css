@@ -227,6 +227,43 @@ button {
 .availability-dropdown > summary::before { content: '▸'; font-size: 0.8rem; transition: transform 0.15s ease; }
 .availability-dropdown[open] > summary::before { transform: rotate(90deg); }
 
+/* Admin dashboard, Concept C layout: the open/closed toggle is pinned above
+   everything else (see .pinned-status-section), the order queue comes right
+   after it, and the rest of the settings/admin tools (Hours & availability,
+   Sales, Promo codes, Site photos, Export) are tucked into one collapsible
+   "Manage shop" drawer so they stop competing with Orders for space. */
+.pinned-status-section { padding-top: 22px; }
+
+.all-caught-up {
+  background: var(--pink-pale); border: 2px dashed var(--pink); border-radius: 16px;
+  padding: 18px 16px; text-align: center; margin-bottom: 14px;
+}
+.all-caught-up .act-title { font-weight: 800; color: var(--maroon); font-size: 1.05rem; margin-bottom: 4px; }
+.all-caught-up p { margin: 0; color: var(--ink-soft); font-size: 0.88rem; }
+
+.manage-shop-drawer { margin: 18px 0 26px; }
+.manage-shop-drawer > summary {
+  cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  background: var(--pink-pale); border: 2px dashed var(--pink); border-radius: 16px; padding: 14px 16px;
+  font-weight: 800; color: var(--maroon); font-size: 1rem;
+}
+.manage-shop-drawer > summary::-webkit-details-marker { display: none; }
+.manage-shop-drawer > .admin-reorder-wrap { margin-top: 14px; }
+
+.drawer-section {
+  border: 2px solid var(--line); border-radius: 16px; margin-bottom: 12px;
+  background: var(--card-bg); padding: 4px 16px;
+}
+.drawer-section > summary {
+  cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 14px 0; font-weight: 700; font-size: 1.05rem; color: var(--maroon);
+}
+.drawer-section > summary::-webkit-details-marker { display: none; }
+.drawer-row-right { display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.chev { font-size: 0.8rem; color: var(--ink-soft); transition: transform 0.15s ease; flex-shrink: 0; }
+details[open] > summary .chev { transform: rotate(180deg); }
+.drawer-section-body { padding-bottom: 16px; }
+
 .login-box { max-width: 340px; margin: 90px auto; text-align: center; }
 .login-box h1 { font-size: 1.8rem; color: var(--maroon); }
 .login-box .error { color: var(--maroon); font-weight: 700; margin-top: 10px; font-size: 0.9rem; }

@@ -2,9 +2,36 @@ import { useEffect, useRef, useState } from 'react';
 import Head from 'next/head';
 import Script from 'next/script';
 import Link from 'next/link';
-import { BASES, PRICES, TOPPINGS, SYRUPS, orderTotal, buildPickupTimes, baseIdFromName, formatDateKey, todayDateKey, maxPreorderDateKey } from '../lib/menu';
+import { BASES, PRICES, TOPPINGS, SYRUPS, orderTotal, buildPickupTimes, baseIdFromName, formatDateKey, todayDateKey, maxPreorderDateKey, MAX_EXTRA_TOPPING_QTY } from '../lib/menu';
 
 const ONESIGNAL_APP_ID = process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID;
+
+// Dashboard sections Orlando can reorder with the up/down arrows, top to
+// bottom by default. The Orders queue below them is intentionally left out
+// — it always stays last and never gets arrows.
+const SECTION_KEYS = ['shopStatus', 'salesLink', 'promoCodes', 'sitePhotos', 'exportHistory'];
+const SECTION_ORDER_STORAGE_KEY = 'fresasAdminSectionOrder';
+
+// An "always extra" topping (Cheesecake, Ice Cream) can appear more than
+// once in a `toppings` array — one entry per unit the customer added with
+// the +/- stepper on the order page (see pages/order.js). This turns that
+// into [{ name, count }] pairs so the kitchen-facing order view can show
+// "Cheesecake ×2" instead of printing "Cheesecake" twice in a row.
+function groupToppingCounts(list) {
+  const order = [];
+  const counts = new Map();
+  (list || []).forEach((name) => {
+    if (!counts.has(name)) { counts.set(name, 0); order.push(name); }
+    counts.set(name, counts.get(name) + 1);
+  });
+  return order.map((name) => ({ name, count: counts.get(name) }));
+}
+
+function toppingsSummaryText(list) {
+  return groupToppingCounts(list)
+    .map(({ name, count }) => (count > 1 ? `${name} ×${count}` : name))
+    .join(', ');
+}
 
 export default function Admin() {
   const [authed, setAuthed] = useState(false);
@@ -13,6 +40,9 @@ export default function Admin() {
   const [loginError, setLoginError] = useState('');
   const [orders, setOrders] = useState([]);
   const [pushEnabled, setPushEnabled] = useState(false);
+  const [oneSignalReady, setOneSignalReady] = useState(false);
+  const [pushError, setPushError] = useState('');
+  const [needsHomeScreen, setNeedsHomeScreen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState(null);
   const [savingEdit, setSavingEdit] = useState(false);
@@ -24,13 +54,112 @@ export default function Admin() {
   const [deleting, setDeleting] = useState(false);
   const [settings, setSettings] = useState(null);
   const [savingSettings, setSavingSettings] = useState(false);
+  const [photos, setPhotos] = useState([]);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState('');
+  const [promoCodes, setPromoCodes] = useState([]);
+  const [promoFormOpen, setPromoFormOpen] = useState(false);
+  const [editingPromoId, setEditingPromoId] = useState(null);
+  const [promoForm, setPromoForm] = useState({ code: '', discount_type: 'percent', discount_amount: '', expires_at: '', active: true });
+  const [savingPromo, setSavingPromo] = useState(false);
+  const [promoFormError, setPromoFormError] = useState('');
+  const [notifyOpen, setNotifyOpen] = useState(false);
+  const [notifyForm, setNotifyForm] = useState({ title: '', message: '' });
+  const [sendingNotify, setSendingNotify] = useState(false);
+  const [notifyResult, setNotifyResult] = useState(null);
+  const [newClosedDate, setNewClosedDate] = useState('');
+  // Sales snapshot shown inline in the "Sales" drawer row — fetched lazily
+  // (only the first time that row is opened) rather than on every admin
+  // page load, since it's a heavier query than the rest of this page needs.
+  const [salesSummary, setSalesSummary] = useState(null);
+  const [salesLoading, setSalesLoading] = useState(false);
+  const [salesError, setSalesError] = useState('');
+  // Which order the reorderable dashboard sections render in — persisted to
+  // this browser's localStorage (not the shop_settings table), so it's
+  // per-device rather than synced across every phone/computer Orlando uses.
+  const [sectionOrder, setSectionOrder] = useState(SECTION_KEYS);
+  const closedDateInputRef = useRef(null);
   const pollRef = useRef(null);
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(SECTION_ORDER_STORAGE_KEY);
+      if (!saved) return;
+      const parsed = JSON.parse(saved);
+      // Only trust a saved order if it's the exact same set of sections we
+      // know about today — guards against a stale list from before a
+      // section was added or removed.
+      if (Array.isArray(parsed) && parsed.length === SECTION_KEYS.length && SECTION_KEYS.every((k) => parsed.includes(k))) {
+        setSectionOrder(parsed);
+      }
+    } catch (e) {
+      // ignore — falls back to the default order
+    }
+  }, []);
+
+  function moveSection(key, direction) {
+    setSectionOrder((prev) => {
+      const idx = prev.indexOf(key);
+      const swapWith = idx + direction;
+      if (idx === -1 || swapWith < 0 || swapWith >= prev.length) return prev;
+      const next = [...prev];
+      [next[idx], next[swapWith]] = [next[swapWith], next[idx]];
+      try {
+        window.localStorage.setItem(SECTION_ORDER_STORAGE_KEY, JSON.stringify(next));
+      } catch (e) {
+        // ignore — reordering still works for this visit even if it can't be saved
+      }
+      return next;
+    });
+  }
+
+  // Small up/down arrow pair for a section header. Disabled at whichever
+  // end of the list that section is currently at. These now sit inside each
+  // drawer row's <summary> (see the Manage shop drawer below) — a click
+  // anywhere in a <summary> normally toggles its <details> open/closed, so
+  // both buttons stop that default/propagation to reorder without also
+  // collapsing or expanding the row.
+  function SectionArrows({ sectionKey }) {
+    const idx = sectionOrder.indexOf(sectionKey);
+    return (
+      <span className="section-reorder-controls">
+        <button
+          type="button"
+          className="reorder-btn"
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); moveSection(sectionKey, -1); }}
+          disabled={idx <= 0}
+          aria-label="Move section up"
+          title="Move up"
+        >
+          ▲
+        </button>
+        <button
+          type="button"
+          className="reorder-btn"
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); moveSection(sectionKey, 1); }}
+          disabled={idx === -1 || idx >= sectionOrder.length - 1}
+          aria-label="Move section down"
+          title="Move down"
+        >
+          ▼
+        </button>
+      </span>
+    );
+  }
 
   async function fetchSettings() {
     const res = await fetch('/api/settings');
     if (res.ok) {
       const json = await res.json();
       setSettings(json.settings);
+    }
+  }
+
+  async function fetchPhotos() {
+    const res = await fetch('/api/photos');
+    if (res.ok) {
+      const json = await res.json();
+      setPhotos(json.photos || []);
     }
   }
 
@@ -45,16 +174,119 @@ export default function Admin() {
     setAuthed(true);
   }
 
+  async function fetchPromoCodes() {
+    const res = await fetch('/api/promo-codes');
+    if (res.ok) {
+      const json = await res.json();
+      setPromoCodes(json.promoCodes || []);
+    }
+  }
+
+  async function fetchSalesSummary() {
+    setSalesLoading(true);
+    setSalesError('');
+    try {
+      const res = await fetch('/api/sales-summary');
+      if (!res.ok) throw new Error('failed');
+      const json = await res.json();
+      setSalesSummary(json);
+    } catch (e) {
+      setSalesError('Could not load sales data right now.');
+    } finally {
+      setSalesLoading(false);
+    }
+  }
+
+  // Only fetch once, the first time the Sales row is expanded — <details>
+  // fires onToggle on every open AND close, so this guards on
+  // e.target.open plus "haven't loaded yet" rather than re-fetching every
+  // time it's reopened during the same visit.
+  function handleSalesToggle(e) {
+    if (e.target.open && !salesSummary && !salesLoading) {
+      fetchSalesSummary();
+    }
+  }
+
   useEffect(() => {
     fetchOrders().finally(() => setChecking(false));
     fetchSettings();
+    fetchPhotos();
+    fetchPromoCodes();
+
+    // iOS/iPadOS only supports web push for a site that's been "Added to
+    // Home Screen" and opened from there — a regular Safari/Chrome tab on
+    // iPhone/iPad can never get push permission, by Apple's own design.
+    // Detect that case so we can explain it clearly instead of showing a
+    // generic timeout error.
+    const ua = window.navigator.userAgent;
+    const isIOSDevice = /iPad|iPhone|iPod/.test(ua) || (ua.includes('Macintosh') && 'ontouchend' in document);
+    const isStandalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+    if (isIOSDevice && !isStandalone) {
+      setNeedsHomeScreen(true);
+    }
   }, []);
+
+  // Safety net: if OneSignal hasn't finished loading within 20 seconds,
+  // stop showing "Loading notifications…" forever and say so instead. This
+  // only shows on a device/browser where push hasn't already been enabled
+  // (see the `!pushEnabled` check around the button below) — most likely
+  // cause in practice is a weak/cellular connection being slow to fetch
+  // the OneSignal script, not necessarily an ad blocker. 20s (up from an
+  // earlier 8s) gives slow mobile connections room to finish before this
+  // fires as a false alarm.
+  //
+  // Restart that 20s clock every time the page becomes visible again,
+  // instead of letting it run continuously from mount. Orlando hit this on
+  // his phone's installed Home Screen app: he tapped "Export Excel file"
+  // moments after opening /admin, which hands the page off to iOS's native
+  // Save-to-Files sheet — and iOS pauses JS execution in the background
+  // while that sheet is up, but real wall-clock time keeps passing. If the
+  // OneSignal SDK was still loading at that moment, the 20s timer kept
+  // counting that backgrounded time, so by the time he returned to the
+  // page it had already run out and showed the "taking a while" error —
+  // even though the SDK had barely had a real chance to load in the
+  // foreground. A manual refresh "fixed" it only because it restarted the
+  // whole 20s window uninterrupted. Resetting the timer on every
+  // visibilitychange back to 'visible' means the message only ever appears
+  // after 20 real seconds of the page actually being on screen.
+  useEffect(() => {
+    if (oneSignalReady || needsHomeScreen) return undefined;
+    function fire() {
+      setPushError("Notifications are taking a while to load — usually just a slow or weak connection, but it can also be an ad blocker or browser privacy setting. Try again in a moment, switch to Wi-Fi if you're on cellular, or disable any ad blocker for this site.");
+    }
+    let timeout = setTimeout(fire, 20000);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        clearTimeout(timeout);
+        timeout = setTimeout(fire, 20000);
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearTimeout(timeout);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [oneSignalReady, needsHomeScreen]);
 
   useEffect(() => {
     if (!authed) return;
     pollRef.current = setInterval(fetchOrders, 5000);
     return () => clearInterval(pollRef.current);
   }, [authed]);
+
+  // Keep the edit-order pickup time in sync with the pickup date: weekday
+  // and weekend hours can differ, so a time that was valid for the order's
+  // original date (e.g. "5:00 PM") isn't necessarily valid once the admin
+  // switches the date to a Saturday. Without this, the <select> keeps
+  // showing the old time even though it's no longer one of the options
+  // generated for the new date, which is exactly the "stuck at 5pm" bug.
+  useEffect(() => {
+    if (!editForm) return;
+    const times = buildPickupTimes(editForm.pickup_date, settings);
+    if (times.length > 0 && !times.includes(editForm.pickup_time)) {
+      setEditForm((f) => (f ? { ...f, pickup_time: times[0] } : f));
+    }
+  }, [editForm?.pickup_date, settings]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleLogin(e) {
     e.preventDefault();
@@ -118,6 +350,9 @@ export default function Admin() {
       customer_phone: o.customer_phone || '',
       notes: o.notes || '',
       includeRim: o.include_rim !== false,
+      isMultiCup: Array.isArray(o.items) && o.items.length > 0,
+      items: o.items || null,
+      originalTotal: Number(o.total) || 0,
     });
   }
 
@@ -132,6 +367,25 @@ export default function Admin() {
       toppings: f.toppings.includes(name) ? f.toppings.filter((x) => x !== name) : [...f.toppings, name],
     }));
   }
+  // "Always extra" toppings (Cheesecake, Ice Cream) can carry more than one
+  // unit — same +/- pattern as the customer order page — so an order can be
+  // corrected to the right quantity instead of only on/off.
+  function addEditToppingUnit(name) {
+    setEditForm((f) => (
+      f.toppings.filter((x) => x === name).length >= MAX_EXTRA_TOPPING_QTY
+        ? f
+        : { ...f, toppings: [...f.toppings, name] }
+    ));
+  }
+  function removeEditToppingUnit(name) {
+    setEditForm((f) => {
+      const idx = f.toppings.indexOf(name);
+      if (idx === -1) return f;
+      const next = [...f.toppings];
+      next.splice(idx, 1);
+      return { ...f, toppings: next };
+    });
+  }
   function toggleEditSyrup(name) {
     setEditForm((f) => ({
       ...f,
@@ -143,23 +397,32 @@ export default function Admin() {
     if (!editForm) return;
     setSavingEdit(true);
     const activeBase = BASES.find((b) => b.id === editForm.base);
-    const newTotal = orderTotal(editForm.base, editForm.cupSize, editForm.toppings, editForm.qty);
+    const newTotal = editForm.isMultiCup ? editForm.originalTotal : orderTotal(editForm.base, editForm.cupSize, editForm.toppings, editForm.qty);
 
-    const payload = {
-      id: editingId,
-      base: activeBase.name,
-      cup_size: `${editForm.cupSize} oz`,
-      toppings: editForm.toppings,
-      syrups: editForm.syrups,
-      qty: editForm.qty,
-      pickup_date: editForm.pickup_date,
-      pickup_time: editForm.pickup_time,
-      customer_name: editForm.customer_name,
-      customer_phone: editForm.customer_phone,
-      notes: editForm.notes,
-      total: newTotal,
-      include_rim: editForm.includeRim,
-    };
+    const payload = editForm.isMultiCup
+      ? {
+          id: editingId,
+          pickup_date: editForm.pickup_date,
+          pickup_time: editForm.pickup_time,
+          customer_name: editForm.customer_name,
+          customer_phone: editForm.customer_phone,
+          notes: editForm.notes,
+        }
+      : {
+          id: editingId,
+          base: activeBase.name,
+          cup_size: `${editForm.cupSize} oz`,
+          toppings: editForm.toppings,
+          syrups: editForm.syrups,
+          qty: editForm.qty,
+          pickup_date: editForm.pickup_date,
+          pickup_time: editForm.pickup_time,
+          customer_name: editForm.customer_name,
+          customer_phone: editForm.customer_phone,
+          notes: editForm.notes,
+          total: newTotal,
+          include_rim: editForm.includeRim,
+        };
 
     await fetch('/api/orders', {
       method: 'PATCH',
@@ -243,10 +506,195 @@ export default function Admin() {
   }
 
   async function enablePush() {
-    if (!window.OneSignal) return;
-    await window.OneSignal.Notifications.requestPermission();
-    await window.OneSignal.User.addTag('role', 'admin');
-    setPushEnabled(true);
+    setPushError('');
+    if (!window.OneSignal) {
+      setPushError("Still setting up notifications — give it a second and try again.");
+      return;
+    }
+    try {
+      await window.OneSignal.Notifications.requestPermission();
+      await window.OneSignal.User.addTag('role', 'admin');
+      // requestPermission() can resolve even if the browser prompt was
+      // dismissed or previously denied — check the actual permission
+      // state rather than assuming it worked.
+      if (window.OneSignal.Notifications.permission) {
+        setPushEnabled(true);
+      } else {
+        setPushError("Notifications weren't allowed. Check your browser's site settings (🔒 icon in the address bar) and allow notifications for this site, then try again.");
+      }
+    } catch (e) {
+      setPushError('Something went wrong turning on notifications — please try again.');
+    }
+  }
+
+  function readFileAsBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result).split(',')[1] || '');
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function handlePhotoFiles(fileList) {
+    const files = Array.from(fileList || []);
+    if (files.length === 0) return;
+    setPhotoError('');
+    setUploadingPhoto(true);
+    try {
+      for (const file of files) {
+        if (file.size > 4 * 1024 * 1024) {
+          setPhotoError(`${file.name} is over 4MB — please use a smaller photo.`);
+          continue;
+        }
+        const dataBase64 = await readFileAsBase64(file);
+        const res = await fetch('/api/photos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename: file.name, dataBase64, contentType: file.type }),
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          setPhotoError(body.message || body.error || `Could not upload ${file.name}.`);
+        }
+      }
+      await fetchPhotos();
+    } catch (e) {
+      setPhotoError('Could not upload photo(s) — please try again.');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  }
+
+  async function deletePhoto(path) {
+    const ok = window.confirm('Delete this photo? This cannot be undone.');
+    if (!ok) return;
+    await fetch('/api/photos', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path }),
+    });
+    setPhotos((prev) => prev.filter((p) => p.path !== path));
+  }
+
+  function openNewPromo() {
+    setEditingPromoId(null);
+    setPromoForm({ code: '', discount_type: 'percent', discount_amount: '', expires_at: '', active: true });
+    setPromoFormError('');
+    setPromoFormOpen(true);
+  }
+
+  function openEditPromo(pc) {
+    setEditingPromoId(pc.id);
+    setPromoForm({
+      code: pc.code,
+      discount_type: pc.discount_type,
+      discount_amount: String(pc.discount_amount),
+      expires_at: pc.expires_at ? pc.expires_at.slice(0, 10) : '',
+      active: pc.active,
+    });
+    setPromoFormError('');
+    setPromoFormOpen(true);
+  }
+
+  async function savePromoCode() {
+    setPromoFormError('');
+    const code = promoForm.code.trim().toUpperCase();
+    const amount = parseFloat(promoForm.discount_amount);
+    if (!code) { setPromoFormError('Enter a code.'); return; }
+    if (!amount || amount <= 0) { setPromoFormError('Enter a discount amount.'); return; }
+    if (promoForm.discount_type === 'percent' && amount > 100) { setPromoFormError('Percent off cannot be more than 100.'); return; }
+
+    setSavingPromo(true);
+    const payload = {
+      code,
+      discount_type: promoForm.discount_type,
+      discount_amount: amount,
+      expires_at: promoForm.expires_at ? new Date(`${promoForm.expires_at}T23:59:59`).toISOString() : null,
+      active: promoForm.active,
+    };
+    const res = await fetch('/api/promo-codes', {
+      method: editingPromoId ? 'PATCH' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(editingPromoId ? { id: editingPromoId, ...payload } : payload),
+    });
+    if (res.ok) {
+      await fetchPromoCodes();
+      setPromoFormOpen(false);
+    } else {
+      const body = await res.json().catch(() => ({}));
+      setPromoFormError(body.error || 'Could not save promo code.');
+    }
+    setSavingPromo(false);
+  }
+
+  async function togglePromoActive(pc) {
+    await fetch('/api/promo-codes', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: pc.id, active: !pc.active }),
+    });
+    fetchPromoCodes();
+  }
+
+  async function deletePromoCode(pc) {
+    const ok = window.confirm(`Delete promo code ${pc.code}? This cannot be undone.`);
+    if (!ok) return;
+    await fetch('/api/promo-codes', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: pc.id }),
+    });
+    setPromoCodes((prev) => prev.filter((x) => x.id !== pc.id));
+  }
+
+  function openNotifyForm(prefill) {
+    setNotifyForm(prefill || { title: '', message: '' });
+    setNotifyResult(null);
+    setNotifyOpen(true);
+  }
+
+  function openNotifyForPromo(pc) {
+    const discount = pc.discount_type === 'percent'
+      ? `${pc.discount_amount}% off`
+      : `$${Number(pc.discount_amount).toFixed(2)} off`;
+    openNotifyForm({
+      title: 'New promo code! 🍓',
+      message: `Use code ${pc.code} for ${discount} your next order.`,
+    });
+  }
+
+  async function sendCustomerNotification() {
+    const title = notifyForm.title.trim();
+    const message = notifyForm.message.trim();
+    if (!title || !message) {
+      setNotifyResult({ ok: false, text: 'Enter a title and message.' });
+      return;
+    }
+    setSendingNotify(true);
+    setNotifyResult(null);
+    try {
+      const res = await fetch('/api/notify-customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, message }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setNotifyResult({ ok: false, text: json.error || 'Could not send notification.' });
+      } else {
+        const count = json.recipients ?? 0;
+        setNotifyResult({
+          ok: true,
+          text: count > 0 ? `Sent to ${count} subscriber${count === 1 ? '' : 's'}.` : 'Sent — but no one is subscribed yet.',
+        });
+        setNotifyForm({ title: '', message: '' });
+      }
+    } catch (e) {
+      setNotifyResult({ ok: false, text: 'Could not reach the server.' });
+    } finally {
+      setSendingNotify(false);
+    }
   }
 
   if (checking) return null;
@@ -254,7 +702,14 @@ export default function Admin() {
   if (!authed) {
     return (
       <div className="login-box">
-        <Head><title>Admin — Fresas con Crema</title></Head>
+        <Head>
+          <title>Admin — Fresas con Crema</title>
+          <link rel="manifest" href="/manifest.json" />
+          <link rel="apple-touch-icon" href="/icon-192.png" />
+          <meta name="apple-mobile-web-app-capable" content="yes" />
+          <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+          <meta name="theme-color" content="#7C1B2C" />
+        </Head>
         <h1>🍓 Admin</h1>
         <form onSubmit={handleLogin}>
           <div className="field">
@@ -275,7 +730,14 @@ export default function Admin() {
 
   return (
     <div>
-      <Head><title>Admin — Fresas con Crema</title></Head>
+      <Head>
+          <title>Admin — Fresas con Crema</title>
+          <link rel="manifest" href="/manifest.json" />
+          <link rel="apple-touch-icon" href="/icon-192.png" />
+          <meta name="apple-mobile-web-app-capable" content="yes" />
+          <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+          <meta name="theme-color" content="#7C1B2C" />
+        </Head>
       {ONESIGNAL_APP_ID && (
         <Script
           src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js"
@@ -283,9 +745,21 @@ export default function Admin() {
           onLoad={() => {
             window.OneSignalDeferred = window.OneSignalDeferred || [];
             window.OneSignalDeferred.push(async (OneSignal) => {
-              await OneSignal.init({ appId: ONESIGNAL_APP_ID });
-              window.OneSignal = OneSignal;
+              try {
+                await OneSignal.init({ appId: ONESIGNAL_APP_ID });
+                window.OneSignal = OneSignal;
+                setOneSignalReady(true);
+                // If notifications were already granted in an earlier visit,
+                // reflect that immediately instead of showing the button again.
+                if (OneSignal.Notifications.permission) setPushEnabled(true);
+              } catch (e) {
+                console.error('OneSignal init failed', e);
+                setPushError('Could not set up notifications (setup error) — try refreshing the page.');
+              }
             });
+          }}
+          onError={() => {
+            setPushError('Could not load the notifications service — check your internet connection or try refreshing.');
           }}
         />
       )}
@@ -296,9 +770,14 @@ export default function Admin() {
       </div>
 
       <div className="wrap">
+        {/* Pinned open/closed toggle — the one thing checked on every visit,
+            so it lives outside (above) the Manage shop drawer below and is
+            never collapsed. Everything else that used to share this "Shop
+            status" section (closed days, hours, phone requirement,
+            catering, sold-out toggles) now lives in the drawer's "Hours,
+            availability & catering" row. */}
         {settings && (
-          <div className="section">
-            <h2>Shop status</h2>
+          <div className="section pinned-status-section">
             <div className="order-card">
               <div className="row" style={{ marginBottom: settings.is_open ? 0 : 10 }}>
                 <span className="pickup">{settings.is_open ? '🟢 Open for orders' : '🔴 Closed'}</span>
@@ -335,6 +814,269 @@ export default function Admin() {
                 </>
               )}
             </div>
+          </div>
+        )}
+
+        {!pushEnabled && (
+          <div className="section">
+            {needsHomeScreen ? (
+              <div className="order-card">
+                <p style={{ margin: '0 0 8px', fontWeight: 700, color: 'var(--maroon)' }}>
+                  📲 One extra step on iPhone/iPad
+                </p>
+                <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--ink-soft)' }}>
+                  Apple only allows notifications for sites added to your Home Screen. Tap the Share button
+                  in Safari, choose <strong>"Add to Home Screen"</strong>, then open Admin from that new icon
+                  instead of Safari — you'll be able to enable notifications from there.
+                </p>
+              </div>
+            ) : (
+              <>
+                <button className="btn-primary" onClick={enablePush} disabled={!oneSignalReady}>
+                  🔔 {oneSignalReady ? 'Enable push notifications on this device' : 'Loading notifications…'}
+                </button>
+                {pushError && (
+                  <div style={{ marginTop: 8 }}>
+                    <p className="error" style={{ margin: 0 }}>{pushError}</p>
+                    <button
+                      type="button"
+                      className="status-btn"
+                      style={{ marginTop: 8 }}
+                      onClick={() => window.location.reload()}
+                    >
+                      🔄 Retry
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Orders queue — moved up front, right under the open/closed
+            toggle. This is what gets checked most; everything settings-ish
+            now lives in the Manage shop drawer below it. Nothing about how
+            orders render or the actions on them changed — only where this
+            block sits on the page. */}
+        <div className="section">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+            <h2>Orders ({orders.filter((o) => o.status !== 'done').length} open)</h2>
+            {selectedIds.length > 0 && (
+              <button className="status-btn" style={{ color: '#fff', background: 'var(--maroon)', borderColor: 'var(--maroon)' }} onClick={deleteSelected} disabled={deleting}>
+                {deleting ? 'Deleting…' : `🗑️ Delete selected (${selectedIds.length})`}
+              </button>
+            )}
+          </div>
+          {orders.length === 0 && <p className="hint">No orders yet.</p>}
+          {orders.length > 0 && orders.filter((o) => o.status !== 'done').length === 0 && (
+            <div className="all-caught-up">
+              <div className="act-title">🎉 All caught up</div>
+              <p>No orders waiting right now. Completed orders are still listed below.</p>
+            </div>
+          )}
+          {orders.map((o) => (
+            <div key={o.id} className={`order-card${o.status === 'done' ? ' done' : ''}`}>
+              {o.order_number && (
+                <div style={{ fontWeight: 800, color: 'var(--maroon)', fontSize: '1.05rem', marginBottom: 6 }}>
+                  #{o.order_number}{o.customer_name ? ` — ${o.customer_name}` : ''}
+                </div>
+              )}
+              {o.arrived_at && (
+                <div style={{
+                  display: 'inline-block', background: 'var(--pink-pale)', border: '2px solid var(--pink)',
+                  borderRadius: 10, padding: '4px 10px', fontWeight: 800, color: 'var(--maroon)',
+                  fontSize: '0.82rem', marginBottom: 8,
+                }}>
+                  🚶 Arrived at {new Date(o.arrived_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                </div>
+              )}
+              <div className="row">
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <input
+                    type="checkbox"
+                    style={{ width: 18, height: 18, accentColor: 'var(--maroon)' }}
+                    checked={selectedIds.includes(o.id)}
+                    onChange={() => toggleSelect(o.id)}
+                  />
+                  <span className="pickup">Pickup {formatDateKey(o.pickup_date || todayDateKey())}, {o.pickup_time}</span>
+                </label>
+                <span className="total">${Number(o.total).toFixed(2)}</span>
+              </div>
+              {Array.isArray(o.items) && o.items.length > 0 ? (
+                <>
+                  <div className="meta">{o.items.length} cup{o.items.length === 1 ? '' : 's'} in this order</div>
+                  <div className="order-details-body order-details-body-static">
+                    {o.items.map((item, i) => (
+                      <div key={i} style={{ marginBottom: i < o.items.length - 1 ? 10 : 0, paddingBottom: i < o.items.length - 1 ? 10 : 0, borderBottom: i < o.items.length - 1 ? '1px dashed var(--line)' : 'none' }}>
+                        <div><strong>{item.qty}x {item.base}</strong>{item.cup_size ? ` (${item.cup_size})` : ''}</div>
+                        {(item.base === 'Banana Pudding' || item.base === 'Gansito') && (
+                          <div><strong>Rim:</strong> {item.include_rim === false ? '🚫 No rim' : '✅ Yes'}</div>
+                        )}
+                        <div><strong>Toppings:</strong></div>
+                        {item.toppings?.length
+                          ? groupToppingCounts(item.toppings).map(({ name, count }) => (
+                              <div key={name}>- {name}{count > 1 ? ` ×${count}` : ''}</div>
+                            ))
+                          : <div>- None</div>}
+                        <div><strong>Syrup:</strong></div>
+                        {item.syrups?.length
+                          ? item.syrups.map((s) => <div key={s}>- {s}</div>)
+                          : <div>- None</div>}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="meta">{o.qty}x {o.base}{o.cup_size ? ` (${o.cup_size})` : ''}</div>
+                  <div className="order-details-body order-details-body-static">
+                    {(o.base === 'Banana Pudding' || o.base === 'Gansito') && (
+                      <div><strong>Rim:</strong> {o.include_rim === false ? '🚫 No rim' : '✅ Yes'}</div>
+                    )}
+                    <div><strong>Toppings:</strong></div>
+                    {o.toppings?.length
+                      ? groupToppingCounts(o.toppings).map(({ name, count }) => (
+                          <div key={name}>- {name}{count > 1 ? ` ×${count}` : ''}</div>
+                        ))
+                      : <div>- None</div>}
+                    <div><strong>Syrup:</strong></div>
+                    {o.syrups?.length
+                      ? o.syrups.map((s) => <div key={s}>- {s}</div>)
+                      : <div>- None</div>}
+                  </div>
+                </>
+              )}
+              {o.notes && (
+                <div className="meta">{o.notes}</div>
+              )}
+              {o.customer_phone && (
+                <div className="meta">
+                  📞 <a href={`tel:${o.customer_phone}`} style={{ color: 'var(--maroon)', fontWeight: 700 }}>{o.customer_phone}</a>
+                </div>
+              )}
+              <div className="meta">{new Date(o.created_at).toLocaleString()}</div>
+              {o.status === 'done' && o.customer_phone && (
+                <div className="meta">📲 Ready text sent ({o.language === 'es' ? 'Español' : 'English'})</div>
+              )}
+              <div className="meta">
+                {o.paid
+                  ? `✅ Paid${o.payment_method === 'cash' ? ' (cash)' : ' (Zelle)'}`
+                  : o.payment_method === 'cash'
+                  ? '💵 Cash — pay at pickup'
+                  : o.customer_confirmed_payment
+                  ? '💸 Customer said they sent Zelle — not yet confirmed'
+                  : '⏳ Payment not confirmed'}
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+                {o.status !== 'done' ? (
+                  <button className="status-btn" onClick={() => markStatus(o.id, 'done')}>Mark ready / done</button>
+                ) : (
+                  <button className="status-btn" onClick={() => markStatus(o.id, 'new')}>Reopen</button>
+                )}
+                {!o.paid ? (
+                  <button className="status-btn" onClick={() => markPaid(o.id, true)}>Mark as paid</button>
+                ) : (
+                  <button className="status-btn" onClick={() => markPaid(o.id, false)}>Undo paid</button>
+                )}
+                <button className="status-btn" onClick={() => openEdit(o)}>✏️ Edit order</button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Everything below is settings/admin tools rather than day-to-day
+            queue work — tucked into one collapsible drawer so it stops
+            competing with Orders for space. The individual rows inside
+            (Hours & availability, Sales, Promo codes, Site photos, Export)
+            are still reorderable with the same up/down arrows as before —
+            SECTION_KEYS, sectionOrder and moveSection are all unchanged. */}
+        <details className="manage-shop-drawer">
+          <summary>
+            <span>⚙️ Manage shop — hours, availability, promos &amp; more</span>
+            <span className="chev">▾</span>
+          </summary>
+          <div className="admin-reorder-wrap">
+        {settings && (
+          <details className="section drawer-section" style={{ order: sectionOrder.indexOf('shopStatus') }}>
+            <summary>
+              <span>Hours, availability &amp; catering</span>
+              <span className="drawer-row-right"><SectionArrows sectionKey="shopStatus" /><span className="chev">▾</span></span>
+            </summary>
+            <div className="drawer-section-body">
+            <div className="order-card" style={{ marginTop: 0 }}>
+              <label style={{ display: 'block', fontWeight: 700, marginBottom: 6 }}>
+                Closed days
+              </label>
+              <p className="hint" style={{ marginTop: 0 }}>
+                Know in advance you'll be closed a day — a trip, a holiday? Add the date here. Customers won't be able to pick it for pickup, and the home page shows "Closed" that day automatically — you don't have to remember to flip the shop switch.
+              </p>
+              <div style={{ marginBottom: 12 }}>
+                {/* Kept in the DOM (not display:none) so the browser will let us
+                    open its native picker programmatically from the button below,
+                    but visually collapsed since the button is the only thing the
+                    admin actually clicks. */}
+                <input
+                  ref={closedDateInputRef}
+                  type="date"
+                  value={newClosedDate}
+                  min={todayDateKey()}
+                  onChange={(e) => {
+                    const picked = e.target.value;
+                    setNewClosedDate(picked);
+                    if (picked) {
+                      const current = settings.closed_dates || [];
+                      if (!current.includes(picked)) {
+                        saveSettings({ closed_dates: [...current, picked].sort() });
+                      }
+                      setNewClosedDate('');
+                    }
+                  }}
+                  style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
+                  tabIndex={-1}
+                  aria-hidden="true"
+                />
+                <button
+                  className="status-btn"
+                  disabled={savingSettings}
+                  onClick={() => {
+                    const el = closedDateInputRef.current;
+                    if (!el) return;
+                    if (typeof el.showPicker === 'function') {
+                      try {
+                        el.showPicker();
+                        return;
+                      } catch (err) {
+                        // Some browsers throw if showPicker isn't allowed here —
+                        // fall through to the focus fallback below.
+                      }
+                    }
+                    el.focus();
+                  }}
+                >
+                  + Add a closed day
+                </button>
+              </div>
+              {(settings.closed_dates || []).length === 0 ? (
+                <p className="hint" style={{ margin: 0 }}>No closed days scheduled.</p>
+              ) : (
+                <div className="chip-grid">
+                  {(settings.closed_dates || []).slice().sort().map((d) => (
+                    <span key={d} className="chip" style={{ cursor: 'default' }}>
+                      {formatDateKey(d)}
+                      <button
+                        type="button"
+                        onClick={() => saveSettings({ closed_dates: (settings.closed_dates || []).filter((x) => x !== d) })}
+                        disabled={savingSettings}
+                        aria-label={`Remove ${d}`}
+                        style={{ background: 'none', border: 'none', color: 'var(--maroon)', fontWeight: 800, fontSize: '1rem', cursor: 'pointer', padding: 0, lineHeight: 1 }}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
 
             <div className="order-card" style={{ marginTop: 10 }}>
               <label style={{ display: 'block', fontWeight: 700, marginBottom: 6 }}>
@@ -366,7 +1108,7 @@ export default function Admin() {
                   <input
                     type="time"
                     defaultValue={settings.hours_weekday_start}
-                    onBlur={(e) => saveSettings({ hours_weekday_start: e.target.value })}
+                    onChange={(e) => saveSettings({ hours_weekday_start: e.target.value })}
                   />
                 </div>
                 <div className="field" style={{ margin: 0 }}>
@@ -374,7 +1116,7 @@ export default function Admin() {
                   <input
                     type="time"
                     defaultValue={settings.hours_weekday_end}
-                    onBlur={(e) => saveSettings({ hours_weekday_end: e.target.value })}
+                    onChange={(e) => saveSettings({ hours_weekday_end: e.target.value })}
                   />
                 </div>
                 <div className="field" style={{ margin: 0 }}>
@@ -382,7 +1124,7 @@ export default function Admin() {
                   <input
                     type="time"
                     defaultValue={settings.hours_weekend_start}
-                    onBlur={(e) => saveSettings({ hours_weekend_start: e.target.value })}
+                    onChange={(e) => saveSettings({ hours_weekend_start: e.target.value })}
                   />
                 </div>
                 <div className="field" style={{ margin: 0 }}>
@@ -390,7 +1132,7 @@ export default function Admin() {
                   <input
                     type="time"
                     defaultValue={settings.hours_weekend_end}
-                    onBlur={(e) => saveSettings({ hours_weekend_end: e.target.value })}
+                    onChange={(e) => saveSettings({ hours_weekend_end: e.target.value })}
                   />
                 </div>
               </div>
@@ -398,96 +1140,19 @@ export default function Admin() {
             </div>
 
             <div className="order-card" style={{ marginTop: 10 }}>
-              <details open={(settings.sold_out_flavors || []).length > 0}>
-                <summary style={{ fontWeight: 700, cursor: 'pointer' }}>
-                  Flavor availability
-                  {(settings.sold_out_flavors || []).length > 0 ? ` — ${settings.sold_out_flavors.length} sold out` : ''}
-                </summary>
-                <div className="chip-grid" style={{ marginTop: 10 }}>
-                  {BASES.map((b) => {
-                    const isSoldOut = (settings.sold_out_flavors || []).includes(b.id);
-                    return (
-                      <button
-                        key={b.id}
-                        type="button"
-                        className={`chip${isSoldOut ? ' checked' : ''}`}
-                        style={isSoldOut ? { borderColor: 'var(--maroon)', background: 'var(--pink-pale)' } : {}}
-                        onClick={() => {
-                          const current = settings.sold_out_flavors || [];
-                          const next = isSoldOut ? current.filter((x) => x !== b.id) : [...current, b.id];
-                          saveSettings({ sold_out_flavors: next });
-                        }}
-                        disabled={savingSettings}
-                      >
-                        {isSoldOut ? '🚫 ' : '✅ '}{b.name}
-                      </button>
-                    );
-                  })}
-                </div>
-                <p className="hint" style={{ marginTop: 10, marginBottom: 0 }}>Tap a flavor to mark it sold out — customers won't be able to select it.</p>
-              </details>
-            </div>
-
-            <div className="order-card" style={{ marginTop: 10 }}>
-              <details open={(settings.sold_out_toppings || []).length > 0}>
-                <summary style={{ fontWeight: 700, cursor: 'pointer' }}>
-                  Topping availability
-                  {(settings.sold_out_toppings || []).length > 0 ? ` — ${settings.sold_out_toppings.length} sold out` : ''}
-                </summary>
-                <div className="chip-grid" style={{ marginTop: 10 }}>
-                  {TOPPINGS.map((tp) => {
-                    const isSoldOut = (settings.sold_out_toppings || []).includes(tp.name);
-                    return (
-                      <button
-                        key={tp.name}
-                        type="button"
-                        className={`chip${isSoldOut ? ' checked' : ''}`}
-                        style={isSoldOut ? { borderColor: 'var(--maroon)', background: 'var(--pink-pale)' } : {}}
-                        onClick={() => {
-                          const current = settings.sold_out_toppings || [];
-                          const next = isSoldOut ? current.filter((x) => x !== tp.name) : [...current, tp.name];
-                          saveSettings({ sold_out_toppings: next });
-                        }}
-                        disabled={savingSettings}
-                      >
-                        {isSoldOut ? '🚫 ' : '✅ '}{tp.name}
-                      </button>
-                    );
-                  })}
-                </div>
-                <p className="hint" style={{ marginTop: 10, marginBottom: 0 }}>Tap a topping to mark it sold out.</p>
-              </details>
-            </div>
-
-            <div className="order-card" style={{ marginTop: 10 }}>
-              <details open={(settings.sold_out_syrups || []).length > 0}>
-                <summary style={{ fontWeight: 700, cursor: 'pointer' }}>
-                  Syrup availability
-                  {(settings.sold_out_syrups || []).length > 0 ? ` — ${settings.sold_out_syrups.length} sold out` : ''}
-                </summary>
-                <div className="chip-grid" style={{ marginTop: 10 }}>
-                  {SYRUPS.map((s) => {
-                    const isSoldOut = (settings.sold_out_syrups || []).includes(s);
-                    return (
-                      <button
-                        key={s}
-                        type="button"
-                        className={`chip${isSoldOut ? ' checked' : ''}`}
-                        style={isSoldOut ? { borderColor: 'var(--maroon)', background: 'var(--pink-pale)' } : {}}
-                        onClick={() => {
-                          const current = settings.sold_out_syrups || [];
-                          const next = isSoldOut ? current.filter((x) => x !== s) : [...current, s];
-                          saveSettings({ sold_out_syrups: next });
-                        }}
-                        disabled={savingSettings}
-                      >
-                        {isSoldOut ? '🚫 ' : '✅ '}{s}
-                      </button>
-                    );
-                  })}
-                </div>
-                <p className="hint" style={{ marginTop: 10, marginBottom: 0 }}>Tap a syrup to mark it sold out.</p>
-              </details>
+              <div className="row">
+                <span className="pickup">{settings.require_phone ? '📵 Phone number required' : '📱 Phone number optional'}</span>
+                <button
+                  className="status-btn"
+                  onClick={() => saveSettings({ require_phone: !settings.require_phone })}
+                  disabled={savingSettings}
+                >
+                  {settings.require_phone ? 'Make optional' : 'Require it'}
+                </button>
+              </div>
+              <p className="hint" style={{ marginTop: 8, marginBottom: 0 }}>
+                When required, customers can't submit an order without a valid phone number — so every order can get a confirmation text and the "I'm here" arrival link. Off by default, so nothing changes for customers until you turn this on.
+              </p>
             </div>
 
             <div className="order-card" style={{ marginTop: 10 }}>
@@ -525,25 +1190,340 @@ export default function Admin() {
               </div>
               <p className="hint" style={{ marginTop: 10, marginBottom: 0 }}>Tap the days you're available for catering. Leave all off to hide the catering section from customers.</p>
             </div>
-          </div>
+
+            <p style={{ fontWeight: 700, marginTop: 20, marginBottom: 0 }}>
+              Mark items sold out
+            </p>
+
+            <details className="order-card availability-dropdown" style={{ marginTop: 10 }}>
+              <summary style={{ fontWeight: 700 }}>
+                Flavor availability
+              </summary>
+              <div className="chip-grid" style={{ marginTop: 10 }}>
+                {BASES.map((b) => {
+                  const isSoldOut = (settings.sold_out_flavors || []).includes(b.id);
+                  return (
+                    <button
+                      key={b.id}
+                      type="button"
+                      className={`chip${isSoldOut ? ' checked' : ''}`}
+                      style={isSoldOut ? { borderColor: 'var(--maroon)', background: 'var(--pink-pale)' } : {}}
+                      onClick={() => {
+                        const current = settings.sold_out_flavors || [];
+                        const next = isSoldOut ? current.filter((x) => x !== b.id) : [...current, b.id];
+                        saveSettings({ sold_out_flavors: next });
+                      }}
+                      disabled={savingSettings}
+                    >
+                      {isSoldOut ? '🚫 ' : '✅ '}{b.name}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="hint" style={{ marginTop: 10, marginBottom: 0 }}>Tap a flavor to mark it sold out — customers won't be able to select it.</p>
+            </details>
+
+            <details className="order-card availability-dropdown" style={{ marginTop: 10 }}>
+              <summary style={{ fontWeight: 700 }}>
+                Topping availability
+              </summary>
+              <div className="chip-grid" style={{ marginTop: 10 }}>
+                {TOPPINGS.map((tp) => {
+                  const isSoldOut = (settings.sold_out_toppings || []).includes(tp.name);
+                  return (
+                    <button
+                      key={tp.name}
+                      type="button"
+                      className={`chip${isSoldOut ? ' checked' : ''}`}
+                      style={isSoldOut ? { borderColor: 'var(--maroon)', background: 'var(--pink-pale)' } : {}}
+                      onClick={() => {
+                        const current = settings.sold_out_toppings || [];
+                        const next = isSoldOut ? current.filter((x) => x !== tp.name) : [...current, tp.name];
+                        saveSettings({ sold_out_toppings: next });
+                      }}
+                      disabled={savingSettings}
+                    >
+                      {isSoldOut ? '🚫 ' : '✅ '}{tp.name}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="hint" style={{ marginTop: 10, marginBottom: 0 }}>Tap a topping to mark it sold out.</p>
+            </details>
+
+            <details className="order-card availability-dropdown" style={{ marginTop: 10 }}>
+              <summary style={{ fontWeight: 700 }}>
+                Syrup availability
+              </summary>
+              <div className="chip-grid" style={{ marginTop: 10 }}>
+                {SYRUPS.map((s) => {
+                  const isSoldOut = (settings.sold_out_syrups || []).includes(s);
+                  return (
+                    <button
+                      key={s}
+                      type="button"
+                      className={`chip${isSoldOut ? ' checked' : ''}`}
+                      style={isSoldOut ? { borderColor: 'var(--maroon)', background: 'var(--pink-pale)' } : {}}
+                      onClick={() => {
+                        const current = settings.sold_out_syrups || [];
+                        const next = isSoldOut ? current.filter((x) => x !== s) : [...current, s];
+                        saveSettings({ sold_out_syrups: next });
+                      }}
+                      disabled={savingSettings}
+                    >
+                      {isSoldOut ? '🚫 ' : '✅ '}{s}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="hint" style={{ marginTop: 10, marginBottom: 0 }}>Tap a syrup to mark it sold out.</p>
+            </details>
+            </div>
+          </details>
         )}
 
-        <div className="section">
-          <Link href="/admin/sales" style={{ color: 'var(--maroon)', fontWeight: 700, textDecoration: 'none' }}>
-            📊 View sales dashboard →
-          </Link>
-        </div>
-
-        {!pushEnabled && (
-          <div className="section">
-            <button className="btn-primary" onClick={enablePush}>
-              🔔 Enable push notifications on this device
-            </button>
+        <details className="section drawer-section" style={{ order: sectionOrder.indexOf('salesLink') }} onToggle={handleSalesToggle}>
+          <summary>
+            <span>📊 Sales</span>
+            <span className="drawer-row-right"><SectionArrows sectionKey="salesLink" /><span className="chev">▾</span></span>
+          </summary>
+          <div className="drawer-section-body">
+            {salesLoading && <p className="hint" style={{ marginTop: 0 }}>Loading…</p>}
+            {salesError && <p className="error">{salesError}</p>}
+            {salesSummary && (
+              <>
+                <div className="order-card">
+                  <div className="row"><span className="pickup">Today</span></div>
+                  <div className="row" style={{ marginTop: 4 }}>
+                    <span className="pickup">{salesSummary.today.orders} order{salesSummary.today.orders === 1 ? '' : 's'}</span>
+                    <span className="total">${salesSummary.today.revenue.toFixed(2)}</span>
+                  </div>
+                </div>
+                <div className="order-card">
+                  <div className="row"><span className="pickup">Last 7 days</span></div>
+                  <div className="row" style={{ marginTop: 4 }}>
+                    <span className="pickup">{salesSummary.week.orders} order{salesSummary.week.orders === 1 ? '' : 's'}</span>
+                    <span className="total">${salesSummary.week.revenue.toFixed(2)}</span>
+                  </div>
+                </div>
+                <div className="order-card">
+                  <div className="row"><span className="pickup">Last 90 days</span></div>
+                  <div className="row" style={{ marginTop: 4 }}>
+                    <span className="pickup">{salesSummary.allTime90d.orders} order{salesSummary.allTime90d.orders === 1 ? '' : 's'}</span>
+                    <span className="total">${salesSummary.allTime90d.revenue.toFixed(2)}</span>
+                  </div>
+                </div>
+                {salesSummary.topFlavors.length > 0 && (
+                  <p className="hint" style={{ marginBottom: 4 }}>
+                    <strong>Best sellers (90 days):</strong> {salesSummary.topFlavors.slice(0, 3).map((f) => `${f.name} (${f.count}x)`).join(', ')}
+                  </p>
+                )}
+              </>
+            )}
+            <Link href="/admin/sales" style={{ color: 'var(--maroon)', fontWeight: 700, textDecoration: 'none', display: 'inline-block', marginTop: 4 }}>
+              📊 Open full sales dashboard →
+            </Link>
           </div>
-        )}
+        </details>
 
-        <div className="section">
-          <h2>Export order history</h2>
+        <details className="section drawer-section" style={{ order: sectionOrder.indexOf('promoCodes') }}>
+          <summary>
+            <span>🏷️ Promo codes</span>
+            <span className="drawer-row-right"><SectionArrows sectionKey="promoCodes" /><span className="chev">▾</span></span>
+          </summary>
+          <div className="drawer-section-body">
+          <p className="hint">Create a code and turn it on — customers enter it on the order page for an automatic discount.</p>
+          <p className="hint" style={{ marginTop: -8 }}>
+            Turning a code on doesn't notify anyone by itself — use "Notify customers" on a code below, or the general button underneath the list, to actually push it out to whoever opted into "Get notified about deals."
+          </p>
+
+          {promoCodes.map((pc) => {
+            const isExpired = pc.expires_at && new Date(pc.expires_at).getTime() < Date.now();
+            const statusLabel = isExpired ? 'Expired' : pc.active ? 'Active' : 'Off';
+            const statusClass = isExpired || !pc.active ? 'inactive' : 'active';
+            return (
+              <div key={pc.id} className={`order-card${pc.active && !isExpired ? '' : ' done'}`}>
+                <div className="row" style={{ alignItems: 'flex-start' }}>
+                  <div>
+                    <div style={{ fontFamily: "'Baloo 2', sans-serif", fontWeight: 800, fontSize: '1.05rem', color: 'var(--maroon)' }}>
+                      {pc.code}
+                    </div>
+                    <div style={{ fontWeight: 700, marginTop: 2 }}>
+                      {pc.discount_type === 'percent' ? `${pc.discount_amount}% off` : `$${Number(pc.discount_amount).toFixed(2)} off`}
+                    </div>
+                    <div className="meta">
+                      Used {pc.times_used || 0} time{pc.times_used === 1 ? '' : 's'} · {pc.expires_at ? `${isExpired ? 'expired' : 'expires'} ${new Date(pc.expires_at).toLocaleDateString()}` : 'no expiration'}
+                    </div>
+                  </div>
+                  <span className={`promo-status-pill ${statusClass}`}>{statusLabel}</span>
+                </div>
+                <div className="promo-actions">
+                  <button className="status-btn" onClick={() => openEditPromo(pc)}>Edit</button>
+                  {!isExpired && (
+                    <button className="status-btn" onClick={() => togglePromoActive(pc)}>
+                      {pc.active ? 'Turn off' : 'Turn on'}
+                    </button>
+                  )}
+                  {pc.active && !isExpired && (
+                    <button className="status-btn" onClick={() => openNotifyForPromo(pc)}>📣 Notify customers</button>
+                  )}
+                  <button className="status-btn" onClick={() => deletePromoCode(pc)}>Delete</button>
+                </div>
+              </div>
+            );
+          })}
+
+          {promoCodes.length === 0 && !promoFormOpen && (
+            <p className="hint">No promo codes yet.</p>
+          )}
+
+          {!promoFormOpen ? (
+            <button className="btn-primary" onClick={openNewPromo}>+ Add a new promo code</button>
+          ) : (
+            <div className="order-card" style={{ borderColor: 'var(--pink)', background: 'var(--pink-pale)' }}>
+              <div className="field">
+                <label>Code</label>
+                <input
+                  type="text"
+                  value={promoForm.code}
+                  onChange={(e) => setPromoForm((f) => ({ ...f, code: e.target.value.toUpperCase() }))}
+                  placeholder="e.g. FALL15"
+                />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="field" style={{ margin: 0 }}>
+                  <label>Discount type</label>
+                  <select
+                    value={promoForm.discount_type}
+                    onChange={(e) => setPromoForm((f) => ({ ...f, discount_type: e.target.value }))}
+                  >
+                    <option value="percent">Percent off (%)</option>
+                    <option value="fixed">Dollar amount off ($)</option>
+                  </select>
+                </div>
+                <div className="field" style={{ margin: 0 }}>
+                  <label>Amount</label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={promoForm.discount_amount}
+                    onChange={(e) => setPromoForm((f) => ({ ...f, discount_amount: e.target.value }))}
+                    placeholder={promoForm.discount_type === 'percent' ? '10' : '5'}
+                  />
+                </div>
+              </div>
+              <div className="field" style={{ marginTop: 12 }}>
+                <label>Expiration date (optional)</label>
+                <input
+                  type="date"
+                  value={promoForm.expires_at}
+                  onChange={(e) => setPromoForm((f) => ({ ...f, expires_at: e.target.value }))}
+                />
+              </div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, cursor: 'pointer', marginBottom: 4 }}>
+                <input
+                  type="checkbox"
+                  style={{ width: 18, height: 18 }}
+                  checked={promoForm.active}
+                  onChange={(e) => setPromoForm((f) => ({ ...f, active: e.target.checked }))}
+                />
+                Active right away
+              </label>
+              {promoFormError && <p className="login-box error" style={{ margin: '8px 0' }}>{promoFormError}</p>}
+              <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
+                <button className="btn-primary" onClick={savePromoCode} disabled={savingPromo} style={{ flex: 1 }}>
+                  {savingPromo ? 'Saving…' : 'Save promo code'}
+                </button>
+                <button className="status-btn" onClick={() => setPromoFormOpen(false)}>Cancel</button>
+              </div>
+            </div>
+          )}
+
+          <div style={{ marginTop: 14 }}>
+            {!notifyOpen ? (
+              <button className="status-btn" onClick={() => openNotifyForm()}>📣 Send a notification to subscribers</button>
+            ) : (
+              <div className="order-card" style={{ borderColor: 'var(--pink)', background: 'var(--pink-pale)' }}>
+                <p className="hint" style={{ marginTop: 0 }}>
+                  Goes out to everyone who tapped "Turn on notifications" on the order confirmation screen — not to every customer.
+                </p>
+                <div className="field">
+                  <label>Title</label>
+                  <input
+                    type="text"
+                    value={notifyForm.title}
+                    onChange={(e) => setNotifyForm((f) => ({ ...f, title: e.target.value }))}
+                    placeholder="e.g. New promo code! 🍓"
+                  />
+                </div>
+                <div className="field" style={{ marginTop: 12 }}>
+                  <label>Message</label>
+                  <textarea
+                    value={notifyForm.message}
+                    onChange={(e) => setNotifyForm((f) => ({ ...f, message: e.target.value }))}
+                    placeholder="e.g. Use code LAUNCH15 for 15% off your next order."
+                    rows={3}
+                  />
+                </div>
+                {notifyResult && (
+                  <p className={notifyResult.ok ? 'hint' : 'login-box error'} style={{ margin: '8px 0' }}>
+                    {notifyResult.text}
+                  </p>
+                )}
+                <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
+                  <button className="btn-primary" onClick={sendCustomerNotification} disabled={sendingNotify} style={{ flex: 1 }}>
+                    {sendingNotify ? 'Sending…' : 'Send notification'}
+                  </button>
+                  <button className="status-btn" onClick={() => setNotifyOpen(false)}>Cancel</button>
+                </div>
+              </div>
+            )}
+          </div>
+          </div>
+        </details>
+
+        <details className="section drawer-section" style={{ order: sectionOrder.indexOf('sitePhotos') }}>
+          <summary>
+            <span>🖼️ Site photos</span>
+            <span className="drawer-row-right"><SectionArrows sectionKey="sitePhotos" /><span className="chev">▾</span></span>
+          </summary>
+          <div className="drawer-section-body">
+          <p className="hint">These show up on the public Photos page. Max 4MB per photo.</p>
+          <div className="order-card">
+            <label className="btn-primary" style={{ display: 'inline-block', cursor: 'pointer' }}>
+              {uploadingPhoto ? 'Uploading…' : '📷 Upload photo(s)'}
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                style={{ display: 'none' }}
+                disabled={uploadingPhoto}
+                onChange={(e) => { handlePhotoFiles(e.target.files); e.target.value = ''; }}
+              />
+            </label>
+            {photoError && <p className="error" style={{ marginTop: 10 }}>{photoError}</p>}
+            {photos.length === 0 ? (
+              <p className="hint" style={{ marginTop: 14, marginBottom: 0 }}>No photos uploaded yet.</p>
+            ) : (
+              <div className="admin-photo-grid">
+                {photos.map((p) => (
+                  <div key={p.path} className="admin-photo-tile">
+                    <img src={p.url} alt="" />
+                    <button type="button" className="del-btn" onClick={() => deletePhoto(p.path)} title="Delete">✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          </div>
+        </details>
+
+        <details className="section drawer-section" style={{ order: sectionOrder.indexOf('exportHistory') }}>
+          <summary>
+            <span>📥 Export order history</span>
+            <span className="drawer-row-right"><SectionArrows sectionKey="exportHistory" /><span className="chev">▾</span></span>
+          </summary>
+          <div className="drawer-section-body">
           <div className="field">
             <select value={exportRange} onChange={(e) => setExportRange(e.target.value)}>
               <option value="all">All orders ever</option>
@@ -567,80 +1547,10 @@ export default function Admin() {
           <button className="btn-primary" onClick={exportOrders} disabled={exporting}>
             {exporting ? 'Preparing…' : '⬇️ Export Excel file'}
           </button>
-        </div>
-
-        <div className="section">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
-            <h2>Orders ({orders.filter((o) => o.status !== 'done').length} open)</h2>
-            {selectedIds.length > 0 && (
-              <button className="status-btn" style={{ color: '#fff', background: 'var(--maroon)', borderColor: 'var(--maroon)' }} onClick={deleteSelected} disabled={deleting}>
-                {deleting ? 'Deleting…' : `🗑️ Delete selected (${selectedIds.length})`}
-              </button>
-            )}
           </div>
-          {orders.length === 0 && <p className="hint">No orders yet.</p>}
-          {orders.map((o) => (
-            <div key={o.id} className={`order-card${o.status === 'done' ? ' done' : ''}`}>
-              <div className="row">
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <input
-                    type="checkbox"
-                    style={{ width: 18, height: 18, accentColor: 'var(--maroon)' }}
-                    checked={selectedIds.includes(o.id)}
-                    onChange={() => toggleSelect(o.id)}
-                  />
-                  <span className="pickup">Pickup {formatDateKey(o.pickup_date || todayDateKey())}, {o.pickup_time}</span>
-                </label>
-                <span className="total">${Number(o.total).toFixed(2)}</span>
-              </div>
-              <div className="meta">{o.qty}x {o.base}{o.cup_size ? ` (${o.cup_size})` : ''}</div>
-              <details className="order-details">
-                <summary>View toppings &amp; syrup</summary>
-                <div className="order-details-body">
-                  {(o.base === 'Banana Pudding' || o.base === 'Gansito') && (
-                    <div><strong>Rim:</strong> {o.include_rim === false ? '🚫 No rim' : '✅ Yes'}</div>
-                  )}
-                  <div><strong>Toppings:</strong> {o.toppings?.length ? o.toppings.join(', ') : 'None'}</div>
-                  <div><strong>Syrup:</strong> {o.syrups?.length ? o.syrups.join(', ') : 'None'}</div>
-                </div>
-              </details>
-              <div className="meta">
-                {o.customer_name}{o.notes ? ` — ${o.notes}` : ''}
-              </div>
-              {o.customer_phone && (
-                <div className="meta">
-                  📞 <a href={`tel:${o.customer_phone}`} style={{ color: 'var(--maroon)', fontWeight: 700 }}>{o.customer_phone}</a>
-                </div>
-              )}
-              <div className="meta">{new Date(o.created_at).toLocaleString()}</div>
-              {o.status === 'done' && o.customer_phone && (
-                <div className="meta">📲 Ready text sent ({o.language === 'es' ? 'Español' : 'English'})</div>
-              )}
-              <div className="meta">
-                {o.paid
-                  ? `✅ Paid${o.payment_method === 'cash' ? ' (cash)' : ' (Zelle)'}`
-                  : o.payment_method === 'cash'
-                  ? '💵 Cash — pay at pickup'
-                  : o.customer_confirmed_payment
-                  ? '💸 Customer said they sent Zelle — not yet confirmed'
-                  : '⏳ Payment not confirmed'}
-              </div>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
-                {o.status !== 'done' ? (
-                  <button className="status-btn" onClick={() => markStatus(o.id, 'done')}>Mark ready / done</button>
-                ) : (
-                  <button className="status-btn" onClick={() => markStatus(o.id, 'new')}>Reopen</button>
-                )}
-                {!o.paid ? (
-                  <button className="status-btn" onClick={() => markPaid(o.id, true)}>Mark as paid</button>
-                ) : (
-                  <button className="status-btn" onClick={() => markPaid(o.id, false)}>Undo paid</button>
-                )}
-                <button className="status-btn" onClick={() => openEdit(o)}>✏️ Edit order</button>
-              </div>
-            </div>
-          ))}
-        </div>
+        </details>
+          </div>
+        </details>
       </div>
 
       {editForm && (
@@ -648,80 +1558,121 @@ export default function Admin() {
           <div className="sheet">
             <h3>Edit order</h3>
 
-            <div className="field">
-              <label>Base</label>
-              <select value={editForm.base} onChange={(e) => setEditForm((f) => ({ ...f, base: e.target.value }))}>
-                {BASES.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.name} — ${PRICES[editForm.cupSize][b.id].toFixed(2)}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="field">
-              <label>Cup size</label>
-              <select value={editForm.cupSize} onChange={(e) => setEditForm((f) => ({ ...f, cupSize: e.target.value }))}>
-                <option value="12">12 oz</option>
-                <option value="24">24 oz</option>
-              </select>
-            </div>
-
-            {(editForm.base === 'bananapudding' || editForm.base === 'gansito') && (
+            {editForm.isMultiCup ? (
               <div className="field">
-                <label>Rim</label>
-                <div className="chip-grid">
-                  <button
-                    type="button"
-                    className={`chip${editForm.includeRim ? ' checked' : ''}`}
-                    onClick={() => setEditForm((f) => ({ ...f, includeRim: true }))}
-                  >
-                    ✅ Yes
-                  </button>
-                  <button
-                    type="button"
-                    className={`chip${!editForm.includeRim ? ' checked' : ''}`}
-                    onClick={() => setEditForm((f) => ({ ...f, includeRim: false }))}
-                  >
-                    🚫 No rim
-                  </button>
+                <label>Cups in this order</label>
+                <div className="order-details-body order-details-body-static" style={{ marginTop: 0 }}>
+                  {editForm.items.map((item, i) => (
+                    <div key={i} style={{ marginBottom: i < editForm.items.length - 1 ? 8 : 0 }}>
+                      <div><strong>{item.qty}x {item.base}</strong>{item.cup_size ? ` (${item.cup_size})` : ''}</div>
+                      <div>Toppings: {item.toppings?.length ? toppingsSummaryText(item.toppings) : 'None'} · Syrup: {item.syrups?.length ? item.syrups.join(', ') : 'None'}</div>
+                    </div>
+                  ))}
                 </div>
+                <p className="hint" style={{ marginTop: 10, marginBottom: 0 }}>
+                  This order has multiple different cups — editing cup details isn't supported here yet. You can still update pickup time, customer info, and notes below. To change what's in the order, it's easiest to have the customer place a new one and delete this one.
+                </p>
               </div>
+            ) : (
+              <>
+                <div className="field">
+                  <label>Base</label>
+                  <select value={editForm.base} onChange={(e) => setEditForm((f) => ({ ...f, base: e.target.value }))}>
+                    {BASES.map((b) => (
+                      <option key={b.id} value={b.id}>
+                        {b.name} — ${PRICES[editForm.cupSize][b.id].toFixed(2)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="field">
+                  <label>Cup size</label>
+                  <select value={editForm.cupSize} onChange={(e) => setEditForm((f) => ({ ...f, cupSize: e.target.value }))}>
+                    <option value="12">12 oz</option>
+                    <option value="24">24 oz</option>
+                  </select>
+                </div>
+
+                {(editForm.base === 'bananapudding' || editForm.base === 'gansito') && (
+                  <div className="field">
+                    <label>Rim</label>
+                    <div className="chip-grid">
+                      <button
+                        type="button"
+                        className={`chip${editForm.includeRim ? ' checked' : ''}`}
+                        onClick={() => setEditForm((f) => ({ ...f, includeRim: true }))}
+                      >
+                        ✅ Yes
+                      </button>
+                      <button
+                        type="button"
+                        className={`chip${!editForm.includeRim ? ' checked' : ''}`}
+                        onClick={() => setEditForm((f) => ({ ...f, includeRim: false }))}
+                      >
+                        🚫 No rim
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="field">
+                  <label>Toppings</label>
+                  <div className="chip-grid">
+                    {TOPPINGS.map((tp) => {
+                      if (tp.alwaysExtra) {
+                        const count = editForm.toppings.filter((x) => x === tp.name).length;
+                        if (count > 0) {
+                          return (
+                            <div key={tp.name} className="chip checked chip-stepper">
+                              <span>{tp.name}</span>
+                              <div className="mini-stepper">
+                                <button type="button" onClick={() => removeEditToppingUnit(tp.name)} aria-label={`Remove one ${tp.name}`}>−</button>
+                                <span>{count}</span>
+                                <button type="button" onClick={() => addEditToppingUnit(tp.name)} disabled={count >= MAX_EXTRA_TOPPING_QTY} aria-label={`Add one more ${tp.name}`}>+</button>
+                              </div>
+                            </div>
+                          );
+                        }
+                        return (
+                          <button key={tp.name} type="button" className="chip" onClick={() => addEditToppingUnit(tp.name)}>
+                            <span>{tp.name}</span>
+                            <span className="badge">+$1</span>
+                          </button>
+                        );
+                      }
+                      return (
+                        <label key={tp.name} className={`chip${editForm.toppings.includes(tp.name) ? ' checked' : ''}`}>
+                          <input type="checkbox" style={{ display: 'none' }} checked={editForm.toppings.includes(tp.name)} onChange={() => toggleEditTopping(tp.name)} />
+                          <span>{tp.name}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="field">
+                  <label>Syrup</label>
+                  <div className="chip-grid">
+                    {SYRUPS.map((s) => (
+                      <label key={s} className={`chip${editForm.syrups.includes(s) ? ' checked' : ''}`}>
+                        <input type="checkbox" style={{ display: 'none' }} checked={editForm.syrups.includes(s)} onChange={() => toggleEditSyrup(s)} />
+                        <span>{s}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="field">
+                  <label>Quantity</label>
+                  <div className="stepper">
+                    <button type="button" onClick={() => setEditForm((f) => ({ ...f, qty: Math.max(1, f.qty - 1) }))}>−</button>
+                    <span>{editForm.qty}</span>
+                    <button type="button" onClick={() => setEditForm((f) => ({ ...f, qty: Math.min(20, f.qty + 1) }))}>+</button>
+                  </div>
+                </div>
+              </>
             )}
-
-            <div className="field">
-              <label>Toppings</label>
-              <div className="chip-grid">
-                {TOPPINGS.map((tp) => (
-                  <label key={tp.name} className={`chip${editForm.toppings.includes(tp.name) ? ' checked' : ''}`}>
-                    <input type="checkbox" style={{ display: 'none' }} checked={editForm.toppings.includes(tp.name)} onChange={() => toggleEditTopping(tp.name)} />
-                    <span>{tp.name}</span>
-                    {tp.alwaysExtra && <span className="badge">+$1</span>}
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div className="field">
-              <label>Syrup</label>
-              <div className="chip-grid">
-                {SYRUPS.map((s) => (
-                  <label key={s} className={`chip${editForm.syrups.includes(s) ? ' checked' : ''}`}>
-                    <input type="checkbox" style={{ display: 'none' }} checked={editForm.syrups.includes(s)} onChange={() => toggleEditSyrup(s)} />
-                    <span>{s}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div className="field">
-              <label>Quantity</label>
-              <div className="stepper">
-                <button type="button" onClick={() => setEditForm((f) => ({ ...f, qty: Math.max(1, f.qty - 1) }))}>−</button>
-                <span>{editForm.qty}</span>
-                <button type="button" onClick={() => setEditForm((f) => ({ ...f, qty: Math.min(20, f.qty + 1) }))}>+</button>
-              </div>
-            </div>
 
             <div className="field">
               <label>Pickup date</label>

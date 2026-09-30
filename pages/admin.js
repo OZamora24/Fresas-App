@@ -33,12 +33,54 @@ function toppingsSummaryText(list) {
     .join(', ');
 }
 
+const SEEN_ORDERS_KEY = 'fresasAdminSeenOrders';
+
+// "5:30 PM" -> minutes since midnight, for sorting pickup times.
+function pickupMinutes(label) {
+  const m = /^(\d{1,2}):(\d{2})\s*(AM|PM)$/i.exec(label || '');
+  if (!m) return 0;
+  const h = (parseInt(m[1], 10) % 12) + (m[3].toUpperCase() === 'PM' ? 12 : 0);
+  return h * 60 + parseInt(m[2], 10);
+}
+
+// YYYY-MM-DD key moved by `days` (used for the "Yesterday" label).
+function shiftDateKey(dateKey, days) {
+  const [y, m, d] = dateKey.split('-').map(Number);
+  const dt = new Date(y, m - 1, d + days);
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+}
+
+function timeAgo(iso) {
+  const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins} min ago`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.round(hrs / 24);
+  return `${days} day${days === 1 ? '' : 's'} ago`;
+}
+
+// Second line of a compact Completed row: what they got, pickup time, and
+// "Cash" when a cash order was never marked paid.
+function doneRowSummary(o) {
+  const what = Array.isArray(o.items) && o.items.length > 1
+    ? `${o.items.reduce((n, i) => n + (i.qty || 1), 0)} cups`
+    : Array.isArray(o.items) && o.items.length === 1
+      ? `${o.items[0].qty}x ${o.items[0].base}${o.items[0].cup_size ? ` (${o.items[0].cup_size})` : ''}`
+      : `${o.qty}x ${o.base}${o.cup_size ? ` (${o.cup_size})` : ''}`;
+  const cashNote = !o.paid && o.payment_method === 'cash' ? ' · Cash' : '';
+  return `${what} · ${o.pickup_time}${cashNote}`;
+}
+
 export default function Admin() {
   const [authed, setAuthed] = useState(false);
   const [checking, setChecking] = useState(true);
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [orders, setOrders] = useState([]);
+  const [ordersTab, setOrdersTab] = useState('open'); // 'open' | 'done'
+  const [expandedDoneId, setExpandedDoneId] = useState(null); // which Completed row is tapped open
+  const [seenOrderIds, setSeenOrderIds] = useState(null); // null until loaded from localStorage
   const [pushEnabled, setPushEnabled] = useState(false);
   const [oneSignalReady, setOneSignalReady] = useState(false);
   const [pushError, setPushError] = useState('');
@@ -302,6 +344,39 @@ export default function Admin() {
     } else {
       setLoginError('Wrong password — try again.');
     }
+  }
+
+  // "NEW" badge: an open order stays marked new until it's tapped on this
+  // device. Seen order ids live in localStorage, so an order that came in
+  // while the app was closed still shows NEW when it's opened. The very
+  // first time (nothing stored yet), every order already on file counts as
+  // seen, so the badge doesn't light up the whole existing queue.
+  useEffect(() => {
+    if (checking || !authed || seenOrderIds !== null) return;
+    let stored = null;
+    try { stored = JSON.parse(window.localStorage.getItem(SEEN_ORDERS_KEY) || 'null'); } catch (e) {}
+    if (Array.isArray(stored)) {
+      setSeenOrderIds(new Set(stored));
+    } else {
+      const baseline = new Set(orders.map((o) => o.id));
+      setSeenOrderIds(baseline);
+      try { window.localStorage.setItem(SEEN_ORDERS_KEY, JSON.stringify([...baseline])); } catch (e) {}
+    }
+  }, [checking, authed, orders, seenOrderIds]);
+
+  function isNewOrder(o) {
+    return seenOrderIds !== null && o.status !== 'done' && !seenOrderIds.has(o.id);
+  }
+
+  function markOrderSeen(id) {
+    setSeenOrderIds((prev) => {
+      const next = new Set(prev || []);
+      next.add(id);
+      // Only the most recent ids matter — keep the stored list from growing forever.
+      const trimmed = [...next].slice(-500);
+      try { window.localStorage.setItem(SEEN_ORDERS_KEY, JSON.stringify(trimmed)); } catch (e) {}
+      return new Set(trimmed);
+    });
   }
 
   async function markStatus(id, status) {
@@ -702,6 +777,154 @@ export default function Admin() {
     } finally {
       setSendingNotify(false);
     }
+  }
+
+  const openOrders = orders.filter((o) => o.status !== 'done');
+
+  // Completed tab: done orders grouped by pickup day (newest day first,
+  // latest pickup first within a day), each day with its own count/total.
+  const doneGroups = (() => {
+    const today = todayDateKey();
+    const yesterday = shiftDateKey(today, -1);
+    const byDay = new Map();
+    orders.filter((o) => o.status === 'done').forEach((o) => {
+      const key = o.pickup_date || today;
+      if (!byDay.has(key)) byDay.set(key, []);
+      byDay.get(key).push(o);
+    });
+    return [...byDay.entries()]
+      .sort((a, b) => (a[0] < b[0] ? 1 : -1))
+      .map(([dateKey, list]) => ({
+        dateKey,
+        label: dateKey === today ? 'Today' : dateKey === yesterday ? 'Yesterday' : formatDateKey(dateKey),
+        orders: list.sort((a, b) => pickupMinutes(b.pickup_time) - pickupMinutes(a.pickup_time)),
+        revenue: list.reduce((sum, o) => sum + (Number(o.total) || 0), 0),
+      }));
+  })();
+
+  // One full order card — used as-is in the Open tab, and when a row in
+  // the Completed tab is tapped open (without the faded "done" look there,
+  // since everything in that list is done anyway).
+  function renderOrderCard(o, inCompletedList = false) {
+    return (
+      <div
+        key={o.id}
+        className={`order-card${o.status === 'done' && !inCompletedList ? ' done' : ''}${isNewOrder(o) ? ' is-new' : ''}`}
+        onClick={() => { if (isNewOrder(o)) markOrderSeen(o.id); }}
+      >
+        {o.order_number && (
+          <div style={{ fontWeight: 800, color: 'var(--maroon)', fontSize: '1.05rem', marginBottom: 6 }}>
+            #{o.order_number}{o.customer_name ? ` — ${o.customer_name}` : ''}
+            {isNewOrder(o) && <span className="new-badge">NEW</span>}
+          </div>
+        )}
+        {isNewOrder(o) && <div className="new-ago">Came in {timeAgo(o.created_at)}</div>}
+        {o.arrived_at && (
+          <div style={{
+            display: 'inline-block', background: 'var(--pink-pale)', border: '2px solid var(--pink)',
+            borderRadius: 10, padding: '4px 10px', fontWeight: 800, color: 'var(--maroon)',
+            fontSize: '0.82rem', marginBottom: 8,
+          }}>
+            🚶 Arrived at {new Date(o.arrived_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+          </div>
+        )}
+        <div className="row">
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input
+              type="checkbox"
+              style={{ width: 18, height: 18, accentColor: 'var(--maroon)' }}
+              checked={selectedIds.includes(o.id)}
+              onChange={() => toggleSelect(o.id)}
+            />
+            <span className="pickup">Pickup {formatDateKey(o.pickup_date || todayDateKey())}, {o.pickup_time}</span>
+          </label>
+          <span className="total">${Number(o.total).toFixed(2)}</span>
+        </div>
+        {o.promo_code === FREE_CUP_DEAL_CODE ? (
+          <div className="meta"><span className="deal-tag" style={{ marginLeft: 0 }}>🎁 4th free</span> −${Number(o.discount_amount || 0).toFixed(2)} off</div>
+        ) : o.promo_code ? (
+          <div className="meta">🏷️ {o.promo_code} −${Number(o.discount_amount || 0).toFixed(2)} off</div>
+        ) : null}
+        {Array.isArray(o.items) && o.items.length > 0 ? (
+          <>
+            <div className="meta">{o.items.length} cup{o.items.length === 1 ? '' : 's'} in this order</div>
+            <div className="order-details-body order-details-body-static">
+              {o.items.map((item, i) => (
+                <div key={i} style={{ marginBottom: i < o.items.length - 1 ? 10 : 0, paddingBottom: i < o.items.length - 1 ? 10 : 0, borderBottom: i < o.items.length - 1 ? '1px dashed var(--line)' : 'none' }}>
+                  <div><strong>{item.qty}x {item.base}</strong>{item.cup_size ? ` (${item.cup_size})` : ''}</div>
+                  {(item.base === 'Banana Pudding' || item.base === 'Gansito') && (
+                    <div><strong>Rim:</strong> {item.include_rim === false ? '🚫 No rim' : '✅ Yes'}</div>
+                  )}
+                  <div><strong>Toppings:</strong></div>
+                  {item.toppings?.length
+                    ? groupToppingCounts(item.toppings).map(({ name, count }) => (
+                        <div key={name}>- {name}{count > 1 ? ` ×${count}` : ''}</div>
+                      ))
+                    : <div>- None</div>}
+                  <div><strong>Syrup:</strong></div>
+                  {item.syrups?.length
+                    ? item.syrups.map((s) => <div key={s}>- {s}</div>)
+                    : <div>- None</div>}
+                </div>
+              ))}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="meta">{o.qty}x {o.base}{o.cup_size ? ` (${o.cup_size})` : ''}</div>
+            <div className="order-details-body order-details-body-static">
+              {(o.base === 'Banana Pudding' || o.base === 'Gansito') && (
+                <div><strong>Rim:</strong> {o.include_rim === false ? '🚫 No rim' : '✅ Yes'}</div>
+              )}
+              <div><strong>Toppings:</strong></div>
+              {o.toppings?.length
+                ? groupToppingCounts(o.toppings).map(({ name, count }) => (
+                    <div key={name}>- {name}{count > 1 ? ` ×${count}` : ''}</div>
+                  ))
+                : <div>- None</div>}
+              <div><strong>Syrup:</strong></div>
+              {o.syrups?.length
+                ? o.syrups.map((s) => <div key={s}>- {s}</div>)
+                : <div>- None</div>}
+            </div>
+          </>
+        )}
+        {o.notes && (
+          <div className="meta">{o.notes}</div>
+        )}
+        {o.customer_phone && (
+          <div className="meta">
+            📞 <a href={`tel:${o.customer_phone}`} style={{ color: 'var(--maroon)', fontWeight: 700 }}>{o.customer_phone}</a>
+          </div>
+        )}
+        <div className="meta">{new Date(o.created_at).toLocaleString()}</div>
+        {o.status === 'done' && o.customer_phone && (
+          <div className="meta">📲 Ready text sent ({o.language === 'es' ? 'Español' : 'English'})</div>
+        )}
+        <div className="meta">
+          {o.paid
+            ? `✅ Paid${o.payment_method === 'cash' ? ' (cash)' : ' (Zelle)'}`
+            : o.payment_method === 'cash'
+            ? '💵 Cash — pay at pickup'
+            : o.customer_confirmed_payment
+            ? '💸 Customer said they sent Zelle — not yet confirmed'
+            : '⏳ Payment not confirmed'}
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+          {o.status !== 'done' ? (
+            <button className="status-btn" onClick={() => markStatus(o.id, 'done')}>Mark ready / done</button>
+          ) : (
+            <button className="status-btn" onClick={() => markStatus(o.id, 'new')}>Reopen</button>
+          )}
+          {!o.paid ? (
+            <button className="status-btn" onClick={() => markPaid(o.id, true)}>Mark as paid</button>
+          ) : (
+            <button className="status-btn" onClick={() => markPaid(o.id, false)}>Undo paid</button>
+          )}
+          <button className="status-btn" onClick={() => openEdit(o)}>✏️ Edit order</button>
+        </div>
+      </div>
+    );
   }
 
   if (checking) return null;
@@ -1435,133 +1658,64 @@ export default function Admin() {
             block sits on the page. */}
         <div className="section">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
-            <h2>Orders ({orders.filter((o) => o.status !== 'done').length} open)</h2>
+            <h2>Orders</h2>
             {selectedIds.length > 0 && (
               <button className="status-btn" style={{ color: '#fff', background: 'var(--maroon)', borderColor: 'var(--maroon)' }} onClick={deleteSelected} disabled={deleting}>
                 {deleting ? 'Deleting…' : `🗑️ Delete selected (${selectedIds.length})`}
               </button>
             )}
           </div>
-          {orders.length === 0 && <p className="hint">No orders yet.</p>}
-          {orders.length > 0 && orders.filter((o) => o.status !== 'done').length === 0 && (
-            <div className="all-caught-up">
-              <div className="act-title">🎉 All caught up</div>
-              <p>No orders waiting right now. Completed orders are still listed below.</p>
+          {orders.length > 0 && (
+            <div className="order-tabs" role="tablist">
+              <button type="button" role="tab" className="order-tab" aria-selected={ordersTab === 'open'} onClick={() => setOrdersTab('open')}>
+                Open <span className="n">{openOrders.length}</span>
+                {openOrders.some(isNewOrder) && <span className="new-dot" aria-label="New orders waiting" />}
+              </button>
+              <button type="button" role="tab" className="order-tab" aria-selected={ordersTab === 'done'} onClick={() => setOrdersTab('done')}>
+                Completed <span className="n">{orders.length - openOrders.length}</span>
+              </button>
             </div>
           )}
-          {orders.map((o) => (
-            <div key={o.id} className={`order-card${o.status === 'done' ? ' done' : ''}`}>
-              {o.order_number && (
-                <div style={{ fontWeight: 800, color: 'var(--maroon)', fontSize: '1.05rem', marginBottom: 6 }}>
-                  #{o.order_number}{o.customer_name ? ` — ${o.customer_name}` : ''}
-                </div>
-              )}
-              {o.arrived_at && (
-                <div style={{
-                  display: 'inline-block', background: 'var(--pink-pale)', border: '2px solid var(--pink)',
-                  borderRadius: 10, padding: '4px 10px', fontWeight: 800, color: 'var(--maroon)',
-                  fontSize: '0.82rem', marginBottom: 8,
-                }}>
-                  🚶 Arrived at {new Date(o.arrived_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-                </div>
-              )}
-              <div className="row">
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <input
-                    type="checkbox"
-                    style={{ width: 18, height: 18, accentColor: 'var(--maroon)' }}
-                    checked={selectedIds.includes(o.id)}
-                    onChange={() => toggleSelect(o.id)}
-                  />
-                  <span className="pickup">Pickup {formatDateKey(o.pickup_date || todayDateKey())}, {o.pickup_time}</span>
-                </label>
-                <span className="total">${Number(o.total).toFixed(2)}</span>
-              </div>
-              {o.promo_code === FREE_CUP_DEAL_CODE ? (
-                <div className="meta"><span className="deal-tag" style={{ marginLeft: 0 }}>🎁 4th free</span> −${Number(o.discount_amount || 0).toFixed(2)} off</div>
-              ) : o.promo_code ? (
-                <div className="meta">🏷️ {o.promo_code} −${Number(o.discount_amount || 0).toFixed(2)} off</div>
-              ) : null}
-              {Array.isArray(o.items) && o.items.length > 0 ? (
-                <>
-                  <div className="meta">{o.items.length} cup{o.items.length === 1 ? '' : 's'} in this order</div>
-                  <div className="order-details-body order-details-body-static">
-                    {o.items.map((item, i) => (
-                      <div key={i} style={{ marginBottom: i < o.items.length - 1 ? 10 : 0, paddingBottom: i < o.items.length - 1 ? 10 : 0, borderBottom: i < o.items.length - 1 ? '1px dashed var(--line)' : 'none' }}>
-                        <div><strong>{item.qty}x {item.base}</strong>{item.cup_size ? ` (${item.cup_size})` : ''}</div>
-                        {(item.base === 'Banana Pudding' || item.base === 'Gansito') && (
-                          <div><strong>Rim:</strong> {item.include_rim === false ? '🚫 No rim' : '✅ Yes'}</div>
-                        )}
-                        <div><strong>Toppings:</strong></div>
-                        {item.toppings?.length
-                          ? groupToppingCounts(item.toppings).map(({ name, count }) => (
-                              <div key={name}>- {name}{count > 1 ? ` ×${count}` : ''}</div>
-                            ))
-                          : <div>- None</div>}
-                        <div><strong>Syrup:</strong></div>
-                        {item.syrups?.length
-                          ? item.syrups.map((s) => <div key={s}>- {s}</div>)
-                          : <div>- None</div>}
+          {orders.length === 0 && <p className="hint">No orders yet.</p>}
+          {orders.length > 0 && ordersTab === 'open' && openOrders.length === 0 && (
+            <div className="all-caught-up">
+              <div className="act-title">🎉 All caught up</div>
+              <p>No orders waiting right now. Finished orders are in the Completed tab.</p>
+            </div>
+          )}
+          {ordersTab === 'done' && orders.length > 0 && openOrders.length === orders.length && (
+            <p className="hint">No completed orders yet.</p>
+          )}
+          {ordersTab === 'open'
+            ? openOrders.map((o) => renderOrderCard(o))
+            : doneGroups.map((g) => (
+                <div key={g.dateKey}>
+                  <div className="done-day">
+                    <span>{g.label}</span>
+                    <b>{g.orders.length} order{g.orders.length === 1 ? '' : 's'} · ${g.revenue.toFixed(2)}</b>
+                  </div>
+                  <div className="done-list">
+                    {g.orders.map((o) => (
+                      <div key={o.id}>
+                        <button
+                          type="button"
+                          className={`done-row${expandedDoneId === o.id ? ' open' : ''}`}
+                          onClick={() => setExpandedDoneId((cur) => (cur === o.id ? null : o.id))}
+                          aria-expanded={expandedDoneId === o.id}
+                        >
+                          <span className="who">#{o.order_number}{o.customer_name ? ` — ${o.customer_name}` : ''}</span>
+                          <span className="right">
+                            <span className="total">${Number(o.total).toFixed(2)}</span>
+                            <span className={`paid-tag ${o.paid ? 'paid' : 'unpaid'}`}>{o.paid ? 'Paid' : 'Unpaid'}</span>
+                          </span>
+                          <span className="what">{doneRowSummary(o)}</span>
+                        </button>
+                        {expandedDoneId === o.id && <div className="done-expanded">{renderOrderCard(o, true)}</div>}
                       </div>
                     ))}
                   </div>
-                </>
-              ) : (
-                <>
-                  <div className="meta">{o.qty}x {o.base}{o.cup_size ? ` (${o.cup_size})` : ''}</div>
-                  <div className="order-details-body order-details-body-static">
-                    {(o.base === 'Banana Pudding' || o.base === 'Gansito') && (
-                      <div><strong>Rim:</strong> {o.include_rim === false ? '🚫 No rim' : '✅ Yes'}</div>
-                    )}
-                    <div><strong>Toppings:</strong></div>
-                    {o.toppings?.length
-                      ? groupToppingCounts(o.toppings).map(({ name, count }) => (
-                          <div key={name}>- {name}{count > 1 ? ` ×${count}` : ''}</div>
-                        ))
-                      : <div>- None</div>}
-                    <div><strong>Syrup:</strong></div>
-                    {o.syrups?.length
-                      ? o.syrups.map((s) => <div key={s}>- {s}</div>)
-                      : <div>- None</div>}
-                  </div>
-                </>
-              )}
-              {o.notes && (
-                <div className="meta">{o.notes}</div>
-              )}
-              {o.customer_phone && (
-                <div className="meta">
-                  📞 <a href={`tel:${o.customer_phone}`} style={{ color: 'var(--maroon)', fontWeight: 700 }}>{o.customer_phone}</a>
                 </div>
-              )}
-              <div className="meta">{new Date(o.created_at).toLocaleString()}</div>
-              {o.status === 'done' && o.customer_phone && (
-                <div className="meta">📲 Ready text sent ({o.language === 'es' ? 'Español' : 'English'})</div>
-              )}
-              <div className="meta">
-                {o.paid
-                  ? `✅ Paid${o.payment_method === 'cash' ? ' (cash)' : ' (Zelle)'}`
-                  : o.payment_method === 'cash'
-                  ? '💵 Cash — pay at pickup'
-                  : o.customer_confirmed_payment
-                  ? '💸 Customer said they sent Zelle — not yet confirmed'
-                  : '⏳ Payment not confirmed'}
-              </div>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
-                {o.status !== 'done' ? (
-                  <button className="status-btn" onClick={() => markStatus(o.id, 'done')}>Mark ready / done</button>
-                ) : (
-                  <button className="status-btn" onClick={() => markStatus(o.id, 'new')}>Reopen</button>
-                )}
-                {!o.paid ? (
-                  <button className="status-btn" onClick={() => markPaid(o.id, true)}>Mark as paid</button>
-                ) : (
-                  <button className="status-btn" onClick={() => markPaid(o.id, false)}>Undo paid</button>
-                )}
-                <button className="status-btn" onClick={() => openEdit(o)}>✏️ Edit order</button>
-              </div>
-            </div>
-          ))}
+              ))}
         </div>
 
       </div>

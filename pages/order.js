@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import Script from 'next/script';
-import { BASES, PRICES, TOPPINGS, SYRUPS, toppingsCost, todayDateKey, maxPreorderDateKey, formatDateKey, getAvailablePickupTimes, buildPickupTimes, formatWeekdaysList, MAX_EXTRA_TOPPING_QTY } from '../lib/menu';
+import { BASES, PRICES, TOPPINGS, SYRUPS, toppingsCost, freeCupDeal, FREE_CUP_EVERY, todayDateKey, maxPreorderDateKey, formatDateKey, getAvailablePickupTimes, buildPickupTimes, formatWeekdaysList, MAX_EXTRA_TOPPING_QTY } from '../lib/menu';
 import AddToHomeBanner from '../components/AddToHomeBanner';
 
 const ONESIGNAL_APP_ID = process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID;
@@ -170,6 +170,17 @@ const STR = {
     promoRemove: 'Remove',
     promoDiscountLine: (code) => `Promo (${code})`,
     promoStale: 'Your order changed, so please re-apply your promo code.',
+    dealStart: 'Buy 3, get the 4th free! 🎁',
+    dealOneMore: 'Add 1 more cup, it’s free! 🎁',
+    dealUnlocked: (n) => (n === 1 ? 'You unlocked a free cup! 🎉' : `You unlocked ${n} free cups! 🎉`),
+    dealSubStart: 'Every 4th cup is on us. Your cheapest cup is the free one.',
+    dealSubNext: (need) => `Add ${need} more cup${need === 1 ? '' : 's'} for another free one.`,
+    dealSubWon: 'Your cheapest cup is on us.',
+    dealLine: (n, label) => (n === 1 ? `🎁 4th cup free (${label})` : `🎁 ${n} free cups`),
+    dealSaved: (amt) => `You saved $${amt}`,
+    dealNoCombine: 'Promo codes can’t be combined with the free-cup deal.',
+    dealPromoInUse: 'Your promo code is being used instead of the free-cup deal.',
+    free: 'FREE',
     reviewOrder: 'Review order',
     addAnotherCup: '+ Add a Cup',
     yourCupsSoFar: (count) => `Your order so far (${count} cup${count === 1 ? '' : 's'})`,
@@ -284,6 +295,17 @@ const STR = {
     promoRemove: 'Quitar',
     promoDiscountLine: (code) => `Promoción (${code})`,
     promoStale: 'Tu orden cambió — vuelve a aplicar tu código de promoción.',
+    dealStart: '¡Compra 3 y el 4to es gratis! 🎁',
+    dealOneMore: '¡Agrega 1 vaso más, es gratis! 🎁',
+    dealUnlocked: (n) => (n === 1 ? '¡Ganaste un vaso gratis! 🎉' : `¡Ganaste ${n} vasos gratis! 🎉`),
+    dealSubStart: 'Cada 4to vaso es gratis. Tu vaso más barato es el gratis.',
+    dealSubNext: (need) => `Agrega ${need} vaso${need === 1 ? '' : 's'} más para otro gratis.`,
+    dealSubWon: 'Tu vaso más barato va por nuestra cuenta.',
+    dealLine: (n, label) => (n === 1 ? `🎁 4to vaso gratis (${label})` : `🎁 ${n} vasos gratis`),
+    dealSaved: (amt) => `Ahorraste $${amt}`,
+    dealNoCombine: 'Los códigos de promoción no se combinan con la oferta del vaso gratis.',
+    dealPromoInUse: 'Se está usando tu código de promoción en lugar de la oferta del vaso gratis.',
+    free: 'GRATIS',
     reviewOrder: 'Revisar orden',
     addAnotherCup: '+ Agregar Vaso',
     yourCupsSoFar: (count) => `Tu orden hasta ahora (${count} vaso${count === 1 ? '' : 's'})`,
@@ -690,8 +712,53 @@ export default function Home() {
   const currentCupItem = { base, cupSize, toppings, syrups, qty, includeRim: isRimFlavor ? includeRim : true };
   const previewItems = (cart.length === 0 || !isBuilderBlank) ? [...cart, currentCupItem] : cart;
   const orderTotal = previewItems.reduce((sum, item) => sum + cartItemCost(item), 0); // pre-discount subtotal
-  const discountValue = appliedPromo ? appliedPromo.discountValue : 0;
-  const finalTotal = Math.max(0, orderTotal - discountValue); // what's actually owed/shown after a promo
+  // "Buy 3, get the 4th free" — automatic (no code) while the shop has it
+  // switched on, and set aside whenever a promo code is applied instead
+  // (the two never stack). The server recomputes this same number.
+  const dealEnabled = !!shopStatus?.free_cup_deal;
+  const deal = freeCupDeal(previewItems.map((item) => ({ baseId: item.base, cupSize: item.cupSize, qty: item.qty })));
+  const dealDiscount = dealEnabled && !appliedPromo ? deal.discount : 0;
+  const discountValue = appliedPromo ? appliedPromo.discountValue : dealDiscount;
+  const finalTotal = Math.max(0, orderTotal - discountValue); // what's actually owed/shown after a promo or the free-cup deal
+  const dealProgress = deal.cupCount % FREE_CUP_EVERY; // cups counted toward the next free one
+  const dealWon = deal.freeCount > 0 && dealProgress === 0;
+
+  // The progress card: 4 slots, strawberries fill in as cups are added and
+  // the last slot turns green once the free cup is unlocked.
+  function renderDealBanner() {
+    if (!dealEnabled) return null;
+    const filled = dealWon ? FREE_CUP_EVERY : dealProgress;
+    const need = FREE_CUP_EVERY - dealProgress;
+    let title;
+    let sub;
+    if (deal.freeCount > 0) {
+      title = t.dealUnlocked(deal.freeCount);
+      sub = dealWon ? t.dealSubWon : t.dealSubNext(need);
+    } else {
+      title = need === 1 ? t.dealOneMore : t.dealStart;
+      sub = t.dealSubStart;
+    }
+    return (
+      <div className={`deal-banner${deal.freeCount > 0 ? ' won' : ''}`}>
+        <div className="deal-top">
+          <div className="deal-title">{title}</div>
+          <div className="deal-count">{filled} / {FREE_CUP_EVERY}</div>
+        </div>
+        <div className="deal-dots">
+          {Array.from({ length: FREE_CUP_EVERY }).map((_, i) => {
+            const isGift = i === FREE_CUP_EVERY - 1;
+            const on = i < filled;
+            return (
+              <div key={i} className={`deal-dot${on ? ' on' : ''}${isGift ? ' gift' : ''}`}>
+                {isGift ? t.free : on ? '🍓' : ''}
+              </div>
+            );
+          })}
+        </div>
+        <p>{appliedPromo ? t.dealPromoInUse : sub}</p>
+      </div>
+    );
+  }
 
   // If the cart changes after a promo was applied, the discount may no
   // longer be right (a % off recalculates differently against a new
@@ -858,7 +925,7 @@ export default function Home() {
       const firstItemBase = BASES.find((b) => b.id === firstItem.base);
       const cartGrandTotal = finalItems.reduce((sum, item) => sum + cartItemCost(item), 0);
       const totalCups = finalItems.reduce((sum, item) => sum + item.qty, 0);
-      const appliedDiscount = appliedPromo ? appliedPromo.discountValue : 0;
+      const appliedDiscount = discountValue;
       const finalOrderTotal = Math.max(0, cartGrandTotal - appliedDiscount);
       const res = await fetch('/api/orders', {
         method: 'POST',
@@ -911,6 +978,11 @@ export default function Home() {
         } else if (body.error === 'promo_invalid') {
           setErrorMsg(body.message || t.genericError);
           setAppliedPromo(null);
+        } else if (body.error === 'deal_changed') {
+          // The free-cup deal was switched on or off while they were
+          // checking out — pull fresh settings so the total updates.
+          setErrorMsg(body.message || t.genericError);
+          fetch('/api/settings').then((r) => r.json()).then((j) => setShopStatus(j.settings)).catch(() => {});
         } else if (body.error === 'phone_required') {
           setErrorMsg(body.message || t.phoneRequiredError);
         } else {
@@ -1103,6 +1175,7 @@ export default function Home() {
       <AddToHomeBanner lang={lang} storageKey="fresasA2HSSeen" />
 
       <div className="wrap">
+        {dealEnabled && <div className="section" style={{ paddingBottom: 0 }}>{renderDealBanner()}</div>}
         {cart.length > 0 && (
           <div className="section">
             <div className="repeat-order-box" style={{ width: '100%', boxSizing: 'border-box' }}>
@@ -1463,6 +1536,7 @@ export default function Home() {
       <div className={`overlay center-modal-high${showSheet ? ' open' : ''}`} onClick={(e) => e.target === e.currentTarget && setShowSheet(false)}>
         <div className="sheet sheet-centered">
           <h3>{t.yourOrder}</h3>
+          {dealEnabled && <div style={{ marginBottom: 6 }}>{renderDealBanner()}</div>}
           {previewItems.map((item, i) => {
             const itemBase = BASES.find((b) => b.id === item.base);
             const itemIsRim = item.base === 'bananapudding' || item.base === 'gansito';
@@ -1527,7 +1601,7 @@ export default function Home() {
               </div>
             )}
             {!appliedPromo && !promoError && (
-              <p className="hint" style={{ marginTop: 6, marginBottom: 0 }}>{t.promoHint}</p>
+              <p className="hint" style={{ marginTop: 6, marginBottom: 0 }}>{dealEnabled ? t.dealNoCombine : t.promoHint}</p>
             )}
             {promoError && <p className="hint" style={{ color: 'var(--maroon)', marginTop: 6, marginBottom: 0 }}>{promoError}</p>}
           </div>
@@ -1538,7 +1612,17 @@ export default function Home() {
               <div className="line"><span>{t.promoDiscountLine(appliedPromo.code)}</span><span>-${discountValue.toFixed(2)}</span></div>
             </>
           )}
+          {dealDiscount > 0 && (
+            <>
+              <div className="line"><span>{t.subtotal}</span><span>${orderTotal.toFixed(2)}</span></div>
+              <div className="line deal-line">
+                <span>{t.dealLine(deal.freeCount, deal.freeCups[0] ? `${BASES.find((b) => b.id === deal.freeCups[0].baseId).name} ${deal.freeCups[0].cupSize} oz` : '')}</span>
+                <span>-${dealDiscount.toFixed(2)}</span>
+              </div>
+            </>
+          )}
           <div className="grand"><span>{t.total}</span><span>${finalTotal.toFixed(2)}</span></div>
+          {dealDiscount > 0 && <div className="deal-saved">{t.dealSaved(dealDiscount.toFixed(2))}</div>}
 
           <div className="field" style={{ marginTop: 18 }}>
             <label>{t.payment}</label>

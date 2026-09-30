@@ -1,6 +1,6 @@
 import { getSupabaseAdmin } from '../../lib/supabaseAdmin';
 import { isValidSession } from '../../lib/adminSession';
-import { baseIdFromName, formatDateKey, todayDateKey, getAvailablePickupTimes, PRICES, toppingsCost } from '../../lib/menu';
+import { baseIdFromName, formatDateKey, todayDateKey, getAvailablePickupTimes, PRICES, toppingsCost, freeCupDeal, FREE_CUP_DEAL_CODE } from '../../lib/menu';
 
 const APP_URL = 'https://fresas-app-zeta.vercel.app';
 
@@ -23,7 +23,9 @@ async function sendPushToAdmin(order) {
   if (!appId || !apiKey) return; // push not configured yet — order is still saved
 
   const isMultiCup = Array.isArray(order.items) && order.items.length > 1;
-  const promoSuffix = order.promo_code ? ` — promo ${order.promo_code} (-$${Number(order.discount_amount || 0).toFixed(2)})` : '';
+  const promoSuffix = order.promo_code === FREE_CUP_DEAL_CODE
+    ? ` — 🎁 4th cup free (-$${Number(order.discount_amount || 0).toFixed(2)})`
+    : order.promo_code ? ` — promo ${order.promo_code} (-$${Number(order.discount_amount || 0).toFixed(2)})` : '';
   const summaryLine = (isMultiCup
     ? `${order.items.length} different cups — $${order.total.toFixed(2)} — pickup ${order.pickup_time}`
     : `${order.qty}x ${order.base} — $${order.total.toFixed(2)} — pickup ${order.pickup_time}`) + promoSuffix;
@@ -211,6 +213,36 @@ export default async function handler(req, res) {
       appliedPromoRow = promoRow;
     }
 
+    // "Buy 3, get the 4th free" — applied automatically (no code) when the
+    // shop has it switched on, and never on top of a promo code. Recomputed
+    // here the same way the order page does it, and the total is checked
+    // against it, so a stale page (deal switched on/off mid-checkout) or an
+    // edited total can't slip through.
+    let freeCupDealApplied = false;
+    if (!appliedPromoRow) {
+      const deal = settingsRow?.free_cup_deal
+        ? freeCupDeal(cupsToCheck.map((cup) => ({
+            baseId: baseIdFromName(cup.base),
+            cupSize: String(cup.cup_size || '').startsWith('24') ? '24' : '12',
+            qty: cup.qty || 1,
+          })))
+        : { freeCount: 0, discount: 0 };
+      const subtotal = computeSubtotalFromItems(cupsToCheck);
+      const expectedTotal = Math.max(0, subtotal - deal.discount);
+      if (Math.abs(expectedTotal - total) > 0.01) {
+        return res.status(409).json({
+          error: 'deal_changed',
+          message: language === 'es'
+            ? 'El total de tu orden cambió — revisa tu orden e inténtalo de nuevo.'
+            : 'Your order total changed — please review your order and try again.',
+        });
+      }
+      if (deal.freeCount > 0) {
+        freeCupDealApplied = true;
+        discountAmount = deal.discount;
+      }
+    }
+
     const slotLimit = settingsRow?.slot_limit ?? 3;
 
     // Reject if this pickup slot (on the selected pickup date) is already
@@ -241,7 +273,7 @@ export default async function handler(req, res) {
         customer_phone_digits: customer_phone ? String(customer_phone).replace(/\D/g, '') : null,
         notes: notes || '',
         total,
-        promo_code: appliedPromoRow ? appliedPromoRow.code : null,
+        promo_code: appliedPromoRow ? appliedPromoRow.code : freeCupDealApplied ? FREE_CUP_DEAL_CODE : null,
         discount_amount: discountAmount,
         status: 'new',
         payment_method: payment_method || 'zelle',

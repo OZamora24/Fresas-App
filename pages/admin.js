@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import Head from 'next/head';
 import Script from 'next/script';
 import Link from 'next/link';
-import { BASES, PRICES, TOPPINGS, SYRUPS, orderTotal, buildPickupTimes, baseIdFromName, formatDateKey, todayDateKey, maxPreorderDateKey, MAX_EXTRA_TOPPING_QTY } from '../lib/menu';
+import { BASES, PRICES, TOPPINGS, SYRUPS, orderTotal, buildPickupTimes, baseIdFromName, formatDateKey, todayDateKey, maxPreorderDateKey, MAX_EXTRA_TOPPING_QTY, FREE_CUP_DEAL_CODE } from '../lib/menu';
 
 const ONESIGNAL_APP_ID = process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID;
 
@@ -664,6 +664,13 @@ export default function Admin() {
     });
   }
 
+  function openNotifyForFreeCupDeal() {
+    openNotifyForm({
+      title: 'Buy 3, get the 4th free! 🍓',
+      message: 'Order 4 cups and your cheapest one is on us. No code needed, it applies automatically. / Compra 3 y el 4to es gratis, sin código.',
+    });
+  }
+
   async function sendCustomerNotification() {
     const title = notifyForm.title.trim();
     const message = notifyForm.message.trim();
@@ -1144,6 +1151,27 @@ export default function Admin() {
             <span className="drawer-row-right"><SectionArrows sectionKey="promoCodes" /><span className="chev">▾</span></span>
           </summary>
           <div className="drawer-section-body">
+          {settings && (
+            <div className={`order-card${settings.free_cup_deal ? '' : ' done'}`}>
+              <div className="toggle-inline">
+                <span className="ti-label">🎁 Buy 3, get the 4th free</span>
+                <button
+                  type="button"
+                  className={`pill-btn${settings.free_cup_deal ? ' primary' : ''}`}
+                  onClick={() => saveSettings({ free_cup_deal: !settings.free_cup_deal })}
+                  disabled={savingSettings}
+                >
+                  {settings.free_cup_deal ? 'On' : 'Off'}
+                </button>
+              </div>
+              <p className="hint-sm">When on, every 4th cup in an order is free, with no code needed. The cheapest cup is the free one (base price only, extra toppings still charged). It doesn't combine with promo codes.</p>
+              {settings.free_cup_deal && (
+                <div className="promo-actions">
+                  <button className="status-btn" onClick={openNotifyForFreeCupDeal}>📣 Notify customers</button>
+                </div>
+              )}
+            </div>
+          )}
           <p className="hint">Create a code and turn it on — customers enter it on the order page for an automatic discount.</p>
           <p className="hint" style={{ marginTop: -8 }}>
             Turning a code on doesn't notify anyone by itself — use "Notify customers" on a code below, or the general button underneath the list, to actually push it out to whoever opted into "Get notified about deals."
@@ -1449,6 +1477,11 @@ export default function Admin() {
                 </label>
                 <span className="total">${Number(o.total).toFixed(2)}</span>
               </div>
+              {o.promo_code === FREE_CUP_DEAL_CODE ? (
+                <div className="meta"><span className="deal-tag" style={{ marginLeft: 0 }}>🎁 4th free</span> −${Number(o.discount_amount || 0).toFixed(2)} off</div>
+              ) : o.promo_code ? (
+                <div className="meta">🏷️ {o.promo_code} −${Number(o.discount_amount || 0).toFixed(2)} off</div>
+              ) : null}
               {Array.isArray(o.items) && o.items.length > 0 ? (
                 <>
                   <div className="meta">{o.items.length} cup{o.items.length === 1 ? '' : 's'} in this order</div>

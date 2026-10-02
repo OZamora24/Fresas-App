@@ -658,8 +658,18 @@ body.splash-active {
      read as a hard line even though no two adjacent pixels differ by
      much. Moving the last stop out to 100% keeps the color changing,
      however subtly, all the way to the ellipse's own edge, so there's
-     no more kink for the eye to catch on. */
-  background: radial-gradient(ellipse at 50% 42%, var(--maroon) 0%, var(--maroon-deep) 100%);
+     no more kink for the eye to catch on.
+     "farthest-side" (not the default farthest-corner) is a later fix:
+     with farthest-corner, var(--maroon-deep) was only reached at the four
+     corners, so the bottom edge was still a noticeably lighter maroon —
+     sitting right on top of the home-indicator strip, which <html>/<body>
+     paint flat var(--maroon-deep) via .splash-active. That mismatch read
+     as a color seam at the bottom of the standalone admin app. Sizing the
+     ellipse to the farthest side makes the entire bottom edge land
+     exactly on var(--maroon-deep), so it meets that strip seamlessly; the
+     only flat area left is the small corner regions past the ellipse,
+     which are already the same color the gradient arrives at. */
+  background: radial-gradient(ellipse farthest-side at 50% 42%, var(--maroon) 0%, var(--maroon-deep) 100%);
   /* Two earlier approaches here both had a real problem. A plain opacity
      fade blends the solid maroon panel with the cream page underneath at
      every in-between alpha value, which reads as a muddy red wash before

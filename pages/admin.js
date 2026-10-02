@@ -1082,16 +1082,35 @@ export default function Admin() {
               <p className="hint" style={{ marginTop: 0 }}>
                 Know in advance you'll be closed a day — a trip, a holiday? Add the date here. Customers won't be able to pick it for pickup, and the home page shows "Closed" that day automatically — you don't have to remember to flip the shop switch.
               </p>
-              <div style={{ marginBottom: 12 }}>
-                {/* Kept in the DOM (not display:none) so the browser will let us
-                    open its native picker programmatically from the button below,
-                    but visually collapsed since the button is the only thing the
-                    admin actually clicks. */}
+              <div style={{ marginBottom: 12, position: 'relative', display: 'inline-block' }}>
+                <button
+                  type="button"
+                  className="status-btn"
+                  disabled={savingSettings}
+                  tabIndex={-1}
+                  aria-hidden="true"
+                >
+                  + Add a closed day
+                </button>
+                {/* The real date input sits invisibly on top of the button, so
+                    a tap lands on the input itself. iOS Safari won't open a
+                    date picker from showPicker()/focus() on a hidden input,
+                    but it always opens one when the input is tapped directly.
+                    Desktop browsers only open the picker from the calendar
+                    icon, so we also call showPicker() on click. */}
                 <input
                   ref={closedDateInputRef}
                   type="date"
+                  aria-label="Add a closed day"
                   value={newClosedDate}
                   min={todayDateKey()}
+                  disabled={savingSettings}
+                  onClick={(e) => {
+                    const el = e.currentTarget;
+                    if (typeof el.showPicker === 'function') {
+                      try { el.showPicker(); } catch (err) { /* tap opens it natively */ }
+                    }
+                  }}
                   onChange={(e) => {
                     const picked = e.target.value;
                     setNewClosedDate(picked);
@@ -1103,30 +1122,12 @@ export default function Admin() {
                       setNewClosedDate('');
                     }
                   }}
-                  style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
-                  tabIndex={-1}
-                  aria-hidden="true"
-                />
-                <button
-                  className="status-btn"
-                  disabled={savingSettings}
-                  onClick={() => {
-                    const el = closedDateInputRef.current;
-                    if (!el) return;
-                    if (typeof el.showPicker === 'function') {
-                      try {
-                        el.showPicker();
-                        return;
-                      } catch (err) {
-                        // Some browsers throw if showPicker isn't allowed here —
-                        // fall through to the focus fallback below.
-                      }
-                    }
-                    el.focus();
+                  style={{
+                    position: 'absolute', inset: 0, width: '100%', height: '100%',
+                    opacity: 0, cursor: 'pointer', fontSize: 16,
+                    margin: 0, padding: 0, border: 0, WebkitAppearance: 'none', appearance: 'none',
                   }}
-                >
-                  + Add a closed day
-                </button>
+                />
               </div>
               {(settings.closed_dates || []).length === 0 ? (
                 <p className="hint" style={{ margin: 0 }}>No closed days scheduled.</p>

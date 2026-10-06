@@ -19,25 +19,25 @@ export default function SiteNav({ lang = 'en', onLangChange }) {
       <nav className="site-mobile-tabs">
         <div className="site-mobile-brand-row">
           <div className="site-mobile-brand">🍓 Fresas con Crema</div>
-          {onLangChange && (
-            <div className="site-mobile-lang">
-              <button
-                type="button"
-                className={`site-lang-btn${lang === 'en' ? ' on' : ''}`}
-                onClick={() => onLangChange('en')}
-              >
-                EN
-              </button>
-              <button
-                type="button"
-                className={`site-lang-btn${lang === 'es' ? ' on' : ''}`}
-                onClick={() => onLangChange('es')}
-              >
-                ES
-              </button>
-            </div>
-          )}
         </div>
+        {onLangChange && (
+          <div className="site-mobile-lang">
+            <button
+              type="button"
+              className={`site-mobile-lang-btn${lang === 'en' ? ' on' : ''}`}
+              onClick={() => onLangChange('en')}
+            >
+              {lang === 'en' ? '✓ ' : ''}English
+            </button>
+            <button
+              type="button"
+              className={`site-mobile-lang-btn${lang === 'es' ? ' on' : ''}`}
+              onClick={() => onLangChange('es')}
+            >
+              {lang === 'es' ? '✓ ' : ''}Español
+            </button>
+          </div>
+        )}
         <div className="site-mobile-chips">
           {NAV_ITEMS.map((item) => (
             <Link

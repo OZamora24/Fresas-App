@@ -856,7 +856,10 @@ export default function Admin() {
         ) : null}
         {Array.isArray(o.items) && o.items.length > 0 ? (
           <>
-            <div className="meta">{o.items.length} cup{o.items.length === 1 ? '' : 's'} in this order</div>
+            {(() => {
+              const cupTotal = o.items.reduce((n, i) => n + (i.qty || 1), 0);
+              return <div className="meta">{cupTotal} cup{cupTotal === 1 ? '' : 's'} in this order</div>;
+            })()}
             <div className="order-details-body order-details-body-static">
               {o.items.map((item, i) => (
                 <div key={i} style={{ marginBottom: i < o.items.length - 1 ? 10 : 0, paddingBottom: i < o.items.length - 1 ? 10 : 0, borderBottom: i < o.items.length - 1 ? '1px dashed var(--line)' : 'none' }}>

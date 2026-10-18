@@ -809,6 +809,11 @@ export default function Home() {
   // switched on, and set aside whenever a promo code is applied instead
   // (the two never stack). The server recomputes this same number.
   const dealEnabled = !!shopStatus?.free_cup_deal;
+  // Mini pancakes are hidden until the admin switches them on.
+  const pancakesEnabled = !!shopStatus?.pancakes_enabled;
+  useEffect(() => {
+    if (shopStatus && !pancakesEnabled && mode === 'pancakes') setMode('cups');
+  }, [shopStatus, pancakesEnabled, mode]);
   const deal = freeCupDeal(cupOnlyItems.map((item) => ({ baseId: item.base, cupSize: item.cupSize, qty: item.qty })));
   const dealDiscount = dealEnabled && !appliedPromo ? deal.discount : 0;
   const discountValue = appliedPromo ? appliedPromo.discountValue : dealDiscount;
@@ -1338,7 +1343,7 @@ export default function Home() {
       <AddToHomeBanner lang={lang} storageKey="fresasA2HSSeen" />
 
       <div className="wrap">
-        <div style={{ display: 'flex', gap: 8, paddingTop: 16 }}>
+        {pancakesEnabled && <div style={{ display: 'flex', gap: 8, paddingTop: 16 }}>
           {[['cups', t.tabCups], ['pancakes', t.tabPancakes]].map(([key, label]) => (
             <button
               key={key}
@@ -1362,7 +1367,7 @@ export default function Home() {
               )}
             </button>
           ))}
-        </div>
+        </div>}
         {dealEnabled && <div className="section" style={{ paddingBottom: 0 }}>{renderDealBanner()}</div>}
         {cart.length > 0 && (
           <div className="section">

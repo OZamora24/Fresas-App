@@ -1419,6 +1419,22 @@ export default function Admin() {
           </summary>
           <div className="drawer-section-body">
           {settings && (
+            <div className={`order-card${settings.pancakes_enabled ? '' : ' done'}`}>
+              <div className="toggle-inline">
+                <span className="ti-label">🥞 Mini pancakes</span>
+                <button
+                  type="button"
+                  className={`pill-btn${settings.pancakes_enabled ? ' primary' : ''}`}
+                  onClick={() => saveSettings({ pancakes_enabled: !settings.pancakes_enabled })}
+                  disabled={savingSettings}
+                >
+                  {settings.pancakes_enabled ? 'On' : 'Off'}
+                </button>
+              </div>
+              <p className="hint-sm">When on, customers see a Mini Pancakes tab on the order page. When off, it's hidden and pancake orders are rejected.</p>
+            </div>
+          )}
+          {settings && (
             <div className={`order-card${settings.free_cup_deal ? '' : ' done'}`}>
               <div className="toggle-inline">
                 <span className="ti-label">🎁 Buy 3, get the 4th free</span>

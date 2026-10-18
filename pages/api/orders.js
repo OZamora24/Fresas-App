@@ -178,6 +178,10 @@ export default async function handler(req, res) {
       ? items
       : [{ base, cup_size, toppings: toppings || [], syrups: syrups || [], qty: qty || 1 }];
 
+    if (!settingsRow?.pancakes_enabled && cupsToCheck.some(isPancakeItem)) {
+      return res.status(400).json({ error: 'invalid_item', message: 'Mini pancakes are not available right now — please remove them from your order.' });
+    }
+
     for (const cup of cupsToCheck) {
       // Mini pancake packs have no flavor to be sold out, but their
       // toppings/drizzles share the sold-out lists with the cups, and the

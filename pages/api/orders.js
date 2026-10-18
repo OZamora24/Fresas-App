@@ -188,7 +188,7 @@ export default async function handler(req, res) {
       // pack's shape (size, how many toppings/drizzles) is validated here
       // since the price is computed from it on the server.
       if (isPancakeItem(cup)) {
-        const pancakeError = validatePancakeItem(cup);
+        const pancakeError = validatePancakeItem(cup, !!settingsRow?.pancake_extras_enabled);
         if (pancakeError) {
           return res.status(400).json({ error: 'invalid_item', message: pancakeError });
         }

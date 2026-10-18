@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import Script from 'next/script';
-import { BASES, PRICES, TOPPINGS, SYRUPS, toppingsCost, freeCupDeal, FREE_CUP_EVERY, todayDateKey, maxPreorderDateKey, formatDateKey, getAvailablePickupTimes, buildPickupTimes, formatWeekdaysList, MAX_EXTRA_TOPPING_QTY, PANCAKE_BASE_NAME, PANCAKE_SIZES, PANCAKE_TOPPINGS, isPancakeItem, pancakeSizeFor, pancakeItemCost } from '../lib/menu';
+import { BASES, PRICES, TOPPINGS, SYRUPS, toppingsCost, freeCupDeal, FREE_CUP_EVERY, todayDateKey, maxPreorderDateKey, formatDateKey, getAvailablePickupTimes, buildPickupTimes, formatWeekdaysList, MAX_EXTRA_TOPPING_QTY, PANCAKE_BASE_NAME, PANCAKE_SIZES, PANCAKE_TOPPINGS, isPancakeItem, pancakeSizeFor, pancakeItemCost, pancakeExtraCount, PANCAKE_EXTRA_TOPPING_PRICE, PANCAKE_MAX_EXTRA_TOPPINGS } from '../lib/menu';
 import AddToHomeBanner from '../components/AddToHomeBanner';
 
 const ONESIGNAL_APP_ID = process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID;
@@ -200,6 +200,9 @@ const STR = {
     pancakeCount: (n) => `${n} mini pancakes`,
     pancakeIncludes: (tp, dr) => `Choose ${tp} toppings + ${dr} ${dr === 1 ? 'drizzle' : 'drizzles'}`,
     pancakeToppingsHint: (n) => `Choose up to ${n} toppings`,
+    pancakeToppingsHintExtra: (n, m, p) => `${n} included, then +$${p.toFixed(2)} each (up to ${m} extra)`,
+    pancakeExtraLine: (n, amt) => `${n} extra ${n === 1 ? 'topping' : 'toppings'} (+$${amt.toFixed(2)})`,
+    pancakeExtraLabel: 'Extra toppings',
     pancakeDrizzleHint: (n) => `Choose up to ${n} ${n === 1 ? 'drizzle' : 'drizzles'}`,
     pancakeToppingsChosen: (a, b) => `${a} of ${b} toppings chosen`,
     pancakeDrizzlesChosen: (a, b) => `${a} of ${b} ${b === 1 ? 'drizzle' : 'drizzles'} chosen`,
@@ -345,6 +348,9 @@ const STR = {
     pancakeCount: (n) => `${n} mini pancakes`,
     pancakeIncludes: (tp, dr) => `Elige ${tp} toppings + ${dr} ${dr === 1 ? 'salsa' : 'salsas'}`,
     pancakeToppingsHint: (n) => `Elige hasta ${n} toppings`,
+    pancakeToppingsHintExtra: (n, m, p) => `${n} incluidos, luego +$${p.toFixed(2)} cada uno (hasta ${m} extra)`,
+    pancakeExtraLine: (n, amt) => `${n} ${n === 1 ? 'topping extra' : 'toppings extra'} (+$${amt.toFixed(2)})`,
+    pancakeExtraLabel: 'Toppings extra',
     pancakeDrizzleHint: (n) => `Elige hasta ${n} ${n === 1 ? 'salsa' : 'salsas'}`,
     pancakeToppingsChosen: (a, b) => `${a} de ${b} toppings elegidos`,
     pancakeDrizzlesChosen: (a, b) => `${a} de ${b} ${b === 1 ? 'salsa' : 'salsas'} elegidas`,
@@ -811,9 +817,17 @@ export default function Home() {
   const dealEnabled = !!shopStatus?.free_cup_deal;
   // Mini pancakes are hidden until the admin switches them on.
   const pancakesEnabled = !!shopStatus?.pancakes_enabled;
+  const pancakeExtrasEnabled = pancakesEnabled && !!shopStatus?.pancake_extras_enabled;
+  const pancakeToppingCap = (sz) => sz.toppings + (pancakeExtrasEnabled ? PANCAKE_MAX_EXTRA_TOPPINGS : 0);
   useEffect(() => {
     if (shopStatus && !pancakesEnabled && mode === 'pancakes') setMode('cups');
   }, [shopStatus, pancakesEnabled, mode]);
+  // A restored draft or repeat order can carry paid extras; trim them if the switch is off.
+  useEffect(() => {
+    if (!shopStatus || pancakeExtrasEnabled) return;
+    const sz = pancakeSizeFor(pSize);
+    if (sz) setPToppings((prev) => (prev.length > sz.toppings ? prev.slice(0, sz.toppings) : prev));
+  }, [shopStatus, pancakeExtrasEnabled, pSize, pToppings.length]);
   const deal = freeCupDeal(cupOnlyItems.map((item) => ({ baseId: item.base, cupSize: item.cupSize, qty: item.qty })));
   const dealDiscount = dealEnabled && !appliedPromo ? deal.discount : 0;
   const discountValue = appliedPromo ? appliedPromo.discountValue : dealDiscount;
@@ -905,14 +919,14 @@ export default function Home() {
     const sz = pancakeSizeFor(count);
     if (!sz) return;
     setPSize(count);
-    setPToppings((prev) => prev.slice(0, sz.toppings));
+    setPToppings((prev) => prev.slice(0, pancakeToppingCap(sz)));
     setPDrizzles((prev) => prev.slice(0, sz.drizzles));
   }
   function togglePancakeTopping(name) {
     const sz = pancakeSizeFor(pSize);
     setPToppings((prev) => {
       if (prev.includes(name)) return prev.filter((x) => x !== name);
-      return prev.length >= sz.toppings ? prev : [...prev, name];
+      return prev.length >= pancakeToppingCap(sz) ? prev : [...prev, name];
     });
   }
   function togglePancakeDrizzle(name) {
@@ -1595,12 +1609,13 @@ export default function Home() {
 
         <div className="section">
           <h2>{t.toppings}</h2>
-          <p className="hint">{t.pancakeToppingsHint(pancakeSizeFor(pSize).toppings)}</p>
+          <p className="hint">{pancakeExtrasEnabled ? t.pancakeToppingsHintExtra(pancakeSizeFor(pSize).toppings, PANCAKE_MAX_EXTRA_TOPPINGS, PANCAKE_EXTRA_TOPPING_PRICE) : t.pancakeToppingsHint(pancakeSizeFor(pSize).toppings)}</p>
           <div className="chip-grid">
             {PANCAKE_TOPPINGS.map((name) => {
               const isSoldOut = (shopStatus?.sold_out_toppings || []).includes(name);
               const selected = pToppings.includes(name);
-              const atLimit = !selected && pToppings.length >= pancakeSizeFor(pSize).toppings;
+              const atLimit = !selected && pToppings.length >= pancakeToppingCap(pancakeSizeFor(pSize));
+              const willCost = pancakeExtrasEnabled && !selected && !atLimit && pToppings.length >= pancakeSizeFor(pSize).toppings;
               const disabled = isSoldOut || atLimit;
               return (
                 <label
@@ -1610,12 +1625,16 @@ export default function Home() {
                 >
                   <input type="checkbox" style={{ display: 'none' }} checked={selected} disabled={disabled} onChange={() => togglePancakeTopping(name)} />
                   <span>{TOPPING_LABELS[name][lang]}</span>
+                  {willCost && !isSoldOut && <span className="badge">+${PANCAKE_EXTRA_TOPPING_PRICE.toFixed(0)}</span>}
                   {isSoldOut && <span className="badge">{t.soldOut}</span>}
                 </label>
               );
             })}
           </div>
-          <div className="free-note">{t.pancakeToppingsChosen(pToppings.length, pancakeSizeFor(pSize).toppings)}</div>
+          <div className="free-note">{t.pancakeToppingsChosen(Math.min(pToppings.length, pancakeSizeFor(pSize).toppings), pancakeSizeFor(pSize).toppings)}</div>
+          {pancakeExtrasEnabled && pToppings.length > pancakeSizeFor(pSize).toppings && (
+            <div className="free-note">{t.pancakeExtraLine(pToppings.length - pancakeSizeFor(pSize).toppings, (pToppings.length - pancakeSizeFor(pSize).toppings) * PANCAKE_EXTRA_TOPPING_PRICE)}</div>
+          )}
         </div>
 
         <div className="section">
@@ -1836,9 +1855,15 @@ export default function Home() {
                   <div className="line" style={{ borderBottom: 'none', paddingBottom: 2 }}>
                     <span>{t.toppings}</span><strong>{item.toppings.length ? summarizeToppings(item.toppings, lang) : t.none}</strong>
                   </div>
-                  <div className="line" style={{ borderBottom: 'none' }}>
+                  <div className="line" style={{ borderBottom: 'none', paddingBottom: pancakeExtraCount(item) > 0 ? 2 : undefined }}>
                     <span>{t.syrup}</span><strong>{item.syrups.length ? item.syrups.map((s) => SYRUP_LABELS[s][lang]).join(', ') : t.none}</strong>
                   </div>
+                  {pancakeExtraCount(item) > 0 && (
+                    <div className="line" style={{ borderBottom: 'none' }}>
+                      <span>{t.pancakeExtraLabel} ({pancakeExtraCount(item)})</span>
+                      <strong>+${(pancakeExtraCount(item) * PANCAKE_EXTRA_TOPPING_PRICE * (item.qty || 1)).toFixed(2)}</strong>
+                    </div>
+                  )}
                 </div>
               );
             }

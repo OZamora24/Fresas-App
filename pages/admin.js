@@ -1432,6 +1432,22 @@ export default function Admin() {
                 </button>
               </div>
               <p className="hint-sm">When on, customers see a Mini Pancakes tab on the order page. When off, it's hidden and pancake orders are rejected.</p>
+              {settings.pancakes_enabled && (
+                <>
+                  <div className="toggle-inline" style={{ marginTop: 10 }}>
+                    <span className="ti-label">➕ Extra pancake toppings (+$1 each)</span>
+                    <button
+                      type="button"
+                      className={`pill-btn${settings.pancake_extras_enabled ? ' primary' : ''}`}
+                      onClick={() => saveSettings({ pancake_extras_enabled: !settings.pancake_extras_enabled })}
+                      disabled={savingSettings}
+                    >
+                      {settings.pancake_extras_enabled ? 'On' : 'Off'}
+                    </button>
+                  </div>
+                  <p className="hint-sm">When on, customers can add up to 3 extra toppings per pack beyond the included ones, $1 each.</p>
+                </>
+              )}
             </div>
           )}
           {settings && (

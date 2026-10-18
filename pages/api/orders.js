@@ -1,6 +1,6 @@
 import { getSupabaseAdmin } from '../../lib/supabaseAdmin';
 import { isValidSession } from '../../lib/adminSession';
-import { baseIdFromName, formatDateKey, todayDateKey, getAvailablePickupTimes, PRICES, toppingsCost, freeCupDeal, FREE_CUP_DEAL_CODE } from '../../lib/menu';
+import { baseIdFromName, formatDateKey, todayDateKey, getAvailablePickupTimes, PRICES, toppingsCost, freeCupDeal, FREE_CUP_DEAL_CODE, isPancakeItem, pancakeItemCost, validatePancakeItem } from '../../lib/menu';
 
 const APP_URL = 'https://fresas-app-zeta.vercel.app';
 
@@ -8,13 +8,25 @@ const APP_URL = 'https://fresas-app-zeta.vercel.app';
 // same shared pricing table the order page uses — this is what lets a
 // promo code's discount be checked against a real number instead of
 // whatever the browser happens to send.
+// Mini pancake packs are priced separately (fixed pack price) and are
+// excluded here, so this is the cups-only subtotal — the part promo codes
+// and the "buy 3, get the 4th free" deal apply to.
 function computeSubtotalFromItems(items) {
-  return items.reduce((sum, item) => {
+  return items.filter((item) => !isPancakeItem(item)).reduce((sum, item) => {
     const baseId = baseIdFromName(item.base);
     const cupSizeKey = String(item.cup_size || '').startsWith('24') ? '24' : '12';
     const perCup = PRICES[cupSizeKey][baseId] + toppingsCost(baseId, item.toppings || []);
     return sum + perCup * (item.qty || 1);
   }, 0);
+}
+
+function computePancakeSubtotal(items) {
+  return items.filter(isPancakeItem).reduce((sum, item) => sum + pancakeItemCost(item), 0);
+}
+
+// One short line per saved item, e.g. "2x Mini Pancakes (20 pcs)".
+function describeItem(item) {
+  return `${item.qty || 1}x ${item.base}${item.cup_size ? ` (${item.cup_size})` : ''}`;
 }
 
 async function sendPushToAdmin(order) {
@@ -23,12 +35,15 @@ async function sendPushToAdmin(order) {
   if (!appId || !apiKey) return; // push not configured yet — order is still saved
 
   const isMultiCup = Array.isArray(order.items) && order.items.length > 1;
+  const hasPancakes = Array.isArray(order.items) && order.items.some(isPancakeItem);
   const promoSuffix = order.promo_code === FREE_CUP_DEAL_CODE
     ? ` — 🎁 4th cup free (-$${Number(order.discount_amount || 0).toFixed(2)})`
     : order.promo_code ? ` — promo ${order.promo_code} (-$${Number(order.discount_amount || 0).toFixed(2)})` : '';
   const summaryLine = (isMultiCup
-    ? `${order.items.length} different cups — $${order.total.toFixed(2)} — pickup ${order.pickup_time}`
-    : `${order.qty}x ${order.base} — $${order.total.toFixed(2)} — pickup ${order.pickup_time}`) + promoSuffix;
+    ? `${order.items.length} ${hasPancakes ? 'different items (incl. 🥞 mini pancakes)' : 'different cups'} — $${order.total.toFixed(2)} — pickup ${order.pickup_time}`
+    : Array.isArray(order.items) && order.items.length === 1 && hasPancakes
+      ? `🥞 ${describeItem(order.items[0])} — $${order.total.toFixed(2)} — pickup ${order.pickup_time}`
+      : `${order.qty}x ${order.base} — $${order.total.toFixed(2)} — pickup ${order.pickup_time}`) + promoSuffix;
 
   const body = {
     app_id: appId,
@@ -164,9 +179,20 @@ export default async function handler(req, res) {
       : [{ base, cup_size, toppings: toppings || [], syrups: syrups || [], qty: qty || 1 }];
 
     for (const cup of cupsToCheck) {
-      const cupBaseId = baseIdFromName(cup.base);
-      if (settingsRow?.sold_out_flavors?.includes(cupBaseId)) {
-        return res.status(409).json({ error: 'sold_out', message: `${cup.base} is sold out right now — please remove it.` });
+      // Mini pancake packs have no flavor to be sold out, but their
+      // toppings/drizzles share the sold-out lists with the cups, and the
+      // pack's shape (size, how many toppings/drizzles) is validated here
+      // since the price is computed from it on the server.
+      if (isPancakeItem(cup)) {
+        const pancakeError = validatePancakeItem(cup);
+        if (pancakeError) {
+          return res.status(400).json({ error: 'invalid_item', message: pancakeError });
+        }
+      } else {
+        const cupBaseId = baseIdFromName(cup.base);
+        if (settingsRow?.sold_out_flavors?.includes(cupBaseId)) {
+          return res.status(409).json({ error: 'sold_out', message: `${cup.base} is sold out right now — please remove it.` });
+        }
       }
       const soldOutToppingHit = (cup.toppings || []).find((t) => settingsRow?.sold_out_toppings?.includes(t));
       if (soldOutToppingHit) {
@@ -201,12 +227,14 @@ export default async function handler(req, res) {
         return res.status(409).json({ error: 'promo_invalid', message: 'That promo code is no longer valid — please remove it and try again.' });
       }
 
+      // Promo codes apply to the cups only; mini pancake packs are added
+      // on top at full price.
       const subtotal = computeSubtotalFromItems(cupsToCheck);
       discountAmount = promoRow.discount_type === 'percent'
         ? Math.round(subtotal * (promoRow.discount_amount / 100) * 100) / 100
         : Math.min(promoRow.discount_amount, subtotal);
 
-      const expectedTotal = Math.max(0, subtotal - discountAmount);
+      const expectedTotal = Math.max(0, subtotal - discountAmount) + computePancakeSubtotal(cupsToCheck);
       if (Math.abs(expectedTotal - total) > 0.01) {
         return res.status(409).json({ error: 'promo_invalid', message: 'Your order total changed — please review your order and try again.' });
       }
@@ -221,13 +249,13 @@ export default async function handler(req, res) {
     let freeCupDealApplied = false;
     if (!appliedPromoRow) {
       const deal = settingsRow?.free_cup_deal
-        ? freeCupDeal(cupsToCheck.map((cup) => ({
+        ? freeCupDeal(cupsToCheck.filter((cup) => !isPancakeItem(cup)).map((cup) => ({
             baseId: baseIdFromName(cup.base),
             cupSize: String(cup.cup_size || '').startsWith('24') ? '24' : '12',
             qty: cup.qty || 1,
           })))
         : { freeCount: 0, discount: 0 };
-      const subtotal = computeSubtotalFromItems(cupsToCheck);
+      const subtotal = computeSubtotalFromItems(cupsToCheck) + computePancakeSubtotal(cupsToCheck);
       const expectedTotal = Math.max(0, subtotal - deal.discount);
       if (Math.abs(expectedTotal - total) > 0.01) {
         return res.status(409).json({

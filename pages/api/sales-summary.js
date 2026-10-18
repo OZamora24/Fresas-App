@@ -1,6 +1,6 @@
 import { getSupabaseAdmin } from '../../lib/supabaseAdmin';
 import { isValidSession } from '../../lib/adminSession';
-import { todayDateKey, shopDateKeyForDate } from '../../lib/menu';
+import { todayDateKey, shopDateKeyForDate, isPancakeItem } from '../../lib/menu';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -73,7 +73,10 @@ export default async function handler(req, res) {
 
     for (const cup of cups) {
       const cupQty = cup.qty || 1;
-      flavorCounts[cup.base] = (flavorCounts[cup.base] || 0) + cupQty;
+      // Mini pancake packs show up in the best-sellers list by pack size
+      // (e.g. "Mini Pancakes (20 pcs)") so each size is counted on its own.
+      const flavorKey = isPancakeItem(cup) && cup.cup_size ? `${cup.base} (${cup.cup_size})` : cup.base;
+      flavorCounts[flavorKey] = (flavorCounts[flavorKey] || 0) + cupQty;
       for (const tp of cup.toppings || []) {
         toppingCounts[tp] = (toppingCounts[tp] || 0) + cupQty;
       }

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import Script from 'next/script';
-import { BASES, PRICES, TOPPINGS, SYRUPS, toppingsCost, freeCupDeal, FREE_CUP_EVERY, todayDateKey, maxPreorderDateKey, formatDateKey, getAvailablePickupTimes, buildPickupTimes, formatWeekdaysList, MAX_EXTRA_TOPPING_QTY } from '../lib/menu';
+import { BASES, PRICES, TOPPINGS, SYRUPS, toppingsCost, freeCupDeal, FREE_CUP_EVERY, todayDateKey, maxPreorderDateKey, formatDateKey, getAvailablePickupTimes, buildPickupTimes, formatWeekdaysList, MAX_EXTRA_TOPPING_QTY, PANCAKE_BASE_NAME, PANCAKE_SIZES, PANCAKE_TOPPINGS, isPancakeItem, pancakeSizeFor, pancakeItemCost } from '../lib/menu';
 import AddToHomeBanner from '../components/AddToHomeBanner';
 
 const ONESIGNAL_APP_ID = process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID;
@@ -59,6 +59,13 @@ const TOPPING_LABELS = {
   'Mini Marshmallows': { en: 'Mini Marshmallows', es: 'Bombones Pequeños' },
   'Cheesecake': { en: 'Cheesecake', es: 'Pastel de Queso' },
   'Ice Cream': { en: 'Ice Cream', es: 'Helado' },
+  // Mini pancake toppings (the ones that overlap with cup toppings above
+  // keep their labels there).
+  'Banana': { en: 'Banana', es: 'Plátano' },
+  'Strawberry': { en: 'Strawberry', es: 'Fresa' },
+  'Cinnamon Toast Crunch': { en: 'Cinnamon Toast Crunch', es: 'Cinnamon Toast Crunch' },
+  'Biscoff': { en: 'Biscoff', es: 'Biscoff' },
+  'Powdered Sugar': { en: 'Powdered Sugar', es: 'Azúcar Glass' },
 };
 
 const SYRUP_LABELS = {
@@ -183,6 +190,26 @@ const STR = {
     free: 'FREE',
     reviewOrder: 'Review order',
     addAnotherCup: '+ Add a Cup',
+    tabCups: '🍓 Fresas',
+    tabPancakes: '🥞 Mini Pancakes',
+    tabNew: 'NEW',
+    pancakeHeroTitle: 'Mini Pancakes',
+    pancakeHeroTag: 'Fluffy mini pancakes, made fresh to order · Rialto, CA',
+    pancakeSizeTitle: 'How many pancakes?',
+    pancakeSizeHint: 'Fluffy mini pancakes, made fresh to order',
+    pancakeCount: (n) => `${n} mini pancakes`,
+    pancakeIncludes: (tp, dr) => `Choose ${tp} toppings + ${dr} ${dr === 1 ? 'drizzle' : 'drizzles'}`,
+    pancakeToppingsHint: (n) => `Choose up to ${n} toppings`,
+    pancakeDrizzleHint: (n) => `Choose up to ${n} ${n === 1 ? 'drizzle' : 'drizzles'}`,
+    pancakeToppingsChosen: (a, b) => `${a} of ${b} toppings chosen`,
+    pancakeDrizzlesChosen: (a, b) => `${a} of ${b} ${b === 1 ? 'drizzle' : 'drizzles'} chosen`,
+    pancakeDrizzleTitle: 'Drizzle',
+    pancakeFreshNote: 'Made fresh to order. Pickup times may take a few extra minutes.',
+    howManyPacks: 'How many packs?',
+    addAnotherPancakes: '+ Add Pancakes',
+    yourItemsSoFar: (count) => `Your order so far (${count} item${count === 1 ? '' : 's'})`,
+    promoCupsOnly: 'Promo codes apply to cups only, not mini pancakes.',
+    pancakePackLabel: 'Pack',
     yourCupsSoFar: (count) => `Your order so far (${count} cup${count === 1 ? '' : 's'})`,
     remove: 'Remove',
     cupLineLabel: (name, size) => `${name} (${size})`,
@@ -308,6 +335,26 @@ const STR = {
     free: 'GRATIS',
     reviewOrder: 'Revisar orden',
     addAnotherCup: '+ Agregar Vaso',
+    tabCups: '🍓 Fresas',
+    tabPancakes: '🥞 Mini Pancakes',
+    tabNew: 'NUEVO',
+    pancakeHeroTitle: 'Mini Pancakes',
+    pancakeHeroTag: 'Mini pancakes esponjositos, hechos al momento · Rialto, CA',
+    pancakeSizeTitle: '¿Cuántos pancakes?',
+    pancakeSizeHint: 'Mini pancakes esponjositos, hechos al momento',
+    pancakeCount: (n) => `${n} mini pancakes`,
+    pancakeIncludes: (tp, dr) => `Elige ${tp} toppings + ${dr} ${dr === 1 ? 'salsa' : 'salsas'}`,
+    pancakeToppingsHint: (n) => `Elige hasta ${n} toppings`,
+    pancakeDrizzleHint: (n) => `Elige hasta ${n} ${n === 1 ? 'salsa' : 'salsas'}`,
+    pancakeToppingsChosen: (a, b) => `${a} de ${b} toppings elegidos`,
+    pancakeDrizzlesChosen: (a, b) => `${a} de ${b} ${b === 1 ? 'salsa' : 'salsas'} elegidas`,
+    pancakeDrizzleTitle: 'Salsa',
+    pancakeFreshNote: 'Hechos al momento. La hora de recogida puede tardar unos minutos más.',
+    howManyPacks: '¿Cuántos paquetes?',
+    addAnotherPancakes: '+ Agregar Pancakes',
+    yourItemsSoFar: (count) => `Tu orden hasta ahora (${count} artículo${count === 1 ? '' : 's'})`,
+    promoCupsOnly: 'Los códigos de promoción aplican solo a vasos, no a mini pancakes.',
+    pancakePackLabel: 'Paquete',
     yourCupsSoFar: (count) => `Tu orden hasta ahora (${count} vaso${count === 1 ? '' : 's'})`,
     remove: 'Quitar',
     cupLineLabel: (name, size) => `${name} (${size})`,
@@ -393,6 +440,13 @@ export default function Home() {
   const [toppings, setToppings] = useState([]);
   const [syrups, setSyrups] = useState([]);
   const [qty, setQty] = useState(1);
+  // Mini pancakes: which tab is showing, plus the pancake pack currently
+  // being built (the same "builder + cart" idea as the cup above).
+  const [mode, setMode] = useState('cups'); // 'cups' | 'pancakes'
+  const [pSize, setPSize] = useState(20);
+  const [pToppings, setPToppings] = useState([]);
+  const [pDrizzles, setPDrizzles] = useState([]);
+  const [pQty, setPQty] = useState(1);
   const [cart, setCart] = useState([]); // other cups already added to this order
   const [pickupDate, setPickupDate] = useState(todayDateKey());
   const [pickup, setPickup] = useState('');
@@ -496,6 +550,11 @@ export default function Home() {
           if (Array.isArray(draft.syrups)) setSyrups(draft.syrups);
           if (draft.qty) setQty(draft.qty);
           if (draft.includeRim !== undefined) setIncludeRim(draft.includeRim);
+          if (draft.mode === 'cups' || draft.mode === 'pancakes') setMode(draft.mode);
+          if (pancakeSizeFor(draft.pSize)) setPSize(draft.pSize);
+          if (Array.isArray(draft.pToppings)) setPToppings(draft.pToppings.filter((x) => PANCAKE_TOPPINGS.includes(x)));
+          if (Array.isArray(draft.pDrizzles)) setPDrizzles(draft.pDrizzles.filter((x) => SYRUPS.includes(x)));
+          if (draft.pQty) setPQty(draft.pQty);
           if (Array.isArray(draft.cart)) setCart(draft.cart);
           // A saved draft's pickup date can be yesterday's (or older) by the
           // time someone comes back to it — roll it forward to today rather
@@ -524,12 +583,13 @@ export default function Home() {
     try {
       window.localStorage.setItem('fresasOrderDraft', JSON.stringify({
         cupSize, base, toppings, syrups, qty, includeRim, cart, pickupDate, pickup, name, phone, notes, paymentMethod,
+        mode, pSize, pToppings, pDrizzles, pQty,
         savedAt: Date.now(),
       }));
     } catch (e) {
       // ignore — localStorage may be unavailable
     }
-  }, [draftReady, cupSize, base, toppings, syrups, qty, includeRim, cart, pickupDate, pickup, name, phone, notes, paymentMethod]);
+  }, [draftReady, cupSize, base, toppings, syrups, qty, includeRim, cart, pickupDate, pickup, name, phone, notes, paymentMethod, mode, pSize, pToppings, pDrizzles, pQty]);
 
   // Re-check which pickup times are still bookable once a minute, so a
   // slot that just passed disappears from the list on its own. Browsers
@@ -637,9 +697,11 @@ export default function Home() {
     if (!shopStatus) return;
     if (shopStatus.sold_out_toppings?.length) {
       setToppings((prev) => prev.filter((t) => !shopStatus.sold_out_toppings.includes(t)));
+      setPToppings((prev) => prev.filter((t) => !shopStatus.sold_out_toppings.includes(t)));
     }
     if (shopStatus.sold_out_syrups?.length) {
       setSyrups((prev) => prev.filter((s) => !shopStatus.sold_out_syrups.includes(s)));
+      setPDrizzles((prev) => prev.filter((s) => !shopStatus.sold_out_syrups.includes(s)));
     }
   }, [shopStatus]);
 
@@ -679,6 +741,18 @@ export default function Home() {
 
   function useLastOrder(order) {
     if (!order) return;
+    // A past mini pancake order: refill the pancake builder instead.
+    if (order.base === PANCAKE_BASE_NAME) {
+      const n = parseInt(order.cup_size, 10);
+      if (pancakeSizeFor(n)) setPSize(n);
+      setPToppings((order.toppings || []).filter((x) => PANCAKE_TOPPINGS.includes(x)));
+      setPDrizzles((order.syrups || []).filter((x) => SYRUPS.includes(x)));
+      if (order.payment_method) setPaymentMethod(order.payment_method);
+      setMode('pancakes');
+      setShowRepeatPrompt(false);
+      return;
+    }
+    setMode('cups');
     const matchedBase = BASES.find((b) => b.name === order.base);
     if (matchedBase) setBase(matchedBase.id);
     if (order.cup_size) setCupSize(order.cup_size.startsWith('24') ? '24' : '12');
@@ -696,6 +770,7 @@ export default function Home() {
 
   // Cost of one saved cart item (a cup already added to this order).
   function cartItemCost(item) {
+    if (isPancakeItem(item)) return pancakeItemCost(item);
     const itemPerCup = PRICES[item.cupSize][item.base] + toppingsCost(item.base, item.toppings);
     return itemPerCup * item.qty;
   }
@@ -710,13 +785,31 @@ export default function Home() {
   // cup — only a builder that's actually been customized counts.
   const isBuilderBlank = base === 'regular' && cupSize === '12' && toppings.length === 0 && syrups.length === 0 && qty === 1;
   const currentCupItem = { base, cupSize, toppings, syrups, qty, includeRim: isRimFlavor ? includeRim : true };
-  const previewItems = (cart.length === 0 || !isBuilderBlank) ? [...cart, currentCupItem] : cart;
+  // The pancake builder works the same way: its untouched default (20
+  // pancakes, nothing picked) only counts when it's the active tab and the
+  // order is otherwise empty. A builder on the other tab that has been
+  // customized still counts, so switching tabs never silently drops it.
+  const isPancakeBlank = pSize === 20 && pToppings.length === 0 && pDrizzles.length === 0 && pQty === 1;
+  const currentPancakeItem = { kind: 'pancakes', size: pSize, toppings: pToppings, syrups: pDrizzles, qty: pQty };
+  const cupBuilderCounts = mode === 'cups' ? (cart.length === 0 || !isBuilderBlank) : !isBuilderBlank;
+  const pancakeBuilderCounts = mode === 'pancakes' ? (cart.length === 0 || !isPancakeBlank) : !isPancakeBlank;
+  const previewItems = [
+    ...cart,
+    ...(cupBuilderCounts ? [currentCupItem] : []),
+    ...(pancakeBuilderCounts ? [currentPancakeItem] : []),
+  ];
+  const cupOnlyItems = previewItems.filter((item) => !isPancakeItem(item));
+  const hasPancakes = previewItems.some(isPancakeItem);
   const orderTotal = previewItems.reduce((sum, item) => sum + cartItemCost(item), 0); // pre-discount subtotal
+  // Promo codes and the free-cup deal only look at the cups; pancake packs
+  // are added on top at full price. This is the number a promo is checked
+  // against.
+  const cupsSubtotal = cupOnlyItems.reduce((sum, item) => sum + cartItemCost(item), 0);
   // "Buy 3, get the 4th free" — automatic (no code) while the shop has it
   // switched on, and set aside whenever a promo code is applied instead
   // (the two never stack). The server recomputes this same number.
   const dealEnabled = !!shopStatus?.free_cup_deal;
-  const deal = freeCupDeal(previewItems.map((item) => ({ baseId: item.base, cupSize: item.cupSize, qty: item.qty })));
+  const deal = freeCupDeal(cupOnlyItems.map((item) => ({ baseId: item.base, cupSize: item.cupSize, qty: item.qty })));
   const dealDiscount = dealEnabled && !appliedPromo ? deal.discount : 0;
   const discountValue = appliedPromo ? appliedPromo.discountValue : dealDiscount;
   const finalTotal = Math.max(0, orderTotal - discountValue); // what's actually owed/shown after a promo or the free-cup deal
@@ -765,12 +858,12 @@ export default function Home() {
   // subtotal) — clear it and ask them to re-apply rather than silently
   // showing a stale number.
   useEffect(() => {
-    if (appliedPromo && Math.abs(orderTotal - appliedPromo.subtotalAtApply) > 0.001) {
+    if (appliedPromo && Math.abs(cupsSubtotal - appliedPromo.subtotalAtApply) > 0.001) {
       setAppliedPromo(null);
       setPromoError(t.promoStale);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orderTotal]);
+  }, [cupsSubtotal]);
 
   // Adds the cup currently being built to the order, then resets the
   // builder so they can configure another one. Returns the new cart so
@@ -790,12 +883,58 @@ export default function Home() {
     return nextCart;
   }
 
+  // Adds the pancake pack currently being built to the order, then resets
+  // the pancake builder.
+  function addCurrentPancakesToCart() {
+    setCart((prev) => [...prev, { ...currentPancakeItem }]);
+    setPSize(20);
+    setPToppings([]);
+    setPDrizzles([]);
+    setPQty(1);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // Picking a different size can lower the toppings/drizzles allowed, so
+  // anything over the new limit is trimmed off the end.
+  function changePancakeSize(count) {
+    const sz = pancakeSizeFor(count);
+    if (!sz) return;
+    setPSize(count);
+    setPToppings((prev) => prev.slice(0, sz.toppings));
+    setPDrizzles((prev) => prev.slice(0, sz.drizzles));
+  }
+  function togglePancakeTopping(name) {
+    const sz = pancakeSizeFor(pSize);
+    setPToppings((prev) => {
+      if (prev.includes(name)) return prev.filter((x) => x !== name);
+      return prev.length >= sz.toppings ? prev : [...prev, name];
+    });
+  }
+  function togglePancakeDrizzle(name) {
+    const sz = pancakeSizeFor(pSize);
+    setPDrizzles((prev) => {
+      if (prev.includes(name)) return prev.filter((x) => x !== name);
+      return prev.length >= sz.drizzles ? prev : [...prev, name];
+    });
+  }
+
   function removeCartItem(index) {
     setCart((prev) => prev.filter((_, i) => i !== index));
   }
 
   function editCartItem(index) {
     const item = cart[index];
+    if (isPancakeItem(item)) {
+      setMode('pancakes');
+      setPSize(item.size);
+      setPToppings(item.toppings);
+      setPDrizzles(item.syrups);
+      setPQty(item.qty);
+      setCart((prev) => prev.filter((_, i) => i !== index));
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    setMode('cups');
     setBase(item.base);
     setCupSize(item.cupSize);
     setToppings(item.toppings);
@@ -855,6 +994,10 @@ export default function Home() {
   async function applyPromoCode() {
     const code = promoInput.trim();
     if (!code) return;
+    if (cupOnlyItems.length === 0) {
+      setPromoError(t.promoCupsOnly);
+      return;
+    }
     setPromoChecking(true);
     setPromoError('');
     try {
@@ -863,7 +1006,8 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           code,
-          items: previewItems.map((item) => ({
+          // Promo codes apply to the cups only.
+          items: cupOnlyItems.map((item) => ({
             base: BASES.find((b) => b.id === item.base).name,
             cup_size: `${item.cupSize} oz`,
             toppings: item.toppings,
@@ -922,7 +1066,8 @@ export default function Home() {
     try {
       const finalItems = previewItems;
       const firstItem = finalItems[0];
-      const firstItemBase = BASES.find((b) => b.id === firstItem.base);
+      const firstIsPancake = isPancakeItem(firstItem);
+      const firstItemBase = firstIsPancake ? null : BASES.find((b) => b.id === firstItem.base);
       const cartGrandTotal = finalItems.reduce((sum, item) => sum + cartItemCost(item), 0);
       const totalCups = finalItems.reduce((sum, item) => sum + item.qty, 0);
       const appliedDiscount = discountValue;
@@ -932,19 +1077,30 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           // Full multi-cup order — the real source of truth.
-          items: finalItems.map((item) => ({
-            base: BASES.find((b) => b.id === item.base).name,
-            cup_size: `${item.cupSize} oz`,
-            toppings: item.toppings,
-            syrups: item.syrups,
-            qty: item.qty,
-            include_rim: item.includeRim,
-          })),
+          items: finalItems.map((item) => (isPancakeItem(item)
+            ? {
+                kind: 'pancakes',
+                base: PANCAKE_BASE_NAME,
+                pancake_size: item.size,
+                cup_size: `${item.size} pcs`,
+                toppings: item.toppings,
+                syrups: item.syrups,
+                qty: item.qty,
+                include_rim: true,
+              }
+            : {
+                base: BASES.find((b) => b.id === item.base).name,
+                cup_size: `${item.cupSize} oz`,
+                toppings: item.toppings,
+                syrups: item.syrups,
+                qty: item.qty,
+                include_rim: item.includeRim,
+              })),
           // Summary fields kept for backward compatibility with anything
           // that only reads a single cup (admin quick-view, SMS, etc.) —
           // first cup's details, with qty as the total cup count.
-          base: firstItemBase.name,
-          cup_size: `${firstItem.cupSize} oz`,
+          base: firstIsPancake ? PANCAKE_BASE_NAME : firstItemBase.name,
+          cup_size: firstIsPancake ? `${firstItem.size} pcs` : `${firstItem.cupSize} oz`,
           toppings: firstItem.toppings,
           syrups: firstItem.syrups,
           qty: totalCups,
@@ -956,7 +1112,7 @@ export default function Home() {
           total: finalOrderTotal,
           promo_code: appliedPromo ? appliedPromo.code : null,
           discount_amount: appliedDiscount,
-          include_rim: firstItem.includeRim,
+          include_rim: firstIsPancake ? true : firstItem.includeRim,
           payment_method: paymentMethod,
           payment_confirmed: paymentConfirmed,
           language: lang,
@@ -983,6 +1139,8 @@ export default function Home() {
           // checking out — pull fresh settings so the total updates.
           setErrorMsg(body.message || t.genericError);
           fetch('/api/settings').then((r) => r.json()).then((j) => setShopStatus(j.settings)).catch(() => {});
+        } else if (body.error === 'invalid_item') {
+          setErrorMsg(body.message || t.genericError);
         } else if (body.error === 'phone_required') {
           setErrorMsg(body.message || t.phoneRequiredError);
         } else {
@@ -1004,6 +1162,11 @@ export default function Home() {
       setToppings([]);
       setSyrups([]);
       setQty(1);
+      setMode('cups');
+      setPSize(20);
+      setPToppings([]);
+      setPDrizzles([]);
+      setPQty(1);
       setIncludeRim(true);
       setName('');
       setPhone('');
@@ -1167,19 +1330,44 @@ export default function Home() {
       )}
       <div className="hero">
         <Link href="/" className="back-home-link">← Home</Link>
-        <h1><Link href="/" style={{ color: 'inherit', textDecoration: 'none' }}>Fresas con Crema</Link></h1>
-        <p>{t.heroTag}</p>
+        <h1><Link href="/" style={{ color: 'inherit', textDecoration: 'none' }}>{mode === 'pancakes' ? t.pancakeHeroTitle : 'Fresas con Crema'}</Link></h1>
+        <p>{mode === 'pancakes' ? t.pancakeHeroTag : t.heroTag}</p>
         {LangToggle}
       </div>
 
       <AddToHomeBanner lang={lang} storageKey="fresasA2HSSeen" />
 
       <div className="wrap">
+        <div style={{ display: 'flex', gap: 8, paddingTop: 16 }}>
+          {[['cups', t.tabCups], ['pancakes', t.tabPancakes]].map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => { setMode(key); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+              style={{
+                flex: 1, padding: '10px 6px', borderRadius: 14, cursor: 'pointer',
+                fontFamily: "'Baloo 2', sans-serif", fontWeight: 700, fontSize: '0.98rem',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                border: `2px solid ${mode === key ? 'var(--maroon)' : 'var(--line)'}`,
+                background: mode === key ? 'var(--maroon)' : '#fff',
+                color: mode === key ? 'var(--cream-2)' : 'var(--maroon)',
+                boxShadow: mode === key ? 'var(--shadow)' : 'none',
+              }}
+            >
+              {label}
+              {key === 'pancakes' && (
+                <span style={{ fontFamily: "'Nunito', sans-serif", fontSize: '0.6rem', fontWeight: 800, background: 'var(--pink)', color: '#fff', borderRadius: 999, padding: '1px 6px', letterSpacing: '0.04em' }}>
+                  {t.tabNew}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
         {dealEnabled && <div className="section" style={{ paddingBottom: 0 }}>{renderDealBanner()}</div>}
         {cart.length > 0 && (
           <div className="section">
             <div className="repeat-order-box" style={{ width: '100%', boxSizing: 'border-box' }}>
-              <div style={{ marginBottom: 8, fontWeight: 700 }}>{t.yourCupsSoFar(cart.length)}</div>
+              <div style={{ marginBottom: 8, fontWeight: 700 }}>{cart.some(isPancakeItem) ? t.yourItemsSoFar(cart.length) : t.yourCupsSoFar(cart.length)}</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {cart.map((item, i) => {
                   const itemBase = BASES.find((b) => b.id === item.base);
@@ -1192,7 +1380,11 @@ export default function Home() {
                       }}
                     >
                       <div style={{ fontSize: '0.85rem' }}>
-                        <strong>{item.qty}x {itemBase.name}</strong> ({item.cupSize} oz)
+                        {isPancakeItem(item) ? (
+                          <strong>{item.qty}x 🥞 {t.pancakeCount(item.size)}</strong>
+                        ) : (
+                          <><strong>{item.qty}x {itemBase.name}</strong> ({item.cupSize} oz)</>
+                        )}
                         {item.toppings.length ? ` · ${summarizeToppings(item.toppings, lang)}` : ''}
                       </div>
                       <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
@@ -1210,6 +1402,8 @@ export default function Home() {
             </div>
           </div>
         )}
+        {mode === 'cups' && (
+        <>
         <div className="section">
           <h2>{t.cupSize}</h2>
           <p className="hint">{t.cupSizeHint}</p>
@@ -1370,6 +1564,91 @@ export default function Home() {
             <button type="button" onClick={() => setQty((q) => Math.min(20, q + 1))}>+</button>
           </div>
         </div>
+        </>
+        )}
+
+        {mode === 'pancakes' && (
+        <>
+        <div className="section">
+          <h2>{t.pancakeSizeTitle}</h2>
+          <p className="hint">{t.pancakeSizeHint}</p>
+          {PANCAKE_SIZES.map((sz) => (
+            <label key={sz.count} className={`base-card${pSize === sz.count ? ' selected' : ''}`}>
+              <input type="radio" name="pancakeSize" checked={pSize === sz.count} onChange={() => changePancakeSize(sz.count)} />
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex' }}>
+                  <span className="name">🥞 {t.pancakeCount(sz.count)}</span>
+                  <span className="price" style={{ marginLeft: 'auto' }}>
+                    {!settingsLoaded ? <span className="skeleton-line skeleton-line--price" /> : `$${sz.price.toFixed(2)}`}
+                  </span>
+                </div>
+                <div className="desc">{t.pancakeIncludes(sz.toppings, sz.drizzles)}</div>
+              </div>
+            </label>
+          ))}
+        </div>
+
+        <div className="section">
+          <h2>{t.toppings}</h2>
+          <p className="hint">{t.pancakeToppingsHint(pancakeSizeFor(pSize).toppings)}</p>
+          <div className="chip-grid">
+            {PANCAKE_TOPPINGS.map((name) => {
+              const isSoldOut = (shopStatus?.sold_out_toppings || []).includes(name);
+              const selected = pToppings.includes(name);
+              const atLimit = !selected && pToppings.length >= pancakeSizeFor(pSize).toppings;
+              const disabled = isSoldOut || atLimit;
+              return (
+                <label
+                  key={name}
+                  className={`chip${selected ? ' checked' : ''}`}
+                  style={disabled ? { opacity: 0.45, cursor: 'not-allowed' } : {}}
+                >
+                  <input type="checkbox" style={{ display: 'none' }} checked={selected} disabled={disabled} onChange={() => togglePancakeTopping(name)} />
+                  <span>{TOPPING_LABELS[name][lang]}</span>
+                  {isSoldOut && <span className="badge">{t.soldOut}</span>}
+                </label>
+              );
+            })}
+          </div>
+          <div className="free-note">{t.pancakeToppingsChosen(pToppings.length, pancakeSizeFor(pSize).toppings)}</div>
+        </div>
+
+        <div className="section">
+          <h2>{t.pancakeDrizzleTitle}</h2>
+          <p className="hint">{t.pancakeDrizzleHint(pancakeSizeFor(pSize).drizzles)}</p>
+          <div className="chip-grid">
+            {SYRUPS.map((name) => {
+              const isSoldOut = (shopStatus?.sold_out_syrups || []).includes(name);
+              const selected = pDrizzles.includes(name);
+              const atLimit = !selected && pDrizzles.length >= pancakeSizeFor(pSize).drizzles;
+              const disabled = isSoldOut || atLimit;
+              return (
+                <label
+                  key={name}
+                  className={`chip${selected ? ' checked' : ''}`}
+                  style={disabled ? { opacity: 0.45, cursor: 'not-allowed' } : {}}
+                >
+                  <input type="checkbox" style={{ display: 'none' }} checked={selected} disabled={disabled} onChange={() => togglePancakeDrizzle(name)} />
+                  <span>{SYRUP_LABELS[name][lang]}</span>
+                  {isSoldOut && <span className="badge">{t.soldOut}</span>}
+                </label>
+              );
+            })}
+          </div>
+          <div className="free-note">{t.pancakeDrizzlesChosen(pDrizzles.length, pancakeSizeFor(pSize).drizzles)}</div>
+        </div>
+
+        <div className="section">
+          <h2>{t.howManyPacks}</h2>
+          <div className="stepper">
+            <button type="button" onClick={() => setPQty((q) => Math.max(1, q - 1))}>−</button>
+            <span>{pQty}</span>
+            <button type="button" onClick={() => setPQty((q) => Math.min(20, q + 1))}>+</button>
+          </div>
+          <p className="hint" style={{ marginTop: 12, marginBottom: 0 }}>🥞 {t.pancakeFreshNote}</p>
+        </div>
+        </>
+        )}
 
         <div className="section">
           <h2>{t.pickupDateLabel}</h2>
@@ -1524,8 +1803,8 @@ export default function Home() {
           <div className="total-amt">${finalTotal.toFixed(2)}</div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn-outline-dark" onClick={addCurrentCupToCart} style={{ padding: '13px 16px', fontSize: '0.85rem' }}>
-            {t.addAnotherCup}
+          <button className="btn-outline-dark" onClick={mode === 'pancakes' ? addCurrentPancakesToCart : addCurrentCupToCart} style={{ padding: '13px 16px', fontSize: '0.85rem' }}>
+            {mode === 'pancakes' ? t.addAnotherPancakes : t.addAnotherCup}
           </button>
           <button className="btn-primary" onClick={() => setShowSheet(true)} disabled={!name.trim() || !pickup || (shopStatus?.require_phone && !phone.trim())}>
             {t.reviewOrder}
@@ -1540,6 +1819,24 @@ export default function Home() {
           {previewItems.map((item, i) => {
             const itemBase = BASES.find((b) => b.id === item.base);
             const itemIsRim = item.base === 'bananapudding' || item.base === 'gansito';
+            if (isPancakeItem(item)) {
+              return (
+                <div key={i} style={{ padding: '10px 0', borderBottom: '1px dashed var(--line)' }}>
+                  <div className="line" style={{ borderBottom: 'none', paddingBottom: 2 }}>
+                    <span>{t.base}</span><strong>🥞 {t.pancakeHeroTitle} × {item.qty}</strong>
+                  </div>
+                  <div className="line" style={{ borderBottom: 'none', paddingBottom: 2 }}>
+                    <span>{t.pancakePackLabel}</span><strong>{t.pancakeCount(item.size)}</strong>
+                  </div>
+                  <div className="line" style={{ borderBottom: 'none', paddingBottom: 2 }}>
+                    <span>{t.toppings}</span><strong>{item.toppings.length ? summarizeToppings(item.toppings, lang) : t.none}</strong>
+                  </div>
+                  <div className="line" style={{ borderBottom: 'none' }}>
+                    <span>{t.syrup}</span><strong>{item.syrups.length ? item.syrups.map((s) => SYRUP_LABELS[s][lang]).join(', ') : t.none}</strong>
+                  </div>
+                </div>
+              );
+            }
             return (
               <div key={i} style={{ padding: '10px 0', borderBottom: '1px dashed var(--line)' }}>
                 <div className="line" style={{ borderBottom: 'none', paddingBottom: 2 }}>
@@ -1603,6 +1900,7 @@ export default function Home() {
             {!appliedPromo && !promoError && (
               <p className="hint" style={{ marginTop: 6, marginBottom: 0 }}>{dealEnabled ? t.dealNoCombine : t.promoHint}</p>
             )}
+            {hasPancakes && <p className="hint" style={{ marginTop: 6, marginBottom: 0 }}>{t.promoCupsOnly}</p>}
             {promoError && <p className="hint" style={{ color: 'var(--maroon)', marginTop: 6, marginBottom: 0 }}>{promoError}</p>}
           </div>
 

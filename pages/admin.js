@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import Head from 'next/head';
 import Script from 'next/script';
 import Link from 'next/link';
-import { BASES, PRICES, TOPPINGS, SYRUPS, orderTotal, buildPickupTimes, baseIdFromName, formatDateKey, todayDateKey, maxPreorderDateKey, MAX_EXTRA_TOPPING_QTY, FREE_CUP_DEAL_CODE } from '../lib/menu';
+import { BASES, PRICES, TOPPINGS, SYRUPS, orderTotal, buildPickupTimes, baseIdFromName, formatDateKey, todayDateKey, maxPreorderDateKey, MAX_EXTRA_TOPPING_QTY, FREE_CUP_DEAL_CODE, PANCAKE_TOPPINGS, isPancakeItem } from '../lib/menu';
 
 const ONESIGNAL_APP_ID = process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID;
 
@@ -64,7 +64,7 @@ function timeAgo(iso) {
 // "Cash" when a cash order was never marked paid.
 function doneRowSummary(o) {
   const what = Array.isArray(o.items) && o.items.length > 1
-    ? `${o.items.reduce((n, i) => n + (i.qty || 1), 0)} cups`
+    ? `${o.items.reduce((n, i) => n + (i.qty || 1), 0)} ${o.items.some(isPancakeItem) ? 'items' : 'cups'}`
     : Array.isArray(o.items) && o.items.length === 1
       ? `${o.items[0].qty}x ${o.items[0].base}${o.items[0].cup_size ? ` (${o.items[0].cup_size})` : ''}`
       : `${o.qty}x ${o.base}${o.cup_size ? ` (${o.cup_size})` : ''}`;
@@ -857,13 +857,21 @@ export default function Admin() {
         {Array.isArray(o.items) && o.items.length > 0 ? (
           <>
             {(() => {
-              const cupTotal = o.items.reduce((n, i) => n + (i.qty || 1), 0);
-              return <div className="meta">{cupTotal} cup{cupTotal === 1 ? '' : 's'} in this order</div>;
+              const cupTotal = o.items.filter((i) => !isPancakeItem(i)).reduce((n, i) => n + (i.qty || 1), 0);
+              const pancakePacks = o.items.filter(isPancakeItem).reduce((n, i) => n + (i.qty || 1), 0);
+              return (
+                <div className="meta">
+                  {cupTotal > 0 && `${cupTotal} cup${cupTotal === 1 ? '' : 's'}`}
+                  {cupTotal > 0 && pancakePacks > 0 && ' + '}
+                  {pancakePacks > 0 && `🥞 ${pancakePacks} mini pancake pack${pancakePacks === 1 ? '' : 's'}`}
+                  {' '}in this order
+                </div>
+              );
             })()}
             <div className="order-details-body order-details-body-static">
               {o.items.map((item, i) => (
                 <div key={i} style={{ marginBottom: i < o.items.length - 1 ? 10 : 0, paddingBottom: i < o.items.length - 1 ? 10 : 0, borderBottom: i < o.items.length - 1 ? '1px dashed var(--line)' : 'none' }}>
-                  <div><strong>{item.qty}x {item.base}</strong>{item.cup_size ? ` (${item.cup_size})` : ''}</div>
+                  <div><strong>{isPancakeItem(item) ? '🥞 ' : ''}{item.qty}x {item.base}</strong>{item.cup_size ? ` (${item.cup_size})` : ''}</div>
                   {(item.base === 'Banana Pudding' || item.base === 'Gansito') && (
                     <div><strong>Rim:</strong> {item.include_rim === false ? '🚫 No rim' : '✅ Yes'}</div>
                   )}
@@ -873,7 +881,7 @@ export default function Admin() {
                         <div key={name}>- {name}{count > 1 ? ` ×${count}` : ''}</div>
                       ))
                     : <div>- None</div>}
-                  <div><strong>Syrup:</strong></div>
+                  <div><strong>{isPancakeItem(item) ? 'Drizzle:' : 'Syrup:'}</strong></div>
                   {item.syrups?.length
                     ? item.syrups.map((s) => <div key={s}>- {s}</div>)
                     : <div>- None</div>}
@@ -1309,6 +1317,29 @@ export default function Admin() {
                   );
                 })}
               </div>
+
+              <div className="field-lbl">🥞 Mini pancake toppings</div>
+              <div className="chip-row">
+                {PANCAKE_TOPPINGS.map((name) => {
+                  const isSoldOut = (settings.sold_out_toppings || []).includes(name);
+                  return (
+                    <button
+                      key={name}
+                      type="button"
+                      className={`chip-sm${isSoldOut ? ' off' : ''}`}
+                      onClick={() => {
+                        const current = settings.sold_out_toppings || [];
+                        const next = isSoldOut ? current.filter((x) => x !== name) : [...current, name];
+                        saveSettings({ sold_out_toppings: next });
+                      }}
+                      disabled={savingSettings}
+                    >
+                      {isSoldOut ? '🚫 ' : '✅ '}{name}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="hint-sm" style={{ marginTop: 4 }}>Oreo, Fruity Pebbles and Whipped Cream are shared with the cups — marking one sold out turns it off for both.</p>
 
               <div className="field-lbl">Syrups</div>
               <div className="chip-row">
@@ -1763,12 +1794,12 @@ export default function Admin() {
 
             {editForm.isMultiCup ? (
               <div className="field">
-                <label>Cups in this order</label>
+                <label>Items in this order</label>
                 <div className="order-details-body order-details-body-static" style={{ marginTop: 0 }}>
                   {editForm.items.map((item, i) => (
                     <div key={i} style={{ marginBottom: i < editForm.items.length - 1 ? 8 : 0 }}>
-                      <div><strong>{item.qty}x {item.base}</strong>{item.cup_size ? ` (${item.cup_size})` : ''}</div>
-                      <div>Toppings: {item.toppings?.length ? toppingsSummaryText(item.toppings) : 'None'} · Syrup: {item.syrups?.length ? item.syrups.join(', ') : 'None'}</div>
+                      <div><strong>{isPancakeItem(item) ? '🥞 ' : ''}{item.qty}x {item.base}</strong>{item.cup_size ? ` (${item.cup_size})` : ''}</div>
+                      <div>Toppings: {item.toppings?.length ? toppingsSummaryText(item.toppings) : 'None'} · {isPancakeItem(item) ? 'Drizzle' : 'Syrup'}: {item.syrups?.length ? item.syrups.join(', ') : 'None'}</div>
                     </div>
                   ))}
                 </div>

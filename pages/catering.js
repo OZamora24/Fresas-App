@@ -93,7 +93,7 @@ export default function Catering({ initialSettings }) {
   const hasCatering = settings?.catering_days?.length > 0;
 
   return (
-    <div className="site-shell">
+    <div className="site-shell fresh-look">
       <Head><title>{t.title}</title></Head>
       <SiteNav lang={lang} onLangChange={changeLang} />
       <main className="site-main">

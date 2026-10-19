@@ -4,6 +4,36 @@ import Link from 'next/link';
 import Script from 'next/script';
 import { BASES, PRICES, TOPPINGS, SYRUPS, toppingsCost, freeCupDeal, FREE_CUP_EVERY, todayDateKey, maxPreorderDateKey, formatDateKey, getAvailablePickupTimes, buildPickupTimes, formatWeekdaysList, MAX_EXTRA_TOPPING_QTY, PANCAKE_BASE_NAME, PANCAKE_SIZES, PANCAKE_TOPPINGS, isPancakeItem, pancakeSizeFor, pancakeItemCost, pancakeExtraCount, PANCAKE_EXTRA_TOPPING_PRICE, PANCAKE_MAX_EXTRA_TOPPINGS } from '../lib/menu';
 import AddToHomeBanner from '../components/AddToHomeBanner';
+import { getSupabaseAdmin } from '../lib/supabaseAdmin';
+
+// Loads the shop settings (and today's booked-slot counts) on the SERVER so
+// they're baked into the page before it reaches the phone. Without this the
+// page painted once with no settings, then again a beat later when the
+// client-side /api/settings fetch came back (tabs popping in, times and
+// sold-out flags changing) — the lag when tapping Order from Home. Same fix
+// as Home and Catering. Next.js strips this (and the Supabase import) from
+// the browser bundle.
+export async function getServerSideProps() {
+  let initialSettings = null;
+  let initialSlots = null;
+  try {
+    const supabase = getSupabaseAdmin();
+    const dateKey = todayDateKey();
+    const [settingsRes, ordersRes] = await Promise.all([
+      supabase.from('shop_settings').select('*').eq('id', 1).single(),
+      supabase.from('orders').select('pickup_time').eq('pickup_date', dateKey),
+    ]);
+    if (!settingsRes.error) initialSettings = settingsRes.data;
+    if (!ordersRes.error && initialSettings) {
+      const counts = {};
+      for (const o of ordersRes.data || []) counts[o.pickup_time] = (counts[o.pickup_time] || 0) + 1;
+      initialSlots = { counts, slotLimit: initialSettings.slot_limit ?? 3, date: dateKey };
+    }
+  } catch (e) {
+    // Supabase unreachable — fall back to the client-side fetches below.
+  }
+  return { props: { initialSettings, initialSlots } };
+}
 
 const ONESIGNAL_APP_ID = process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID;
 
@@ -420,7 +450,7 @@ const STR = {
   },
 };
 
-export default function Home() {
+export default function Home({ initialSettings = null, initialSlots = null }) {
   const [lang, setLang] = useState('en');
 
   // Remember the customer's language choice across pages (Home, Order,
@@ -476,15 +506,15 @@ export default function Home() {
   const [showWalnutAlert, setShowWalnutAlert] = useState(false);
   const [showRimAlert, setShowRimAlert] = useState(false);
   const [includeRim, setIncludeRim] = useState(true);
-  const [shopStatus, setShopStatus] = useState(null); // null = still checking
+  const [shopStatus, setShopStatus] = useState(initialSettings); // null = still checking
   // Distinguishes "we asked and nothing's sold out" from "we haven't asked
   // yet" — shopStatus?.sold_out_flavors falls back to [] in both cases, so
   // without this the base/topping list would render as fully available for
   // the brief moment before /api/settings resolves, then flip to "Sold out
   // today" once it does. See the skeleton placeholders below.
   const settingsLoaded = shopStatus !== null;
-  const [slotCounts, setSlotCounts] = useState({});
-  const [slotLimit, setSlotLimit] = useState(3);
+  const [slotCounts, setSlotCounts] = useState(initialSlots?.counts || {});
+  const [slotLimit, setSlotLimit] = useState(initialSlots?.slotLimit ?? 3);
   const [pastOrders, setPastOrders] = useState([]);
   const [showRepeatPrompt, setShowRepeatPrompt] = useState(false);
   const [repeatDismissed, setRepeatDismissed] = useState(false);

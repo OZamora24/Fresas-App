@@ -1163,7 +1163,7 @@ export default function Admin() {
             </div>
 
             <div className="order-card" style={{ marginTop: 10 }}>
-              <div className="field-lbl" style={{ marginTop: 0 }}>Max per 15-min slot</div>
+              <div className="field-lbl" style={{ marginTop: 0 }}>Max per 20-min slot</div>
               <div className="mini-card-inline">
                 <input
                   type="number"

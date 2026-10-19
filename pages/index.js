@@ -187,6 +187,9 @@ export default function Home({ initialSettings }) {
       <main className="site-main">
         <div className="home-hero">
           <CupArt id="home" className="cupart" />
+          <span className="cup-sp cup-sp1" aria-hidden="true">✨</span>
+          <span className="cup-sp cup-sp2" aria-hidden="true">✨</span>
+          <span className="cup-sp cup-sp3" aria-hidden="true">🍓</span>
           {isOpen !== null && (
             <div className="home-status-row">
               <span className={`home-status-badge${effectivelyOpen ? (closingSoon ? ' closing-soon' : '') : ' closed'}`}>
@@ -205,7 +208,7 @@ export default function Home({ initialSettings }) {
 
         {settings?.pancakes_enabled && (
           <Link href="/order" className="home-promo">
-            <span className="home-promo-emoji">🥞</span>
+            <span className="home-promo-emoji anim-flip">🥞</span>
             <span>
               <span className="home-promo-tag">{t.pancakeNew}</span>
               <b>{t.pancakeTitle}</b>

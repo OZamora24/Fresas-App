@@ -1409,7 +1409,10 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
                 boxShadow: mode === key ? 'var(--shadow)' : 'none',
               }}
             >
-              {label}
+              {(() => {
+                const [emoji, ...rest] = label.split(' ');
+                return (<><span className={`tab-ico ${key === 'pancakes' ? 'anim-flip' : 'anim-bounce'}`} aria-hidden="true">{emoji}</span>{rest.join(' ')}</>);
+              })()}
               {key === 'pancakes' && (
                 <span style={{ position: 'absolute', top: -7, right: 10, fontFamily: "'Nunito', sans-serif", fontSize: '0.6rem', fontWeight: 800, background: 'var(--pink)', color: '#fff', borderRadius: 999, padding: '1px 6px', letterSpacing: '0.04em' }}>
                   {t.tabNew}

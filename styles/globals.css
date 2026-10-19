@@ -994,3 +994,44 @@ body.splash-active {
 /* ---- Catering / Photos cards ---- */
 .fresh-look .catering-info-card { border-radius: 20px; border: 1.5px solid var(--line); box-shadow: 0 8px 18px rgba(90, 20, 30, 0.07); }
 .fresh-look .photo-grid img, .fresh-look .photo-tile-empty { border-radius: 18px; }
+
+/* ---- Gentle motion: Home cup, strawberry and pancake icons ---- */
+.anim-bounce { display: inline-block; transform-origin: 50% 90%; animation: fx-bounce 2.4s ease-in-out infinite; }
+.anim-flip { display: inline-block; transform-origin: 50% 80%; animation: fx-flip 3.4s ease-in-out infinite; }
+.tab-ico { font-size: 1.25rem; line-height: 1; }
+.fresh-look .home-hero > .cupart { transform-origin: 50% 90%; animation: fx-cupfloat 4.2s ease-in-out infinite; }
+.cup-berry { transform-box: fill-box; transform-origin: center; animation: fx-berry 2.6s ease-in-out infinite; }
+.cup-topberry { transform-box: fill-box; transform-origin: 50% 100%; animation: fx-topwig 4.2s ease-in-out infinite; }
+.cup-sheen { opacity: 0.6; animation: fx-sheen 4.2s ease-in-out infinite; }
+.home-hero .cup-sp { position: absolute; font-size: 0.9rem; opacity: 0; pointer-events: none; animation: fx-rise 3.6s ease-out infinite; }
+.home-hero .cup-sp1 { right: 86px; top: 64px; }
+.home-hero .cup-sp2 { right: 8px; top: 84px; animation-delay: 1.2s; }
+.home-hero .cup-sp3 { right: 56px; top: 40px; animation-delay: 2.2s; }
+@media (min-width: 761px) {
+  .home-hero .cup-sp1 { right: 250px; top: 90px; }
+  .home-hero .cup-sp2 { right: 60px; top: 130px; }
+  .home-hero .cup-sp3 { right: 190px; top: 60px; }
+}
+@keyframes fx-cupfloat { 0%, 100% { transform: translateY(0) rotate(7deg); } 50% { transform: translateY(-9px) rotate(2deg); } }
+@keyframes fx-berry { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-4px) scale(1.07); } }
+@keyframes fx-topwig { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(10deg) translateY(-2px); } }
+@keyframes fx-sheen { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.85; } }
+@keyframes fx-rise { 0% { opacity: 0; transform: translateY(8px) scale(0.6); } 20% { opacity: 1; } 100% { opacity: 0; transform: translateY(-46px) scale(1.1) rotate(14deg); } }
+@keyframes fx-bounce {
+  0%, 55%, 100% { transform: translateY(0) scale(1, 1) rotate(0); }
+  12% { transform: translateY(-9px) scale(0.95, 1.08) rotate(-8deg); }
+  24% { transform: translateY(0) scale(1.08, 0.92) rotate(0); }
+  34% { transform: translateY(-4px) rotate(7deg); }
+  44% { transform: translateY(0) rotate(0); }
+}
+@keyframes fx-flip {
+  0%, 60%, 100% { transform: translateY(0) rotateX(0) rotate(0); }
+  15% { transform: translateY(-12px) rotateX(180deg) rotate(-6deg); }
+  30% { transform: translateY(-14px) rotateX(360deg) rotate(6deg); }
+  42% { transform: translateY(0) rotateX(360deg) scale(1.1, 0.9); }
+  50% { transform: translateY(0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .anim-bounce, .anim-flip, .fresh-look .home-hero > .cupart, .cup-berry, .cup-topberry, .cup-sheen, .home-hero .cup-sp { animation: none; }
+  .cup-sheen { opacity: 0.6; }
+}

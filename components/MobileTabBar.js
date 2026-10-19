@@ -35,7 +35,7 @@ export default function MobileTabBar({ lang = 'en' }) {
       {item('/', '🏠', t.home)}
       {item('/catering', '🎉', t.catering)}
       <Link href="/order" className={`tb-mid${path === '/order' ? ' on' : ''}`} aria-label={t.order}>
-        <span className="tb-mid-ic">🍓</span>
+        <span className="tb-mid-ic anim-bounce">🍓</span>
         <span className="tb-mid-label">{t.order}</span>
       </Link>
       {item('/photos', '📸', t.photos)}

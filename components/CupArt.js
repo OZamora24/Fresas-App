@@ -25,9 +25,9 @@ export default function CupArt({ id = 'cup', className = 'cupart' }) {
         <rect x="40" y="158" width="130" height="30" fill="#FFF3EA" />
         <rect x="40" y="188" width="130" height="80" fill="#C8183A" opacity=".92" />
         {BERRIES.map((p, i) => (
-          <ellipse key={i} cx={p[0]} cy={p[1]} rx={p[2] + 4} ry={p[2]} fill={`url(#st${id})`} transform={`rotate(${i * 23} ${p[0]} ${p[1]})`} />
+          <ellipse key={i} className="cup-berry" style={{ animationDelay: `${(i * 0.3).toFixed(1)}s` }} cx={p[0]} cy={p[1]} rx={p[2] + 4} ry={p[2]} fill={`url(#st${id})`} transform={`rotate(${i * 23} ${p[0]} ${p[1]})`} />
         ))}
-        <path d="M48 78 H152 L136 244 L120 244 L134 78 Z" fill={`url(#gw${id})`} opacity=".8" />
+        <path className="cup-sheen" d="M48 78 H152 L136 244 L120 244 L134 78 Z" fill={`url(#gw${id})`} />
       </g>
       <path d="M48 78 H152 L136 244 Q135 254 124 254 H76 Q65 254 64 244 Z" fill="none" stroke="rgba(255,255,255,.7)" strokeWidth="3" />
       <ellipse cx="100" cy="74" rx="56" ry="15" fill="#FFFDF8" />
@@ -36,8 +36,10 @@ export default function CupArt({ id = 'cup', className = 'cupart' }) {
       <path d="M92 31 Q100 12 108 31 Z" fill="#FFFDF8" />
       <path d="M52 70 Q80 82 100 66 T148 68" stroke="#5a2a14" strokeWidth="4.5" fill="none" strokeLinecap="round" />
       <path d="M62 52 Q90 62 110 50 T140 52" stroke="#5a2a14" strokeWidth="3.5" fill="none" strokeLinecap="round" />
-      <ellipse cx="124" cy="30" rx="15" ry="13" fill={`url(#st${id})`} transform="rotate(-18 124 30)" />
-      <path d="M112 20 l6 6 l6 -9 l5 9 l7 -6 l-4 10 h-18 z" fill="#2e9b4a" />
+      <g className="cup-topberry">
+        <ellipse cx="124" cy="30" rx="15" ry="13" fill={`url(#st${id})`} />
+        <path d="M112 20 l6 6 l6 -9 l5 9 l7 -6 l-4 10 h-18 z" fill="#2e9b4a" />
+      </g>
     </svg>
   );
 }

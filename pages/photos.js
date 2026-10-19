@@ -63,7 +63,7 @@ export default function Photos() {
   }, [openPhoto]);
 
   return (
-    <div className="site-shell">
+    <div className="site-shell fresh-look">
       <Head><title>{t.title}</title></Head>
       <SiteNav lang={lang} onLangChange={changeLang} />
       <main className="site-main">

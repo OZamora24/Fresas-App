@@ -35,6 +35,10 @@ html, body {
   font-family: 'Nunito', sans-serif;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
+  /* "clip" hides sideways overflow the same way, but unlike "hidden" it does
+     not turn <html>/<body> into scroll containers, which silently stopped the
+     order page's sticky total bar from ever sticking to the screen. */
+  overflow-x: clip;
 }
 
 h1, h2, h3, .display {
@@ -352,21 +356,14 @@ details[open] > summary .chev { transform: rotate(180deg); }
   /* Same standalone-app status-bar fix as .hero above. */
   padding-top: max(10px, calc(env(safe-area-inset-top) + 6px));
 }
-.site-mobile-brand-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 4px 2px 10px; }
+.site-mobile-brand-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 2px 2px; }
 .site-mobile-brand { color: var(--cream-2); font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 1.1rem; }
-.site-mobile-lang { display: flex; gap: 4px; width: 100%; padding: 4px; margin-bottom: 10px; background: rgba(0,0,0,0.24); border-radius: 14px; }
+.site-mobile-langpill { display: inline-flex; padding: 3px; gap: 2px; background: rgba(0,0,0,0.24); border-radius: 999px; flex-shrink: 0; }
 .site-mobile-lang-btn {
-  flex: 1; height: 44px; border: 0; border-radius: 11px; background: transparent;
-  color: var(--pink-soft); font-size: 16px; font-weight: 700;
+  min-width: 44px; height: 34px; border: 0; border-radius: 999px; background: transparent;
+  color: var(--pink-soft); font-size: 0.82rem; font-weight: 800; letter-spacing: 0.04em;
 }
 .site-mobile-lang-btn.on { background: var(--cream-2); color: var(--maroon); box-shadow: 0 1px 4px rgba(0,0,0,0.25); }
-.site-mobile-chips { display: flex; gap: 8px; overflow-x: auto; }
-.site-m-chip {
-  flex-shrink: 0; padding: 8px 14px; border-radius: 999px; border: 1.5px solid rgba(255,255,255,0.4);
-  background: transparent; color: var(--pink-soft); font-weight: 700; font-size: 0.84rem; white-space: nowrap;
-  text-decoration: none;
-}
-.site-m-chip.active { background: var(--cream-2); color: var(--maroon); border-color: var(--cream-2); }
 
 @media (max-width: 760px) {
   .site-shell { flex-direction: column; }
@@ -857,3 +854,143 @@ body.splash-active {
 .delete-bar .db-yes { background: #B3261E; color: #fff; border: 2px solid #fff; }
 .delete-bar button:disabled { opacity: 0.6; }
 .delete-bar button:focus-visible { outline: 2px solid var(--pink-soft); outline-offset: 2px; }
+
+/* ===================== "Fresh Classic" look =====================
+   The customer-facing pages (Home, Order, Catering, Photos, confirmation)
+   wrap themselves in .fresh-look. Same maroon / pink / cream brand, with more
+   depth, rounder cards, a floating bottom tab bar on phones. Admin is not
+   wrapped, so it is untouched. */
+
+/* ---- Floating bottom tab bar (phones only) ---- */
+.tabbar { display: none; }
+@media (max-width: 760px) {
+  .tabbar {
+    display: flex; align-items: center; justify-content: space-around;
+    position: fixed; z-index: 18; left: 12px; right: 12px; height: 62px;
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    max-width: 520px; margin: 0 auto;
+    background: rgba(255, 253, 249, 0.94);
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    border: 1.5px solid var(--line); border-radius: 26px;
+    box-shadow: 0 14px 28px rgba(80, 15, 25, 0.2);
+  }
+  .tabbar .tb-item {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+    width: 58px; height: 100%; text-decoration: none; color: var(--ink-soft);
+    font-weight: 800; font-size: 0.62rem;
+  }
+  .tabbar .tb-ic { font-size: 1.15rem; opacity: 0.7; }
+  .tabbar .tb-item.on { color: var(--maroon); }
+  .tabbar .tb-item.on .tb-ic { opacity: 1; }
+  .tabbar .tb-mid {
+    position: relative; width: 60px; height: 60px; margin-top: -30px; border-radius: 50%;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; text-decoration: none;
+    background: linear-gradient(160deg, #F0788F, #C9304E);
+    box-shadow: 0 10px 18px rgba(200, 40, 70, 0.45); border: 4px solid var(--page-bg);
+  }
+  .tabbar .tb-mid-ic { font-size: 1.55rem; line-height: 1; }
+  .tabbar .tb-mid-label { position: absolute; bottom: -19px; font-size: 0.62rem; font-weight: 800; color: var(--ink-soft); }
+  .tabbar .tb-mid.on .tb-mid-label { color: var(--maroon); }
+  /* Leave room so the last bit of the page is not hidden behind the bar. */
+  body.has-tabbar { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
+  /* The "Add to Home Screen" nudge must float above the bar, not under it. */
+  body.has-tabbar .a2hs-banner { bottom: calc(92px + env(safe-area-inset-bottom, 0px)); }
+}
+
+/* ---- Header / hero ---- */
+.fresh-look .hero,
+.fresh-look .home-hero {
+  position: relative; overflow: hidden;
+  background: linear-gradient(180deg, #7C1B2C, #56111E);
+  border-radius: 0 0 34px 34px;
+}
+.fresh-look .hero::before,
+.fresh-look .home-hero::before {
+  content: ""; position: absolute; right: -50px; top: -30px; width: 220px; height: 220px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(228, 102, 126, 0.5), transparent 68%); pointer-events: none;
+}
+.fresh-look .hero > *:not(.back-home-link), .fresh-look .home-hero > *:not(.cupart) { position: relative; }
+.fresh-look .home-hero > .cupart {
+  position: absolute; right: 10px; top: 10px; width: 80px; transform: rotate(7deg);
+  filter: drop-shadow(0 12px 14px rgba(0, 0, 0, 0.35)); pointer-events: none;
+}
+.fresh-look .home-hero { padding-top: 56px; }
+.fresh-look .home-hero .eyebrow { padding-right: 84px; }
+.fresh-look .home-btn-primary { box-shadow: 0 8px 18px rgba(0, 0, 0, 0.22); border-radius: 999px; }
+.fresh-look .home-btn-ghost { border-radius: 999px; }
+.fresh-look .btn-primary { border-radius: 999px; background: linear-gradient(160deg, #F0788F, #C9304E); box-shadow: 0 8px 16px rgba(200, 40, 70, 0.35); }
+.fresh-look .btn-primary:disabled { box-shadow: none; }
+.fresh-look .btn-outline-dark { border-radius: 999px; }
+@media (min-width: 761px) {
+  .fresh-look .home-hero > .cupart { right: 70px; top: 40px; width: 190px; }
+  .fresh-look .home-hero .eyebrow { padding-right: 0; }
+}
+
+/* ---- Home: pancake promo card + info tiles ---- */
+.fresh-look .home-promo {
+  display: flex; gap: 14px; align-items: center; text-decoration: none; color: var(--ink);
+  margin: 18px 16px 0; padding: 14px 16px; border-radius: 20px;
+  background: linear-gradient(120deg, #FCE9EE, #FFE3C9); border: 1.5px solid var(--line);
+  box-shadow: 0 8px 18px rgba(90, 20, 30, 0.07);
+}
+.fresh-look .home-promo-emoji { font-size: 2rem; }
+.fresh-look .home-promo b { display: block; font-family: 'Baloo 2', sans-serif; font-size: 1.05rem; color: var(--maroon); }
+.fresh-look .home-promo small { display: block; color: var(--ink-soft); font-weight: 700; font-size: 0.82rem; }
+.fresh-look .home-promo-tag {
+  display: inline-block; font-weight: 800; font-size: 0.62rem; letter-spacing: 0.1em; color: #fff;
+  background: var(--maroon); border-radius: 999px; padding: 3px 8px; margin-bottom: 3px;
+}
+@media (min-width: 761px) { .fresh-look .home-promo { margin: 24px 40px 24px; max-width: 520px; } }
+@media (max-width: 760px) {
+  .fresh-look .home-strip { background: transparent; gap: 10px; padding: 16px; }
+  .fresh-look .home-strip .cell {
+    border: 1.5px solid var(--line); border-radius: 18px; box-shadow: 0 8px 18px rgba(90, 20, 30, 0.07);
+    padding: 14px 16px;
+  }
+}
+
+/* ---- Order page: cards, chips, sticky total ---- */
+.fresh-look .base-card { border-radius: 18px; box-shadow: 0 6px 14px rgba(90, 20, 30, 0.05); }
+.fresh-look .base-card.selected { border-color: var(--pink); background: #fff; box-shadow: 0 8px 18px rgba(200, 60, 90, 0.18); }
+.fresh-look .chip.checked { background: var(--maroon); border-color: var(--maroon); color: #fff; }
+.fresh-look .chip.checked .badge { background: rgba(255, 255, 255, 0.22); color: #fff; }
+.fresh-look .chip.checked .mini-stepper button { background: #fff; color: var(--maroon); }
+.fresh-look .chip.checked .mini-stepper span { color: #fff; }
+.fresh-look .free-note { background: var(--pink-pale); border: 1px solid var(--line); }
+.fresh-look .field input[type="text"], .fresh-look .field textarea, .fresh-look .field select,
+.fresh-look .field input[type="tel"], .fresh-look .field input[type="date"] { border-radius: 14px; }
+.fresh-look .deal-banner, .fresh-look .repeat-order-box { border-radius: 20px; }
+.fresh-look .sheet { border-radius: 26px 26px 0 0; }
+.fresh-look .sticky-bar button { white-space: nowrap; }
+.fresh-look .sticky-bar .btn-primary { padding: 12px 14px; font-size: 0.88rem; }
+.fresh-look .sticky-bar .btn-outline-dark { padding: 12px 12px !important; font-size: 0.8rem !important; }
+.fresh-look .sticky-bar {
+  gap: 8px; padding: 12px 12px 12px 16px;
+  margin: 30px 12px 12px; border-radius: 22px;
+  background: linear-gradient(180deg, #7C1B2C, #56111E);
+  box-shadow: 0 14px 26px rgba(86, 17, 30, 0.4);
+}
+@media (max-width: 760px) {
+  /* Floats just above the tab bar instead of sitting under it. */
+  .fresh-look .sticky-bar { bottom: calc(92px + env(safe-area-inset-bottom, 0px)); }
+}
+@media (min-width: 761px) {
+  .fresh-look .sticky-bar { max-width: 616px; margin-left: auto; margin-right: auto; bottom: 12px; }
+}
+
+/* ---- Order confirmation ---- */
+.ok-circle {
+  width: 92px; height: 92px; border-radius: 50%; margin: 8px auto 14px;
+  display: grid; place-items: center; font-size: 2.6rem;
+  background: linear-gradient(160deg, #F0788F, #C9304E); box-shadow: 0 14px 26px rgba(200, 40, 70, 0.4);
+}
+.ok-ticket {
+  text-align: left; background: var(--card-bg); border: 1.5px solid var(--line); border-radius: 22px;
+  padding: 8px 18px; box-shadow: 0 10px 22px rgba(90, 20, 30, 0.08);
+}
+.ok-ticket p { margin: 0 !important; padding: 10px 0; border-bottom: 1.5px dashed var(--line); text-align: center; }
+.ok-ticket p:last-child { border-bottom: 0; }
+
+/* ---- Catering / Photos cards ---- */
+.fresh-look .catering-info-card { border-radius: 20px; border: 1.5px solid var(--line); box-shadow: 0 8px 18px rgba(90, 20, 30, 0.07); }
+.fresh-look .photo-grid img, .fresh-look .photo-tile-empty { border-radius: 18px; }

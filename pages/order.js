@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Script from 'next/script';
 import { BASES, PRICES, TOPPINGS, SYRUPS, toppingsCost, freeCupDeal, FREE_CUP_EVERY, todayDateKey, maxPreorderDateKey, formatDateKey, getAvailablePickupTimes, buildPickupTimes, formatWeekdaysList, MAX_EXTRA_TOPPING_QTY, PANCAKE_BASE_NAME, PANCAKE_SIZES, PANCAKE_TOPPINGS, isPancakeItem, pancakeSizeFor, pancakeItemCost, pancakeExtraCount, PANCAKE_EXTRA_TOPPING_PRICE, PANCAKE_MAX_EXTRA_TOPPINGS } from '../lib/menu';
 import AddToHomeBanner from '../components/AddToHomeBanner';
+import MobileTabBar from '../components/MobileTabBar';
 import { getSupabaseAdmin } from '../lib/supabaseAdmin';
 
 // Loads the shop settings (and today's booked-slot counts) on the SERVER so
@@ -1271,7 +1272,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
         })
       : null;
     return (
-      <div className="wrap" style={{ textAlign: 'center', paddingTop: 80 }}>
+      <div className="wrap fresh-look" style={{ textAlign: 'center', paddingTop: 80 }}>
         <Head>
           <title>{t.closedTitle} — Fresas con Crema</title>
           <link rel="manifest" href="/manifest-order.json" />
@@ -1286,13 +1287,14 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
         {reopensLabel && (
           <p style={{ color: 'var(--maroon)', fontWeight: 700 }}>{t.closedReopensAt(reopensLabel)}</p>
         )}
+        <MobileTabBar lang={lang} />
       </div>
     );
   }
 
   if (submitted) {
     return (
-      <div className="wrap" style={{ textAlign: 'center', paddingTop: 80 }}>
+      <div className="wrap fresh-look" style={{ textAlign: 'center', paddingTop: 48 }}>
         <Head>
           <title>{t.orderSent} — Fresas con Crema</title>
           <link rel="manifest" href="/manifest-order.json" />
@@ -1302,7 +1304,9 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
           <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
           <meta name="theme-color" content="#7C1B2C" />
         </Head>
-        <h1 style={{ color: 'var(--maroon)' }}>{t.orderSent}</h1>
+        <div className="ok-circle" aria-hidden="true">🍓</div>
+        <h1 style={{ color: 'var(--maroon)', margin: '0 0 14px' }}>{t.orderSent}</h1>
+        <div className="ok-ticket">
         {confirmedOrderNumber && (
           <p style={{ color: 'var(--maroon)', fontWeight: 800, fontSize: '1.15rem', margin: '4px 0 10px' }}>
             {t.orderNumberLabel(confirmedOrderNumber, name)}
@@ -1318,6 +1322,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
         <p style={{ color: 'var(--ink-soft)', fontSize: '0.9rem' }}>
           {confirmedPaymentMethod === 'zelle' ? t.zelleFollowUp(confirmedTotal.toFixed(2), ZELLE_PHONE) : t.cashFollowUp(confirmedTotal.toFixed(2))}
         </p>
+        </div>
         {(!notifyResponded || notifyError) && (
           <div className="notify-card">
             <div className="notify-icon">🔔</div>
@@ -1343,12 +1348,13 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
             {t.autoReturn(redirectSeconds)}
           </p>
         )}
+        <MobileTabBar lang={lang} />
       </div>
     );
   }
 
   return (
-    <div>
+    <div className="fresh-look">
       <Head>
         <title>{t.title}</title>
         <link rel="manifest" href="/manifest-order.json" />
@@ -1394,7 +1400,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
               type="button"
               onClick={() => { setMode(key); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
               style={{
-                flex: 1, padding: '10px 6px', borderRadius: 14, cursor: 'pointer',
+                position: 'relative', flex: 1, padding: '11px 6px', borderRadius: 999, cursor: 'pointer', whiteSpace: 'nowrap',
                 fontFamily: "'Baloo 2', sans-serif", fontWeight: 700, fontSize: '0.98rem',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                 border: `2px solid ${mode === key ? 'var(--maroon)' : 'var(--line)'}`,
@@ -1405,7 +1411,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
             >
               {label}
               {key === 'pancakes' && (
-                <span style={{ fontFamily: "'Nunito', sans-serif", fontSize: '0.6rem', fontWeight: 800, background: 'var(--pink)', color: '#fff', borderRadius: 999, padding: '1px 6px', letterSpacing: '0.04em' }}>
+                <span style={{ position: 'absolute', top: -7, right: 10, fontFamily: "'Nunito', sans-serif", fontSize: '0.6rem', fontWeight: 800, background: 'var(--pink)', color: '#fff', borderRadius: 999, padding: '1px 6px', letterSpacing: '0.04em' }}>
                   {t.tabNew}
                 </span>
               )}
@@ -1865,6 +1871,8 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
           </button>
         </div>
       </div>
+
+      <MobileTabBar lang={lang} />
 
       <div className={`overlay center-modal-high${showSheet ? ' open' : ''}`} onClick={(e) => e.target === e.currentTarget && setShowSheet(false)}>
         <div className="sheet sheet-centered">

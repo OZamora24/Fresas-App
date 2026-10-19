@@ -3,7 +3,8 @@ import Head from 'next/head';
 import Link from 'next/link';
 import SiteNav from '../components/SiteNav';
 import AddToHomeBanner from '../components/AddToHomeBanner';
-import { buildPickupTimes, todayDateKey, nowMinutesInShopTz, timeStringToMinutes } from '../lib/menu';
+import CupArt from '../components/CupArt';
+import { PANCAKE_SIZES, buildPickupTimes, todayDateKey, nowMinutesInShopTz, timeStringToMinutes } from '../lib/menu';
 import { getSupabaseAdmin } from '../lib/supabaseAdmin';
 
 // Fetches the shop settings on the SERVER, before the page is ever sent to
@@ -43,6 +44,9 @@ const STR = {
     heading: 'Handmade fresas con crema, made to order.',
     tagline: "Build your cup, pick a pickup time, and we'll have it ready — sweet, fresh, and worth the trip.",
     orderNow: 'Order Now',
+    pancakeNew: 'NEW',
+    pancakeTitle: 'Mini Pancakes',
+    pancakeSub: (p) => `Fluffy, made to order · from $${p}`,
     seeCatering: 'See Catering Info',
     todaysHours: "Today's hours",
     closedToday: 'Closed today',
@@ -60,6 +64,9 @@ const STR = {
     heading: 'Fresas con crema hechas a mano, preparadas al pedirlas.',
     tagline: 'Arma tu vaso, elige una hora de recogida, y lo tendremos listo — dulce, fresco, y vale la pena.',
     orderNow: 'Ordenar Ahora',
+    pancakeNew: 'NUEVO',
+    pancakeTitle: 'Mini Pancakes',
+    pancakeSub: (p) => `Esponjosos, hechos al momento · desde $${p}`,
     seeCatering: 'Ver Info de Catering',
     todaysHours: 'Horario de hoy',
     closedToday: 'Cerrado hoy',
@@ -165,7 +172,7 @@ export default function Home({ initialSettings }) {
   }
 
   return (
-    <div className="site-shell">
+    <div className="site-shell fresh-look">
       <Head>
         <title>{t.title}</title>
         <link rel="manifest" href="/manifest-home.json" />
@@ -179,6 +186,7 @@ export default function Home({ initialSettings }) {
       <AddToHomeBanner lang={lang} storageKey="fresasA2HSSeen" />
       <main className="site-main">
         <div className="home-hero">
+          <CupArt id="home" className="cupart" />
           {isOpen !== null && (
             <div className="home-status-row">
               <span className={`home-status-badge${effectivelyOpen ? (closingSoon ? ' closing-soon' : '') : ' closed'}`}>
@@ -194,6 +202,17 @@ export default function Home({ initialSettings }) {
             <Link href="/catering" className="home-btn-ghost">{t.seeCatering}</Link>
           </div>
         </div>
+
+        {settings?.pancakes_enabled && (
+          <Link href="/order" className="home-promo">
+            <span className="home-promo-emoji">🥞</span>
+            <span>
+              <span className="home-promo-tag">{t.pancakeNew}</span>
+              <b>{t.pancakeTitle}</b>
+              <small>{t.pancakeSub(PANCAKE_SIZES[0].price)}</small>
+            </span>
+          </Link>
+        )}
 
         <div className="home-strip">
           <div className="cell">

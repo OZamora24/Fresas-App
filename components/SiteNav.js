@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
+import MobileTabBar from './MobileTabBar';
 
 const NAV_ITEMS = [
   { href: '/', icon: '🏠', label: { en: 'Home', es: 'Inicio' } },
@@ -8,9 +9,9 @@ const NAV_ITEMS = [
   { href: '/photos', icon: '📸', label: { en: 'Photos', es: 'Fotos' } },
 ];
 
-// Shared site navigation: a left sidebar on wide screens, a horizontal
-// pill tab strip on narrow ones (same breakpoint/pattern as the rest of
-// the site's CSS, see .site-sidebar / .site-mobile-tabs in globals.css).
+// Shared site navigation: a left sidebar on wide screens; on phones a slim
+// brand + language bar on top and the floating bottom tab bar (see
+// MobileTabBar). Same breakpoint as the rest of the site's CSS.
 export default function SiteNav({ lang = 'en', onLangChange }) {
   const router = useRouter();
 
@@ -19,37 +20,31 @@ export default function SiteNav({ lang = 'en', onLangChange }) {
       <nav className="site-mobile-tabs">
         <div className="site-mobile-brand-row">
           <div className="site-mobile-brand">🍓 Fresas con Crema</div>
-        </div>
-        {onLangChange && (
-          <div className="site-mobile-lang">
-            <button
-              type="button"
-              className={`site-mobile-lang-btn${lang === 'en' ? ' on' : ''}`}
-              onClick={() => onLangChange('en')}
-            >
-              {lang === 'en' ? '✓ ' : ''}English
-            </button>
-            <button
-              type="button"
-              className={`site-mobile-lang-btn${lang === 'es' ? ' on' : ''}`}
-              onClick={() => onLangChange('es')}
-            >
-              {lang === 'es' ? '✓ ' : ''}Español
-            </button>
-          </div>
-        )}
-        <div className="site-mobile-chips">
-          {NAV_ITEMS.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`site-m-chip${router.pathname === item.href ? ' active' : ''}`}
-            >
-              {item.label[lang] || item.label.en}
-            </Link>
-          ))}
+          {onLangChange && (
+            <div className="site-mobile-langpill" role="group" aria-label="Language">
+              <button
+                type="button"
+                className={`site-mobile-lang-btn${lang === 'en' ? ' on' : ''}`}
+                onClick={() => onLangChange('en')}
+                aria-label="English"
+                aria-pressed={lang === 'en'}
+              >
+                EN
+              </button>
+              <button
+                type="button"
+                className={`site-mobile-lang-btn${lang === 'es' ? ' on' : ''}`}
+                onClick={() => onLangChange('es')}
+                aria-label="Español"
+                aria-pressed={lang === 'es'}
+              >
+                ES
+              </button>
+            </div>
+          )}
         </div>
       </nav>
+      <MobileTabBar lang={lang} />
 
       <aside className="site-sidebar">
         <div className="site-sidebar-brand">🍓 Fresas<br />con Crema</div>

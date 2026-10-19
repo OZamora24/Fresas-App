@@ -20,29 +20,27 @@ export default function SiteNav({ lang = 'en', onLangChange }) {
       <nav className="site-mobile-tabs">
         <div className="site-mobile-brand-row">
           <div className="site-mobile-brand">🍓 Fresas con Crema</div>
-          {onLangChange && (
-            <div className="site-mobile-langpill" role="group" aria-label="Language">
-              <button
-                type="button"
-                className={`site-mobile-lang-btn${lang === 'en' ? ' on' : ''}`}
-                onClick={() => onLangChange('en')}
-                aria-label="English"
-                aria-pressed={lang === 'en'}
-              >
-                EN
-              </button>
-              <button
-                type="button"
-                className={`site-mobile-lang-btn${lang === 'es' ? ' on' : ''}`}
-                onClick={() => onLangChange('es')}
-                aria-label="Español"
-                aria-pressed={lang === 'es'}
-              >
-                ES
-              </button>
-            </div>
-          )}
         </div>
+        {onLangChange && (
+          <div className="site-mobile-lang" role="group" aria-label="Language">
+            <button
+              type="button"
+              className={`site-mobile-lang-btn${lang === 'en' ? ' on' : ''}`}
+              onClick={() => onLangChange('en')}
+              aria-pressed={lang === 'en'}
+            >
+              {lang === 'en' ? '✓ ' : ''}English
+            </button>
+            <button
+              type="button"
+              className={`site-mobile-lang-btn${lang === 'es' ? ' on' : ''}`}
+              onClick={() => onLangChange('es')}
+              aria-pressed={lang === 'es'}
+            >
+              {lang === 'es' ? '✓ ' : ''}Español
+            </button>
+          </div>
+        )}
       </nav>
       <MobileTabBar lang={lang} />
 

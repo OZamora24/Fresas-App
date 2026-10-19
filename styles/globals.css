@@ -356,12 +356,12 @@ details[open] > summary .chev { transform: rotate(180deg); }
   /* Same standalone-app status-bar fix as .hero above. */
   padding-top: max(10px, calc(env(safe-area-inset-top) + 6px));
 }
-.site-mobile-brand-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 2px 2px; }
+.site-mobile-brand-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 4px 2px 6px; }
 .site-mobile-brand { color: var(--cream-2); font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 1.1rem; }
-.site-mobile-langpill { display: inline-flex; padding: 3px; gap: 2px; background: rgba(0,0,0,0.24); border-radius: 999px; flex-shrink: 0; }
+.site-mobile-lang { display: flex; gap: 4px; width: 100%; padding: 4px; margin: 6px 0 4px; background: rgba(0,0,0,0.24); border-radius: 16px; }
 .site-mobile-lang-btn {
-  min-width: 44px; height: 34px; border: 0; border-radius: 999px; background: transparent;
-  color: var(--pink-soft); font-size: 0.82rem; font-weight: 800; letter-spacing: 0.04em;
+  flex: 1; height: 46px; border: 0; border-radius: 12px; background: transparent;
+  color: var(--pink-soft); font-size: 16px; font-weight: 800;
 }
 .site-mobile-lang-btn.on { background: var(--cream-2); color: var(--maroon); box-shadow: 0 1px 4px rgba(0,0,0,0.25); }
 

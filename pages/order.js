@@ -311,7 +311,6 @@ const STR = {
     closedDefault: "We're not taking orders right now — please check back soon!",
     closedReopensAt: (when) => `We'll be back ${when}!`,
     fullSuffix: ' (FULL)',
-    almostFullSuffix: ' (1 spot left)',
   },
   es: {
     title: 'Fresas con Crema — Arma tu Vaso',
@@ -460,7 +459,6 @@ const STR = {
     closedDefault: 'No estamos tomando órdenes en este momento — ¡vuelve pronto!',
     closedReopensAt: (when) => `¡Regresamos ${when}!`,
     fullSuffix: ' (LLENO)',
-    almostFullSuffix: ' (queda 1 lugar)',
   },
 };
 
@@ -1794,10 +1792,9 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
               >
                 {availableTimes.map((tm) => {
                   const isFull = (slotCounts[tm] || 0) >= slotLimit;
-                  const isAlmostFull = !isFull && slotLimit - (slotCounts[tm] || 0) === 1;
                   return (
                     <option key={tm} value={tm} disabled={isFull}>
-                      {tm}{isFull ? t.fullSuffix : isAlmostFull ? t.almostFullSuffix : ''}
+                      {tm}{isFull ? t.fullSuffix : ''}
                     </option>
                   );
                 })}

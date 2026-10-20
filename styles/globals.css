@@ -75,8 +75,8 @@ button {
 .back-home-link:hover { opacity: 1; }
 
 .section { padding: 26px 0 6px; }
-.section h2 { font-weight: 700; font-size: 1.25rem; color: var(--maroon); margin: 0 0 4px; }
-.section .hint { margin: 0 0 14px; color: var(--ink-soft); font-size: 0.9rem; }
+.section h2 { font-weight: 700; font-size: 1.25rem; color: var(--maroon); margin: 0 0 8px; }
+.section .hint { margin: 0 0 20px; color: var(--ink-soft); font-size: 0.9rem; }
 
 /* Admin dashboard: lets the reorderable sections (Shop status, sales link,
    Promo codes, Site photos, Export order history) be visually reordered

@@ -1154,3 +1154,7 @@ body.splash-active {
 /* Tap responsiveness: no double-tap-zoom wait, no grey flash on tap. */
 html { touch-action: manipulation; }
 button, a, .chip, .base-card, label, summary { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+
+.sheet .line { gap: 16px; align-items: flex-start; }
+.sheet .line > span { flex-shrink: 0; }
+.sheet .line > strong { text-align: right; min-width: 0; overflow-wrap: anywhere; }

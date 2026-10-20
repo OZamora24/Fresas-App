@@ -511,6 +511,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [confirmedOrderNumber, setConfirmedOrderNumber] = useState(null);
+  const [confirmedOrderId, setConfirmedOrderId] = useState(null);
   const [confirmedTotal, setConfirmedTotal] = useState(0);
   const [confirmedPaymentMethod, setConfirmedPaymentMethod] = useState('zelle');
   const [redirectSeconds, setRedirectSeconds] = useState(null);
@@ -573,6 +574,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
       await window.OneSignal.Notifications.requestPermission();
       markNotifyResponded();
       await window.OneSignal.User.addTag('role', 'customer');
+      if (confirmedOrderId) await window.OneSignal.User.addTag('order_id', confirmedOrderId);
       if (!window.OneSignal.Notifications.permission) {
         setNotifyError(t.notifyDenied);
       }
@@ -581,6 +583,20 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
       markNotifyResponded();
     }
   }
+
+  // A customer who already allowed notifications on an earlier order never
+  // sees the opt-in card again, so tag their phone with each new order here.
+  // That is how the "leave a review" push finds the right phone later.
+  useEffect(() => {
+    if (!submitted || !confirmedOrderId || !oneSignalReady) return;
+    try {
+      if (window.OneSignal?.Notifications?.permission) {
+        window.OneSignal.User.addTag('order_id', confirmedOrderId);
+      }
+    } catch (e) {
+      // push not available on this device — nothing to do
+    }
+  }, [submitted, confirmedOrderId, oneSignalReady]);
 
   // Restore an in-progress order (if any) from localStorage, so a
   // customer who navigates to Home and back to Order doesn't lose what
@@ -1211,6 +1227,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
       }
       const body = await res.json().catch(() => ({}));
       setConfirmedOrderNumber(body.order?.order_number ?? null);
+      setConfirmedOrderId(body.order?.id ?? null);
       // Remember this order on this phone so the Reviews page knows the
       // customer has ordered and may leave a review.
       try {

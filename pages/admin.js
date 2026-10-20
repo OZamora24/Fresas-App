@@ -1233,6 +1233,20 @@ export default function Admin() {
                 </button>
               </div>
               <p className="hint-sm">When on, customers can't submit an order without a valid phone number — so every order can get a confirmation text and the "I'm here" arrival link.</p>
+
+              <div className="field-lbl">Review request</div>
+              <div className="toggle-inline">
+                <span className="ti-label">⭐ Ask for a review 1 min after "done"</span>
+                <button
+                  type="button"
+                  className={`pill-btn${settings.review_push_enabled ? ' primary' : ''}`}
+                  onClick={() => saveSettings({ review_push_enabled: !settings.review_push_enabled })}
+                  disabled={savingSettings}
+                >
+                  {settings.review_push_enabled ? 'On' : 'Off'}
+                </button>
+              </div>
+              <p className="hint-sm">When on, a customer who allowed notifications on their confirmation screen gets a push one minute after you mark their order done, with a button to the Reviews page. Sent once per order.</p>
             </div>
 
             <div className="order-card" style={{ marginTop: 10 }}>

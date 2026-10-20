@@ -1158,3 +1158,31 @@ button, a, .chip, .base-card, label, summary { touch-action: manipulation; -webk
 .sheet .line { gap: 16px; align-items: flex-start; }
 .sheet .line > span { flex-shrink: 0; }
 .sheet .line > strong { text-align: right; min-width: 0; overflow-wrap: anywhere; }
+
+/* "Your order" sheet, Pickup-first layout */
+.rev-hero {
+  margin: -24px -22px 14px; padding: 20px 22px 22px; color: #fff;
+  background: linear-gradient(160deg, var(--maroon), var(--maroon-deep));
+  border-radius: 22px 22px 26px 26px;
+}
+.sheet .rev-hero-label {
+  margin: 0; color: #fff; opacity: 0.78; font-family: 'Nunito', sans-serif; font-weight: 800;
+  font-size: 0.7rem; letter-spacing: 0.14em; text-transform: uppercase;
+}
+.rev-hero-time { font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 2.3rem; line-height: 1.1; margin: 2px 0 6px; }
+.rev-hero-who { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 14px; font-size: 0.86rem; font-weight: 700; }
+.rev-hero-map {
+  color: #fff; text-decoration: underline; text-underline-offset: 3px; font-weight: 800;
+  -webkit-tap-highlight-color: transparent;
+}
+.rev-hero-map:active { opacity: 0.7; }
+.rev-item { padding: 4px 0 8px; border-bottom: 1px dashed var(--line); }
+.rev-row { display: flex; gap: 10px; align-items: flex-start; padding: 7px 0; font-size: 0.94rem; }
+.rev-row em { font-style: normal; width: 24px; text-align: center; flex: none; }
+.rev-row > div { min-width: 0; flex: 1; }
+.rev-row b { display: block; }
+.rev-row span { display: block; color: var(--ink-soft); font-size: 0.84rem; font-weight: 600; overflow-wrap: anywhere; }
+.sheet .rev-total {
+  display: flex; justify-content: space-between; align-items: baseline; margin-top: 16px;
+  font-family: 'Baloo 2', sans-serif; font-weight: 800; color: var(--maroon); font-size: 1.5rem;
+}

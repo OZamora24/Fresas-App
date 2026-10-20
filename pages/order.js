@@ -143,6 +143,14 @@ function summarizeToppings(list, lang) {
 const PICKUP_ADDRESS = '1526 W Bonnie View Dr, Rialto, CA 92376';
 const ZELLE_PHONE = '(909) 725-2384';
 
+// Keeps a phone number on one line: the browser may break a sentence anywhere,
+// but never inside the number (no more "(909) 725-" / "2384" splits).
+function keepPhoneTogether(text, phoneStr) {
+  const parts = String(text).split(phoneStr);
+  if (parts.length < 2) return text;
+  return parts.flatMap((part, i) => (i === 0 ? [part] : [<span key={i} style={{ whiteSpace: 'nowrap' }}>{phoneStr}</span>, part]));
+}
+
 // Pickup address becomes a tappable link: Apple devices open Apple Maps,
 // everything else opens Google Maps (which hands off to the Google Maps app
 // on Android). Both URLs are already filled in with the shop's address.
@@ -556,6 +564,9 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [contactDone, setContactDone] = useState(false);
+  // Decided after mount so the server-rendered page and the phone agree on the maps link.
+  const [appleDevice, setAppleDevice] = useState(false);
+  useEffect(() => { setAppleDevice(isAppleDevice()); }, []);
   const [confirmedOrderNumber, setConfirmedOrderNumber] = useState(null);
   const [confirmedOrderId, setConfirmedOrderId] = useState(null);
   const [confirmedTotal, setConfirmedTotal] = useState(0);
@@ -1429,7 +1440,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
         </p>
         <a
           className="pickup-map"
-          href={pickupMapsUrl(isAppleDevice())}
+          href={pickupMapsUrl(appleDevice)}
           target="_blank"
           rel="noopener noreferrer"
         >
@@ -1438,10 +1449,10 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
             <strong>{PICKUP_ADDRESS.split(',')[0]}</strong>
             <small>{PICKUP_ADDRESS.split(',').slice(1).join(',').trim()}</small>
           </span>
-          <span className="pickup-map-badge">{t.openInMaps(isAppleDevice())}</span>
+          <span className="pickup-map-badge">{t.openInMaps(appleDevice)}</span>
         </a>
         <p style={{ color: 'var(--ink-soft)', fontSize: '0.9rem' }}>
-          {confirmedPaymentMethod === 'zelle' ? t.zelleFollowUp(confirmedTotal.toFixed(2), ZELLE_PHONE) : t.cashFollowUp(confirmedTotal.toFixed(2))}
+          {confirmedPaymentMethod === 'zelle' ? keepPhoneTogether(t.zelleFollowUp(confirmedTotal.toFixed(2), ZELLE_PHONE), ZELLE_PHONE) : t.cashFollowUp(confirmedTotal.toFixed(2))}
         </p>
         </div>
         {!contactDone && !contactCardHidden() && (
@@ -2038,25 +2049,41 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
 
       <div className={`overlay center-modal-high${showSheet ? ' open' : ''}`} onClick={(e) => e.target === e.currentTarget && setShowSheet(false)}>
         <div className="sheet sheet-centered">
-          <h3>{t.yourOrder}</h3>
+          <div className="rev-hero">
+            <h3 className="rev-hero-label">{t.pickup} · {formatDateKey(pickupDate, lang)}</h3>
+            <div className="rev-hero-time">{pickup}</div>
+            <div className="rev-hero-who">
+              <span>{t.name}: {name || '—'}</span>
+              <a
+                className="rev-hero-map"
+                href={pickupMapsUrl(appleDevice)}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                📍 {PICKUP_ADDRESS.split(',')[0]} <span aria-hidden="true">↗</span>
+              </a>
+            </div>
+          </div>
           {dealEnabled && <div style={{ marginBottom: 6 }}>{renderDealBanner()}</div>}
           {previewItems.map((item, i) => {
             const itemBase = BASES.find((b) => b.id === item.base);
             const itemIsRim = item.base === 'bananapudding' || item.base === 'gansito';
             if (isPancakeItem(item)) {
               return (
-                <div key={i} style={{ padding: '10px 0', borderBottom: '1px dashed var(--line)' }}>
-                  <div className="line" style={{ borderBottom: 'none', paddingBottom: 2 }}>
-                    <span>{t.base}</span><strong>🥞 {t.pancakeHeroTitle} × {item.qty}</strong>
+                <div key={i} className="rev-item">
+                  <div className="rev-row">
+                    <em aria-hidden="true">🥞</em>
+                    <div>
+                      <b>{t.pancakeHeroTitle} × {item.qty} · {t.pancakeCount(item.size)}</b>
+                      <span>{t.toppings}: {item.toppings.length ? summarizeToppings(item.toppings, lang) : t.none}</span>
+                    </div>
                   </div>
-                  <div className="line" style={{ borderBottom: 'none', paddingBottom: 2 }}>
-                    <span>{t.pancakePackLabel}</span><strong>{t.pancakeCount(item.size)}</strong>
-                  </div>
-                  <div className="line" style={{ borderBottom: 'none', paddingBottom: 2 }}>
-                    <span>{t.toppings}</span><strong>{item.toppings.length ? summarizeToppings(item.toppings, lang) : t.none}</strong>
-                  </div>
-                  <div className="line" style={{ borderBottom: 'none', paddingBottom: pancakeExtraCount(item) > 0 ? 2 : undefined }}>
-                    <span>{t.syrup}</span><strong>{item.syrups.length ? item.syrups.map((s) => SYRUP_LABELS[s][lang]).join(', ') : t.none}</strong>
+                  <div className="rev-row">
+                    <em aria-hidden="true">🍫</em>
+                    <div>
+                      <b>{t.syrup}</b>
+                      <span>{item.syrups.length ? item.syrups.map((s) => SYRUP_LABELS[s][lang]).join(', ') : t.none}</span>
+                    </div>
                   </div>
                   {pancakeExtraCount(item) > 0 && (
                     <div className="line" style={{ borderBottom: 'none' }}>
@@ -2068,29 +2095,25 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
               );
             }
             return (
-              <div key={i} style={{ padding: '10px 0', borderBottom: '1px dashed var(--line)' }}>
-                <div className="line" style={{ borderBottom: 'none', paddingBottom: 2 }}>
-                  <span>{t.base}</span><strong>{itemBase.name} × {item.qty}</strong>
-                </div>
-                <div className="line" style={{ borderBottom: 'none', paddingBottom: 2 }}>
-                  <span>{t.cupSizeLabel}</span><strong>{item.cupSize} oz</strong>
-                </div>
-                {itemIsRim && (
-                  <div className="line" style={{ borderBottom: 'none', paddingBottom: 2 }}>
-                    <span>{t.rimLabel}</span><strong>{item.includeRim ? t.rimYes : t.rimNo}</strong>
+              <div key={i} className="rev-item">
+                <div className="rev-row">
+                  <em aria-hidden="true">🍓</em>
+                  <div>
+                    <b>{itemBase.name} × {item.qty} · {item.cupSize} oz</b>
+                    {itemIsRim && <span>{t.rimLabel}: {item.includeRim ? t.rimYes : t.rimNo}</span>}
+                    <span>{t.toppings}: {item.toppings.length ? summarizeToppings(item.toppings, lang) : t.none}</span>
                   </div>
-                )}
-                <div className="line" style={{ borderBottom: 'none', paddingBottom: 2 }}>
-                  <span>{t.toppings}</span><strong>{item.toppings.length ? summarizeToppings(item.toppings, lang) : t.none}</strong>
                 </div>
-                <div className="line" style={{ borderBottom: 'none' }}>
-                  <span>{t.syrup}</span><strong>{item.syrups.length ? item.syrups.map((s) => SYRUP_LABELS[s][lang]).join(', ') : t.none}</strong>
+                <div className="rev-row">
+                  <em aria-hidden="true">🍫</em>
+                  <div>
+                    <b>{t.syrup}</b>
+                    <span>{item.syrups.length ? item.syrups.map((s) => SYRUP_LABELS[s][lang]).join(', ') : t.none}</span>
+                  </div>
                 </div>
               </div>
             );
           })}
-          <div className="line"><span>{t.pickup}</span><strong>{formatDateKey(pickupDate, lang)}, {pickup}</strong></div>
-          <div className="line"><span>{t.name}</span><strong>{name || '—'}</strong></div>
           {phone && <div className="line"><span>{t.phone}</span><strong>{phone}</strong></div>}
           {notes && <div className="line"><span>{t.notes}</span><strong>{notes}</strong></div>}
 
@@ -2149,7 +2172,6 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
               </div>
             </>
           )}
-          <div className="grand"><span>{t.total}</span><span>${finalTotal.toFixed(2)}</span></div>
           {dealDiscount > 0 && <div className="deal-saved">{t.dealSaved(dealDiscount.toFixed(2))}</div>}
 
           <div className="field" style={{ marginTop: 18 }}>
@@ -2180,7 +2202,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
             {paymentMethod === 'zelle' ? (
               <>
                 <p style={{ margin: '0 0 10px', fontSize: '0.9rem' }}>
-                  {t.zelleInstructions(finalTotal.toFixed(2), ZELLE_PHONE, name || t.yourNamePlaceholder)}
+                  {keepPhoneTogether(t.zelleInstructions(finalTotal.toFixed(2), ZELLE_PHONE, name || t.yourNamePlaceholder), ZELLE_PHONE)}
                 </p>
                 <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontWeight: 700, cursor: 'pointer' }}>
                   <input
@@ -2189,7 +2211,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
                     checked={paymentConfirmed}
                     onChange={(e) => setPaymentConfirmed(e.target.checked)}
                   />
-                  {t.zelleCheckbox(finalTotal.toFixed(2), ZELLE_PHONE)}
+                  <span style={{ flex: 1, minWidth: 0 }}>{keepPhoneTogether(t.zelleCheckbox(finalTotal.toFixed(2), ZELLE_PHONE), ZELLE_PHONE)}</span>
                 </label>
               </>
             ) : (
@@ -2210,7 +2232,8 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
             )}
           </div>
           {errorMsg && <p className="login-box error" style={{ margin: '10px 0' }}>{errorMsg}</p>}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16 }}>
+          <div className="rev-total"><span>{t.total}</span><span>${finalTotal.toFixed(2)}</span></div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12 }}>
             <button className="btn-primary" onClick={placeOrder} disabled={submitting || !paymentConfirmed || (shopStatus?.require_phone && !phone.trim())}>
               {submitting ? t.sending : paymentConfirmed ? t.placeOrder : t.confirmPaymentFirst}
             </button>

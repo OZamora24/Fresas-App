@@ -143,6 +143,41 @@ function summarizeToppings(list, lang) {
 const PICKUP_ADDRESS = '1526 W Bonnie View Dr, Rialto, CA 92376';
 const ZELLE_PHONE = '(909) 725-2384';
 
+// Pickup address becomes a tappable link: Apple devices open Apple Maps,
+// everything else opens Google Maps (which hands off to the Google Maps app
+// on Android). Both URLs are already filled in with the shop's address.
+function isAppleDevice() {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  return /iPad|iPhone|iPod/.test(ua) || (ua.includes('Macintosh') && 'ontouchend' in document);
+}
+function pickupMapsUrl(apple) {
+  return apple
+    ? `https://maps.apple.com/?q=${encodeURIComponent('Fresas con Crema')}&address=${encodeURIComponent(PICKUP_ADDRESS)}`
+    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(PICKUP_ADDRESS)}`;
+}
+
+// "Save us to your contacts" card on the order-confirmation screen. Once a
+// customer taps Add we never show it again on this device; "Not now" hides it
+// for 30 days so repeat customers aren't nagged on every order.
+const CONTACT_FILE = '/fresas-con-crema.vcf';
+const CONTACT_KEY = 'fresasContactCard';
+function contactCardHidden() {
+  try {
+    const v = window.localStorage.getItem(CONTACT_KEY);
+    if (!v) return false;
+    if (v === 'saved') return true;
+    return Date.now() < Number(v);
+  } catch (e) {
+    return false;
+  }
+}
+function rememberContactCard(saved) {
+  try {
+    window.localStorage.setItem(CONTACT_KEY, saved ? 'saved' : String(Date.now() + 30 * 24 * 60 * 60 * 1000));
+  } catch (e) {}
+}
+
 // Formats digits as the customer types into (xxx) xxx-xxxx, so the area
 // code is always easy to spot. Keeps just the first 10 digits typed —
 // extra characters (letters, extra digits) are dropped rather than
@@ -284,6 +319,11 @@ const STR = {
       <>We got your order for pickup at <strong>{pickup}</strong>. See you soon!</>
     ),
     pickupLocation: 'Pickup location:',
+    openInMaps: (apple) => (apple ? 'Apple Maps' : 'Google Maps'),
+    contactTitle: 'Save us to your contacts',
+    contactBody: 'Save our texting number so your order updates show up as Fresas con Crema, and keep our Instagram handy.',
+    contactBtn: 'Add to contacts',
+    contactNotNow: 'Not now',
     zelleFollowUp: (total, phone) => `We'll confirm once your $${total} Zelle payment to ${phone} comes through.`,
     cashFollowUp: (total) => `Have $${total} in cash ready at pickup.`,
     autoReturn: (secs) => `Returning to the order page in ${secs}s…`,
@@ -432,6 +472,11 @@ const STR = {
       <>Recibimos tu orden para recoger a las <strong>{pickup}</strong>. ¡Nos vemos pronto!</>
     ),
     pickupLocation: 'Lugar de recogida:',
+    openInMaps: (apple) => (apple ? 'Apple Maps' : 'Google Maps'),
+    contactTitle: 'Guárdanos en tus contactos',
+    contactBody: 'Guarda nuestro número de texto para que tus avisos de orden aparezcan como Fresas con Crema, y ten a la mano nuestro Instagram.',
+    contactBtn: 'Agregar a contactos',
+    contactNotNow: 'Ahora no',
     zelleFollowUp: (total, phone) => `Confirmaremos tu orden cuando llegue tu pago de $${total} por Zelle a ${phone}.`,
     cashFollowUp: (total) => `Ten $${total} en efectivo listos al recoger.`,
     autoReturn: (secs) => `Volviendo a la página de orden en ${secs}s…`,
@@ -510,6 +555,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
   const [promoError, setPromoError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [contactDone, setContactDone] = useState(false);
   const [confirmedOrderNumber, setConfirmedOrderNumber] = useState(null);
   const [confirmedOrderId, setConfirmedOrderId] = useState(null);
   const [confirmedTotal, setConfirmedTotal] = useState(0);
@@ -1378,13 +1424,60 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
         <p style={{ color: 'var(--ink-soft)', fontWeight: 700 }}>
           {formatDateKey(pickupDate, lang)}
         </p>
-        <p style={{ color: 'var(--ink-soft)', fontWeight: 700 }}>
-          {t.pickupLocation}<br />{PICKUP_ADDRESS}
+        <p style={{ color: 'var(--ink-soft)', fontWeight: 700, marginBottom: 6 }}>
+          {t.pickupLocation}
         </p>
+        <a
+          className="pickup-map"
+          href={pickupMapsUrl(isAppleDevice())}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <span className="pickup-map-pin" aria-hidden="true">📍</span>
+          <span className="pickup-map-text">
+            <strong>{PICKUP_ADDRESS.split(',')[0]}</strong>
+            <small>{PICKUP_ADDRESS.split(',').slice(1).join(',').trim()}</small>
+          </span>
+          <span className="pickup-map-badge">{t.openInMaps(isAppleDevice())}</span>
+        </a>
         <p style={{ color: 'var(--ink-soft)', fontSize: '0.9rem' }}>
           {confirmedPaymentMethod === 'zelle' ? t.zelleFollowUp(confirmedTotal.toFixed(2), ZELLE_PHONE) : t.cashFollowUp(confirmedTotal.toFixed(2))}
         </p>
         </div>
+        {!contactDone && !contactCardHidden() && (
+          <div className="notify-card contact-card">
+            <img className="contact-logo" src="/fresas-logo-contact.jpg" alt="Fresas con Crema" width="64" height="64" />
+            <div className="notify-content">
+              <div className="notify-title">{t.contactTitle}</div>
+              <div className="notify-body">{t.contactBody}</div>
+              <div className="notify-actions">
+                <a
+                  className="notify-btn-primary contact-btn"
+                  href={CONTACT_FILE}
+                  {...(isAppleDevice()
+                    ? { target: '_blank', rel: 'noopener noreferrer' }
+                    : { download: 'Fresas-con-Crema.vcf' })}
+                  onClick={() => {
+                    rememberContactCard(true);
+                    setTimeout(() => setContactDone(true), 400);
+                  }}
+                >
+                  {t.contactBtn}
+                </a>
+                <button
+                  type="button"
+                  className="notify-btn-ghost"
+                  onClick={() => {
+                    rememberContactCard(false);
+                    setContactDone(true);
+                  }}
+                >
+                  {t.contactNotNow}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         {(!notifyResponded || notifyError) && (
           <div className="notify-card">
             <div className="notify-icon">🔔</div>

@@ -1447,6 +1447,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
       )}
       <div className="hero order-head">
         <div className="order-head-top">
+          <Link href="/" className="order-home-btn">🏠 {lang === 'es' ? 'Inicio' : 'Home'}</Link>
           <h1>{t.placeAnOrder}</h1>
           <span className="order-cart" aria-hidden="true">
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#F5C451" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

@@ -240,14 +240,16 @@ export default function Home({ initialSettings }) {
               target="_blank"
               rel="noopener noreferrer"
               aria-label="@lovelyfresitas_ on Instagram"
-              className="val"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none', color: 'inherit' }}
+              className="val ig-link"
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect x="2.5" y="2.5" width="19" height="19" rx="5.5" stroke="currentColor" strokeWidth="1.8" />
-                <circle cx="12" cy="12" r="4.3" stroke="currentColor" strokeWidth="1.8" />
-                <circle cx="17.2" cy="6.8" r="1.15" fill="currentColor" />
-              </svg>
+              <span className="ig-badge" aria-hidden="true">
+                <svg width="23" height="23" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="2.5" y="2.5" width="19" height="19" rx="5.5" stroke="currentColor" strokeWidth="1.9" />
+                  <circle cx="12" cy="12" r="4.3" stroke="currentColor" strokeWidth="1.9" />
+                  <circle cx="17.2" cy="6.8" r="1.2" fill="currentColor" />
+                </svg>
+                <span className="ig-berry">🍓</span>
+              </span>
               @lovelyfresitas_
             </a>
           </div>

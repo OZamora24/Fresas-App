@@ -48,8 +48,6 @@ const STR = {
     tileCateringSub: 'Parties & events',
     tilePhotos: 'Photos',
     tilePhotosSub: 'See our cups',
-    tileReviews: 'Reviews',
-    tileReviewsSub: 'See what customers say',
     pancakeNew: 'NEW',
     pancakeTitle: 'Mini Pancakes',
     pancakeSub: (p) => `Fluffy, made to order · from $${p}`,
@@ -74,8 +72,6 @@ const STR = {
     tileCateringSub: 'Fiestas y eventos',
     tilePhotos: 'Fotos',
     tilePhotosSub: 'Mira nuestros vasos',
-    tileReviews: 'Reseñas',
-    tileReviewsSub: 'Lo que dicen nuestros clientes',
     pancakeNew: 'NUEVO',
     pancakeTitle: 'Mini Pancakes',
     pancakeSub: (p) => `Esponjosos, hechos al momento · desde $${p}`,
@@ -230,7 +226,6 @@ export default function Home({ initialSettings }) {
         <div className="home-tiles">
           <Link href="/catering" className="home-tile"><span className="home-tile-e">🎉</span><b>{t.tileCatering}</b><small>{t.tileCateringSub}</small></Link>
           <Link href="/photos" className="home-tile"><span className="home-tile-e">📸</span><b>{t.tilePhotos}</b><small>{t.tilePhotosSub}</small></Link>
-          <Link href="/reviews" className="home-tile wide"><span className="home-tile-e">⭐</span><b>{t.tileReviews}</b><small>{t.tileReviewsSub}</small></Link>
         </div>
 
         <div className="home-strip">

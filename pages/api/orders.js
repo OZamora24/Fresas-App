@@ -74,6 +74,49 @@ async function sendPushToAdmin(order) {
   }
 }
 
+// Asks the customer for a review about a minute after their order is marked
+// done. It finds their phone by the order_id tag set on the confirmation
+// screen, so it only reaches customers who allowed notifications. OneSignal
+// holds it and delivers it at send_after.
+async function sendReviewPush(order) {
+  const appId = process.env.ONESIGNAL_APP_ID;
+  const apiKey = process.env.ONESIGNAL_REST_API_KEY;
+  if (!appId || !apiKey) return false;
+
+  const es = order.language === 'es';
+  const url = `${APP_URL}/reviews`;
+  const at = new Date(Date.now() + 60 * 1000).toISOString();
+  const body = {
+    app_id: appId,
+    target_channel: 'push',
+    filters: [{ field: 'tag', key: 'order_id', relation: '=', value: order.id }],
+    headings: { en: es ? '¿Qué tal tu pedido? 🍓' : 'How was your order? 🍓' },
+    contents: {
+      en: es
+        ? '¡Gracias por recoger en Fresas con Crema! Cuéntanos qué te pareció, toma 20 segundos.'
+        : 'Thanks for picking up from Fresas con Crema! Tell us what you thought, it takes 20 seconds.',
+    },
+    url,
+    web_buttons: [{ id: 'review', text: es ? '⭐ Dejar una reseña' : '⭐ Leave a review', url }],
+    send_after: `${at.slice(0, 10)} ${at.slice(11, 19)} GMT+0000`,
+    ttl: 60 * 60 * 24,
+  };
+  try {
+    const r = await fetch('https://api.onesignal.com/notifications', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        Authorization: `Key ${apiKey}`,
+      },
+      body: JSON.stringify(body),
+    });
+    return r.ok;
+  } catch (e) {
+    console.error('OneSignal review push failed', e);
+    return false;
+  }
+}
+
 function normalizePhone(raw) {
   if (!raw) return null;
   const trimmed = String(raw).trim();
@@ -378,6 +421,15 @@ export default async function handler(req, res) {
 
     if (updates.status === 'done' && data?.customer_phone) {
       await sendReadyTextToCustomer(data);
+    }
+
+    // Review request push: only if the admin switch is on, and only once per order.
+    if (updates.status === 'done' && data && !data.review_push_sent) {
+      const { data: rs } = await supabase.from('shop_settings').select('review_push_enabled').eq('id', 1).single();
+      if (rs?.review_push_enabled) {
+        const sent = await sendReviewPush(data);
+        if (sent) await supabase.from('orders').update({ review_push_sent: true }).eq('id', id);
+      }
     }
 
     return res.status(200).json({ ok: true });

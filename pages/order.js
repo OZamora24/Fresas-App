@@ -564,6 +564,26 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
     try { window.localStorage.setItem('fresasNotifyResponded', '1'); } catch (e) {}
   }
 
+  // Tells the shop this phone has notifications on (for the admin count).
+  function reportPushDevice(orderId) {
+    const send = () => {
+      try {
+        const id = window.OneSignal?.User?.PushSubscription?.id;
+        if (!id) return false;
+        fetch('/api/push-devices', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ subscription_id: id, order_id: orderId || null }),
+        }).catch(() => {});
+        return true;
+      } catch (e) {
+        return false;
+      }
+    };
+    // The subscription id can take a moment to exist right after permission is granted.
+    if (!send()) setTimeout(send, 2500);
+  }
+
   async function enableCustomerPush() {
     setNotifyError('');
     if (!window.OneSignal) {
@@ -577,6 +597,8 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
       if (confirmedOrderId) await window.OneSignal.User.addTag('order_id', confirmedOrderId);
       if (!window.OneSignal.Notifications.permission) {
         setNotifyError(t.notifyDenied);
+      } else {
+        reportPushDevice(confirmedOrderId);
       }
     } catch (e) {
       setNotifyError(t.notifyGenericError);
@@ -592,6 +614,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
     try {
       if (window.OneSignal?.Notifications?.permission) {
         window.OneSignal.User.addTag('order_id', confirmedOrderId);
+        reportPushDevice(confirmedOrderId);
       }
     } catch (e) {
       // push not available on this device — nothing to do

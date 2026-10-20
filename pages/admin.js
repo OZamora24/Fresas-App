@@ -97,6 +97,14 @@ export default function Admin() {
   const [confirmingDelete, setConfirmingDelete] = useState(false); // delete bar is asking "are you sure?"
   const [deleteError, setDeleteError] = useState('');
   const [settings, setSettings] = useState(null);
+  const [pushStats, setPushStats] = useState(null);
+  useEffect(() => {
+    if (!authed) return;
+    fetch('/api/push-devices')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => j && setPushStats(j))
+      .catch(() => {});
+  }, [authed]);
   const [savingSettings, setSavingSettings] = useState(false);
   const [photos, setPhotos] = useState([]);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -1247,6 +1255,15 @@ export default function Admin() {
                 </button>
               </div>
               <p className="hint-sm">When on, a customer who allowed notifications on their confirmation screen gets a push one minute after you mark their order done, with a button to the Reviews page. Sent once per order.</p>
+              <div className="mini-card-inline" style={{ marginTop: 8 }}>
+                <span style={{ fontWeight: 800, color: 'var(--maroon)' }}>
+                  📲 {pushStats ? pushStats.devices : '…'} phone{pushStats && pushStats.devices === 1 ? '' : 's'} with notifications on
+                </span>
+              </div>
+              <p className="hint-sm">
+                {pushStats ? `${pushStats.reviewPushesSent} review request${pushStats.reviewPushesSent === 1 ? '' : 's'} sent so far. ` : ''}
+                Only these phones can get the review request, so a low number means most customers are skipping the "Get notified" button on the confirmation screen. Counted as of each phone's last visit.
+              </p>
             </div>
 
             <div className="order-card" style={{ marginTop: 10 }}>

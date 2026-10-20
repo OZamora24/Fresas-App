@@ -45,7 +45,7 @@ const BASE_THUMB = {
   biscoff: { e: '🍪', c: '#F0C98A' },
   ferrero: { e: '🍫', c: '#D9A98A' },
   bananapudding: { e: '🍌', c: '#F8E08A' },
-  gansito: { e: '🧁', c: '#F4A9B4' },
+  gansito: { img: '/gansito.png', c: '#F4A9B4' },
 };
 const priceLabel = (n) => (Number.isInteger(n) ? `$${n}` : `$${n.toFixed(2)}`);
 
@@ -1502,7 +1502,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
                 style={isSoldOut ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
               >
                 <input type="radio" name="base" checked={base === b.id} disabled={isSoldOut} onChange={() => setBase(b.id)} />
-                <span className="base-thumb" aria-hidden="true" style={{ background: BASE_THUMB[b.id]?.c }}>{BASE_THUMB[b.id]?.e}</span>
+                <span className="base-thumb" aria-hidden="true" style={{ background: BASE_THUMB[b.id]?.c }}>{BASE_THUMB[b.id]?.img ? <img src={BASE_THUMB[b.id].img} alt="" className="base-thumb-img" /> : BASE_THUMB[b.id]?.e}</span>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex' }}>
                     <span className="name">{b.name}</span>

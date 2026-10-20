@@ -1119,3 +1119,6 @@ body.splash-active {
 .rv-date { color: var(--ink-soft); font-size: 0.76rem; font-weight: 700; }
 .rv-text { margin: 8px 0 6px; line-height: 1.5; overflow-wrap: anywhere; }
 .rv-who { color: var(--ink-soft); font-weight: 800; font-size: 0.82rem; }
+.base-thumb-img { width: 40px; height: 40px; object-fit: contain; display: block; }
+/* On computers the left menu already has Catering, Photos and Reviews, so the tiles only show on phones. */
+@media (min-width: 761px) { .home-tiles { display: none; } }

@@ -877,8 +877,7 @@ body.splash-active {
     position: fixed; z-index: 18; left: 12px; right: 12px; height: 70px;
     bottom: var(--tb-bottom);
     max-width: 520px; margin: 0 auto;
-    background: rgba(255, 253, 249, 0.94);
-    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    background: #fffdf9;
     border: 1.5px solid var(--line); border-radius: 26px;
     box-shadow: 0 14px 28px rgba(80, 15, 25, 0.2);
   }
@@ -1151,3 +1150,7 @@ body.splash-active {
   background: var(--cream-2); border: 3px solid var(--pink-soft); align-self: flex-start;
 }
 .contact-btn { display: inline-block; text-decoration: none; }
+
+/* Tap responsiveness: no double-tap-zoom wait, no grey flash on tap. */
+html { touch-action: manipulation; }
+button, a, .chip, .base-card, label, summary { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }

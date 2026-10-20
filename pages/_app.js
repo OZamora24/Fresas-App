@@ -105,7 +105,13 @@ export default function App({ Component, pageProps }) {
   useEffect(() => {
     const root = document.documentElement;
     const body = document.body;
-    if (phase === 'gone') {
+    // The lock (maroon background + no scrolling) comes off the moment the
+    // splash STARTS fading, not when it finishes. Left on for the fade, the
+    // real page was sitting on a maroon <body> with scrolling locked, then
+    // snapped to cream (and, on computers, gained a scrollbar that nudged
+    // the layout sideways) the instant the splash unmounted — a visible
+    // color flash right after the loading screen.
+    if (phase !== 'visible') {
       root.classList.remove('splash-active');
       body.classList.remove('splash-active');
     } else {

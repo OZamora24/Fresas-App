@@ -1159,18 +1159,24 @@ button, a, .chip, .base-card, label, summary { touch-action: manipulation; -webk
 .sheet .line > span { flex-shrink: 0; }
 .sheet .line > strong { text-align: right; min-width: 0; overflow-wrap: anywhere; }
 
+/* Slim scrollbar with equal gutters on both sides, so the banner and
+   everything else stay centered even when the sheet scrolls. */
+.sheet.sheet-centered { scrollbar-width: thin; scrollbar-gutter: stable both-edges; }
+.sheet.sheet-centered::-webkit-scrollbar { width: 6px; }
+.sheet.sheet-centered::-webkit-scrollbar-thumb { background: rgba(124, 27, 44, 0.28); border-radius: 999px; }
+.sheet.sheet-centered::-webkit-scrollbar-track { background: transparent; }
 /* "Your order" sheet, Pickup-first layout */
 .rev-hero {
-  margin: -24px -22px 14px; padding: 20px 22px 22px; color: #fff;
+  margin: 0 0 14px; padding: 16px 18px 18px; color: #fff; text-align: center;
   background: linear-gradient(160deg, var(--maroon), var(--maroon-deep));
-  border-radius: 22px 22px 26px 26px;
+  border-radius: 18px;
 }
 .sheet .rev-hero-label {
   margin: 0; color: #fff; opacity: 0.78; font-family: 'Nunito', sans-serif; font-weight: 800;
   font-size: 0.7rem; letter-spacing: 0.14em; text-transform: uppercase;
 }
 .rev-hero-time { font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 2.3rem; line-height: 1.1; margin: 2px 0 6px; }
-.rev-hero-who { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 14px; font-size: 0.86rem; font-weight: 700; }
+.rev-hero-who { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 4px 16px; font-size: 0.86rem; font-weight: 700; }
 .rev-hero-map {
   color: #fff; text-decoration: underline; text-underline-offset: 3px; font-weight: 800;
   -webkit-tap-highlight-color: transparent;

@@ -1454,9 +1454,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
                 <a
                   className="notify-btn-primary contact-btn"
                   href={CONTACT_FILE}
-                  {...(isAppleDevice()
-                    ? { target: '_blank', rel: 'noopener noreferrer' }
-                    : { download: 'Fresas-con-Crema.vcf' })}
+                  {...(isAppleDevice() ? {} : { download: 'Fresas-con-Crema.vcf' })}
                   onClick={() => {
                     rememberContactCard(true);
                     setTimeout(() => setContactDone(true), 400);

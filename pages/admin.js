@@ -1409,6 +1409,10 @@ export default function Admin() {
             <Link href="/admin/sales" style={{ color: 'var(--maroon)', fontWeight: 700, textDecoration: 'none', display: 'inline-block', marginTop: 4 }}>
               📊 Open full sales dashboard →
             </Link>
+            <br />
+            <Link href="/admin/reviews" style={{ color: 'var(--maroon)', fontWeight: 700, textDecoration: 'none', display: 'inline-block', marginTop: 8 }}>
+              ⭐ Customer reviews (approve / hide) →
+            </Link>
           </div>
         </details>
 

@@ -1399,7 +1399,14 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
       <div className="hero order-head">
         <div className="order-head-top">
           <h1>{t.placeAnOrder}</h1>
-          <span className="order-cart" aria-hidden="true">🛒{cart.length > 0 && <b>{cart.length}</b>}</span>
+          <span className="order-cart" aria-hidden="true">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#F5C451" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="9" cy="20" r="1.4" fill="#F5C451" />
+              <circle cx="18" cy="20" r="1.4" fill="#F5C451" />
+              <path d="M2 3h3l2.6 12.2a1.5 1.5 0 0 0 1.5 1.2h8.6a1.5 1.5 0 0 0 1.5-1.1L21 7H6.2" />
+            </svg>
+            {cart.length > 0 && <b>{cart.length}</b>}
+          </span>
         </div>
         {LangToggle}
         {pancakesEnabled && (

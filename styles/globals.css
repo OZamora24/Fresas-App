@@ -864,10 +864,18 @@ body.splash-active {
 /* ---- Floating bottom tab bar (phones only) ---- */
 .tabbar { display: none; }
 @media (max-width: 760px) {
+  /* How far the bar floats above the screen bottom: tucked down near the edge
+     (just clear of the iPhone home indicator) so little shows underneath. */
+  :root { --tb-bottom: max(6px, calc(env(safe-area-inset-bottom, 0px) - 26px)); }
+  /* Solid strip under the bar so scrolling content never shows below it. */
+  body.has-tabbar::after {
+    content: ""; position: fixed; left: 0; right: 0; bottom: 0; z-index: 17; pointer-events: none;
+    height: calc(var(--tb-bottom) + 36px); background: var(--page-bg);
+  }
   .tabbar {
     display: flex; align-items: center; justify-content: space-around;
     position: fixed; z-index: 18; left: 12px; right: 12px; height: 62px;
-    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    bottom: var(--tb-bottom);
     max-width: 520px; margin: 0 auto;
     background: rgba(255, 253, 249, 0.94);
     -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
@@ -892,9 +900,9 @@ body.splash-active {
   .tabbar .tb-mid-label { position: absolute; bottom: -19px; font-size: 0.62rem; font-weight: 800; color: var(--ink-soft); }
   .tabbar .tb-mid.on .tb-mid-label { color: var(--maroon); }
   /* Leave room so the last bit of the page is not hidden behind the bar. */
-  body.has-tabbar { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
+  body.has-tabbar { padding-bottom: calc(var(--tb-bottom) + 96px); }
   /* The "Add to Home Screen" nudge must float above the bar, not under it. */
-  body.has-tabbar .a2hs-banner { bottom: calc(92px + env(safe-area-inset-bottom, 0px)); }
+  body.has-tabbar .a2hs-banner { bottom: calc(var(--tb-bottom) + 80px); }
 }
 
 /* ---- Header / hero ---- */
@@ -972,7 +980,7 @@ body.splash-active {
 }
 @media (max-width: 760px) {
   /* Floats just above the tab bar instead of sitting under it. */
-  .fresh-look .sticky-bar { bottom: calc(92px + env(safe-area-inset-bottom, 0px)); }
+  .fresh-look .sticky-bar { bottom: calc(var(--tb-bottom) + 80px); }
 }
 @media (min-width: 761px) {
   .fresh-look .sticky-bar { max-width: 616px; margin-left: auto; margin-right: auto; bottom: 12px; }

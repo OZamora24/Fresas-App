@@ -38,6 +38,17 @@ export async function getServerSideProps() {
 
 const ONESIGNAL_APP_ID = process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID;
 
+// Little picture tile shown beside each flavor.
+const BASE_THUMB = {
+  regular: { e: '🍓', c: '#F7CCD6' },
+  raffaello: { e: '🥥', c: '#F3E6EA' },
+  biscoff: { e: '🍪', c: '#F0C98A' },
+  ferrero: { e: '🍫', c: '#D9A98A' },
+  bananapudding: { e: '🍌', c: '#F8E08A' },
+  gansito: { e: '🧁', c: '#F4A9B4' },
+};
+const priceLabel = (n) => (Number.isInteger(n) ? `$${n}` : `$${n.toFixed(2)}`);
+
 const BASE_DESC = {
   regular: {
     en: 'Homemade sweet cream + 3 toppings of your choice',
@@ -158,8 +169,9 @@ const STR = {
     heroTag: 'Build your cup · Rialto, CA',
     cupSize: 'Cup size',
     cupSizeHint: 'Choose 12 oz or 24 oz — prices update automatically',
-    pickBase: 'Pick your base',
-    pickBaseHint: 'Every cup includes fresh-cut fresas & homemade sweet cream',
+    pickBase: 'Pick your flavor',
+    pickBaseHint: 'Every cup has homemade sweet cream',
+    placeAnOrder: 'Place an order',
     soldOut: 'Sold out today',
     toppings: 'Toppings',
     toppingsHint: 'Cheesecake & Ice Cream are always +$1 — tap +/- to add extra scoops. Any other extra topping is +$1.',
@@ -306,8 +318,9 @@ const STR = {
     heroTag: 'Arma tu vaso · Rialto, CA',
     cupSize: 'Tamaño del vaso',
     cupSizeHint: 'Elige 12 oz o 24 oz — los precios se actualizan automáticamente',
-    pickBase: 'Elige tu base',
-    pickBaseHint: 'Cada vaso incluye fresas recién cortadas y crema dulce casera',
+    pickBase: 'Elige tu sabor',
+    pickBaseHint: 'Todos llevan crema dulce casera',
+    placeAnOrder: 'Haz tu pedido',
     soldOut: 'Agotado hoy',
     toppings: 'Toppings',
     toppingsHint: 'Pastel de queso y helado siempre son +$1 — toca +/- para agregar más. Cualquier otro topping extra es +$1.',
@@ -1383,44 +1396,42 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
           }}
         />
       )}
-      <div className="hero">
-        <Link href="/" className="back-home-link">← Home</Link>
-        <h1><Link href="/" style={{ color: 'inherit', textDecoration: 'none' }}>{mode === 'pancakes' ? t.pancakeHeroTitle : 'Fresas con Crema'}</Link></h1>
-        <p>{mode === 'pancakes' ? t.pancakeHeroTag : t.heroTag}</p>
+      <div className="hero order-head">
+        <div className="order-head-top">
+          <h1>{t.placeAnOrder}</h1>
+          <span className="order-cart" aria-hidden="true">🛒{cart.length > 0 && <b>{cart.length}</b>}</span>
+        </div>
         {LangToggle}
+        {pancakesEnabled && (
+          <div className="seg" role="tablist">
+            {[['cups', t.tabCups], ['pancakes', t.tabPancakes]].map(([key, label]) => {
+              const [emoji, ...rest] = label.split(' ');
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  role="tab"
+                  aria-selected={mode === key}
+                  className={`seg-btn${mode === key ? ' on' : ''}`}
+                  onClick={() => { setMode(key); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                >
+                  <span className={`tab-ico ${key === 'pancakes' ? 'anim-flip' : 'anim-bounce'}`} aria-hidden="true">{emoji}</span>
+                  {rest.join(' ')}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <AddToHomeBanner lang={lang} storageKey="fresasA2HSSeen" />
 
       <div className="wrap">
-        {pancakesEnabled && <div style={{ display: 'flex', gap: 8, paddingTop: 16 }}>
-          {[['cups', t.tabCups], ['pancakes', t.tabPancakes]].map(([key, label]) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => { setMode(key); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-              style={{
-                position: 'relative', flex: 1, padding: '11px 6px', borderRadius: 999, cursor: 'pointer', whiteSpace: 'nowrap',
-                fontFamily: "'Baloo 2', sans-serif", fontWeight: 700, fontSize: '0.98rem',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                border: `2px solid ${mode === key ? 'var(--maroon)' : 'var(--line)'}`,
-                background: mode === key ? 'var(--maroon)' : '#fff',
-                color: mode === key ? 'var(--cream-2)' : 'var(--maroon)',
-                boxShadow: mode === key ? 'var(--shadow)' : 'none',
-              }}
-            >
-              {(() => {
-                const [emoji, ...rest] = label.split(' ');
-                return (<><span className={`tab-ico ${key === 'pancakes' ? 'anim-flip' : 'anim-bounce'}`} aria-hidden="true">{emoji}</span>{rest.join(' ')}</>);
-              })()}
-              {key === 'pancakes' && (
-                <span style={{ position: 'absolute', top: -7, right: 10, fontFamily: "'Nunito', sans-serif", fontSize: '0.6rem', fontWeight: 800, background: 'var(--pink)', color: '#fff', borderRadius: 999, padding: '1px 6px', letterSpacing: '0.04em' }}>
-                  {t.tabNew}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>}
+        <div className="steps" aria-hidden="true">
+          <i className="on" />
+          <i className={(mode === 'pancakes' ? pToppings.length : toppings.length) > 0 ? 'on' : ''} />
+          <i className={name.trim() && pickup ? 'on' : ''} />
+        </div>
         {dealEnabled && <div className="section" style={{ paddingBottom: 0 }}>{renderDealBanner()}</div>}
         {cart.length > 0 && (
           <div className="section">
@@ -1491,6 +1502,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
                 style={isSoldOut ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
               >
                 <input type="radio" name="base" checked={base === b.id} disabled={isSoldOut} onChange={() => setBase(b.id)} />
+                <span className="base-thumb" aria-hidden="true" style={{ background: BASE_THUMB[b.id]?.c }}>{BASE_THUMB[b.id]?.e}</span>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex' }}>
                     <span className="name">{b.name}</span>
@@ -1500,7 +1512,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
                       ) : isSoldOut ? (
                         t.soldOut
                       ) : (
-                        `$${PRICES[cupSize][b.id].toFixed(2)}`
+                        priceLabel(PRICES[cupSize][b.id])
                       )}
                     </span>
                   </div>

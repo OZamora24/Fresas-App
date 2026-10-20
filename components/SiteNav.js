@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { href: '/order', icon: '🛒', label: { en: 'Order Here', es: 'Ordenar' } },
   { href: '/catering', icon: '🎉', label: { en: 'Catering', es: 'Catering' } },
   { href: '/photos', icon: '📸', label: { en: 'Photos', es: 'Fotos' } },
+  { href: '/reviews', icon: '⭐', label: { en: 'Reviews', es: 'Reseñas' } },
 ];
 
 // Shared site navigation: a left sidebar on wide screens; on phones a slim

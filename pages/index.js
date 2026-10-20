@@ -41,9 +41,15 @@ const STR = {
     closingSoon: 'Closing soon',
     closedNow: 'Closed right now',
     eyebrow: 'Rialto, CA · Fresh daily',
-    heading: 'Handmade fresas con crema, made to order.',
-    tagline: "Build your cup, pick a pickup time, and we'll have it ready — sweet, fresh, and worth the trip.",
-    orderNow: 'Order Now',
+    heading: 'Fresas con crema, your way.',
+    tagline: 'Homemade sweet cream · Rialto, CA',
+    orderNow: 'Build your cup →',
+    tileCatering: 'Catering',
+    tileCateringSub: 'Parties & events',
+    tilePhotos: 'Photos',
+    tilePhotosSub: 'See our cups',
+    tileReviews: 'Reviews',
+    tileReviewsSub: 'See what customers say',
     pancakeNew: 'NEW',
     pancakeTitle: 'Mini Pancakes',
     pancakeSub: (p) => `Fluffy, made to order · from $${p}`,
@@ -61,9 +67,15 @@ const STR = {
     closedNow: 'Cerrado por ahora',
     closingSoon: 'Cerrando pronto',
     eyebrow: 'Rialto, CA · Fresco cada día',
-    heading: 'Fresas con crema hechas a mano, preparadas al pedirlas.',
-    tagline: 'Arma tu vaso, elige una hora de recogida, y lo tendremos listo — dulce, fresco, y vale la pena.',
-    orderNow: 'Ordenar Ahora',
+    heading: 'Fresas con crema, a tu manera.',
+    tagline: 'Crema dulce casera · Rialto, CA',
+    orderNow: 'Arma tu vaso →',
+    tileCatering: 'Catering',
+    tileCateringSub: 'Fiestas y eventos',
+    tilePhotos: 'Fotos',
+    tilePhotosSub: 'Mira nuestros vasos',
+    tileReviews: 'Reseñas',
+    tileReviewsSub: 'Lo que dicen nuestros clientes',
     pancakeNew: 'NUEVO',
     pancakeTitle: 'Mini Pancakes',
     pancakeSub: (p) => `Esponjosos, hechos al momento · desde $${p}`,
@@ -197,12 +209,10 @@ export default function Home({ initialSettings }) {
               </span>
             </div>
           )}
-          <div className="eyebrow">{t.eyebrow}</div>
           <h1>{t.heading}</h1>
           <p className="tagline">{t.tagline}</p>
           <div className="home-hero-ctas">
             <Link href="/order" className="home-btn-primary">{t.orderNow}</Link>
-            <Link href="/catering" className="home-btn-ghost">{t.seeCatering}</Link>
           </div>
         </div>
 
@@ -216,6 +226,12 @@ export default function Home({ initialSettings }) {
             </span>
           </Link>
         )}
+
+        <div className="home-tiles">
+          <Link href="/catering" className="home-tile"><span className="home-tile-e">🎉</span><b>{t.tileCatering}</b><small>{t.tileCateringSub}</small></Link>
+          <Link href="/photos" className="home-tile"><span className="home-tile-e">📸</span><b>{t.tilePhotos}</b><small>{t.tilePhotosSub}</small></Link>
+          <Link href="/reviews" className="home-tile wide"><span className="home-tile-e">⭐</span><b>{t.tileReviews}</b><small>{t.tileReviewsSub}</small></Link>
+        </div>
 
         <div className="home-strip">
           <div className="cell">

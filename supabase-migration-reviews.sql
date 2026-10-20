@@ -10,3 +10,5 @@ create table if not exists reviews (
   approved boolean not null default false
 );
 alter table reviews enable row level security;
+-- Each review is tied to one placed order (one review per order).
+alter table reviews add column if not exists order_id uuid unique;

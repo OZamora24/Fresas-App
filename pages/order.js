@@ -1213,6 +1213,17 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
       }
       const body = await res.json().catch(() => ({}));
       setConfirmedOrderNumber(body.order?.order_number ?? null);
+      // Remember this order on this phone so the Reviews page knows the
+      // customer has ordered and may leave a review.
+      try {
+        if (body.order?.id) {
+          const prev = JSON.parse(window.localStorage.getItem('fresasOrderIds') || '[]');
+          const ids = [body.order.id, ...prev.filter((x) => x !== body.order.id)].slice(0, 20);
+          window.localStorage.setItem('fresasOrderIds', JSON.stringify(ids));
+        }
+      } catch (e) {
+        // localStorage unavailable — the customer just won't be able to review from this browser
+      }
       setConfirmedTotal(finalOrderTotal);
       setConfirmedPaymentMethod(paymentMethod);
       // Reset every field, not just the cart — otherwise the auto-save

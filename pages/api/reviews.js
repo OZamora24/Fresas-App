@@ -35,7 +35,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'POST') {
-    const { rating, comment, name, lang, website } = req.body || {};
+    const { rating, comment, name, lang, website, orderIds } = req.body || {};
     // Hidden "website" field: real customers never fill it in, bots do.
     if (website) return res.status(200).json({ ok: true });
     const stars = parseInt(rating, 10);
@@ -47,7 +47,24 @@ export default async function handler(req, res) {
     if (text.length < 2 || text.length > 600) {
       return res.status(400).json({ error: 'Write a short comment (up to 600 characters).' });
     }
+    // Only customers who placed an order may review, one review per order.
+    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const ids = (Array.isArray(orderIds) ? orderIds : []).filter((x) => typeof x === 'string' && uuid.test(x)).slice(0, 20);
+    if (ids.length === 0) {
+      return res.status(403).json({ error: 'order_required' });
+    }
+    const { data: found } = await supabase.from('orders').select('id').in('id', ids);
+    if (!found || found.length === 0) {
+      return res.status(403).json({ error: 'order_required' });
+    }
+    const { data: used } = await supabase.from('reviews').select('order_id').in('order_id', found.map((o) => o.id));
+    const usedSet = new Set((used || []).map((r) => r.order_id));
+    const orderId = found.map((o) => o.id).find((id) => !usedSet.has(id));
+    if (!orderId) {
+      return res.status(409).json({ error: 'already_reviewed' });
+    }
     const { error } = await supabase.from('reviews').insert({
+      order_id: orderId,
       rating: stars,
       comment: text,
       name: who || null,

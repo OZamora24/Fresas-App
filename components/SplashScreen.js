@@ -140,15 +140,16 @@ export default function SplashScreen({ leaving, label = 'LOADING THE MENU' }) {
       aria-hidden="true"
     >
       <div className="app-splash-ringwrap">
-        <div className="app-splash-ring r1" />
-        <div className="app-splash-ring r2" />
-        <div className="app-splash-ring r3" />
-        <div className="app-splash-core">🍓</div>
+        <span className="app-splash-sp sp1">✨</span>
+        <span className="app-splash-sp sp2">✨</span>
+        <span className="app-splash-sp sp3">✨</span>
+        <div className="app-splash-berry">🍓</div>
       </div>
       <div className="app-splash-text">
         Fresas con Crema
         <small>{label}</small>
       </div>
+      <div className="app-splash-bar"><i /></div>
     </div>
   );
 }

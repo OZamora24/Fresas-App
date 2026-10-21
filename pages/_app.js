@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import '../styles/globals.css';
 import SplashScreen from '../components/SplashScreen';
+import RouteTransition from '../components/RouteTransition';
 
 // The launch splash always stays up at least this long — long enough for
 // the pulse rings to complete a couple of full cycles (each ring takes
@@ -136,6 +137,7 @@ export default function App({ Component, pageProps }) {
       <div className={phase === 'visible' ? 'app-content-hidden' : undefined}>
         <Component {...pageProps} />
       </div>
+      <RouteTransition />
       {phase !== 'gone' && <SplashScreen leaving={phase === 'leaving'} label={splashLabel} />}
     </>
   );

@@ -2,7 +2,7 @@ import { getSupabaseAdmin } from '../../lib/supabaseAdmin';
 import { isValidSession } from '../../lib/adminSession';
 import { baseIdFromName, formatDateKey, todayDateKey, getAvailablePickupTimes, PRICES, toppingsCost, freeCupDeal, FREE_CUP_DEAL_CODE, isPancakeItem, pancakeItemCost, validatePancakeItem } from '../../lib/menu';
 
-const APP_URL = 'https://fresas-app-zeta.vercel.app';
+const APP_URL = 'https://www.lovelyfresitas.app';
 
 // Recomputes the cart subtotal server-side from the item list, using the
 // same shared pricing table the order page uses — this is what lets a

@@ -62,7 +62,6 @@ Paste this whole doc into a new chat (and upload the attached code files) to con
 ## Ideas Floated, Not Built
 - Order numbers / printable kitchen ticket / loyalty punch card — mentioned early on, never requested since.
 - Dedicated "how to download the app" tab on the main page — deferred by user request.
-- "Start Over" button on the order page (to clear the draft) — user declined for now, revisit only if real customer feedback asks for it.
 
 ## Attached Files
 The current live source code has been attached alongside this doc:

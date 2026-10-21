@@ -215,6 +215,16 @@ const STR = {
     pickBase: 'Pick your flavor',
     pickBaseHint: 'Every cup has homemade sweet cream',
     placeAnOrder: 'Place an order',
+    cartTitle: 'Your cart',
+    cartEmpty: 'Nothing here yet. Pick a flavor and your choices show up here.',
+    cartTotal: 'Total',
+    startOver: 'Start over',
+    startOverQ: 'Start over?',
+    startOverBody: 'This clears your cart and everything you picked.',
+    startOverYes: 'Yes, start over',
+    startOverKeep: 'Keep my order',
+    cartClose: 'Close',
+    freshStart: 'Fresh start! 🍓',
     soldOut: 'Sold out today',
     toppings: 'Toppings',
     toppingsHint: 'Cheesecake & Ice Cream are always +$1 — tap +/- to add extra scoops. Any other extra topping is +$1.',
@@ -368,6 +378,16 @@ const STR = {
     pickBase: 'Elige tu sabor',
     pickBaseHint: 'Todos llevan crema dulce casera',
     placeAnOrder: 'Haz tu pedido',
+    cartTitle: 'Tu carrito',
+    cartEmpty: 'Aún no hay nada. Elige un sabor y tus opciones aparecen aquí.',
+    cartTotal: 'Total',
+    startOver: 'Empezar de nuevo',
+    startOverQ: '¿Empezar de nuevo?',
+    startOverBody: 'Esto borra tu carrito y todo lo que elegiste.',
+    startOverYes: 'Sí, empezar de nuevo',
+    startOverKeep: 'Conservar mi orden',
+    cartClose: 'Cerrar',
+    freshStart: '¡Nuevo comienzo! 🍓',
     soldOut: 'Agotado hoy',
     toppings: 'Toppings',
     toppingsHint: 'Pastel de queso y helado siempre son +$1 — toca +/- para agregar más. Cualquier otro topping extra es +$1.',
@@ -564,6 +584,9 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [contactDone, setContactDone] = useState(false);
+  const [showCart, setShowCart] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
+  const [freshToast, setFreshToast] = useState(false);
   // Decided after mount so the server-rendered page and the phone agree on the maps link.
   const [appleDevice, setAppleDevice] = useState(false);
   useEffect(() => { setAppleDevice(isAppleDevice()); }, []);
@@ -937,6 +960,41 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
   const currentPancakeItem = { kind: 'pancakes', size: pSize, toppings: pToppings, syrups: pDrizzles, qty: pQty };
   const cupBuilderCounts = mode === 'cups' ? (cart.length === 0 || !isBuilderBlank) : !isBuilderBlank;
   const pancakeBuilderCounts = mode === 'pancakes' ? (cart.length === 0 || !isPancakeBlank) : !isPancakeBlank;
+  // "Start over" from the cart peek: puts every field back to how a brand-new
+  // visit looks (same list the order-placed reset uses), clears the saved
+  // draft, and scrolls to the top.
+  function resetOrder() {
+    setCart([]);
+    setCupSize('12');
+    setBase('regular');
+    setToppings([]);
+    setSyrups([]);
+    setQty(1);
+    setMode('cups');
+    setPSize(20);
+    setPToppings([]);
+    setPDrizzles([]);
+    setPQty(1);
+    setIncludeRim(true);
+    setPickupDate(todayDateKey());
+    setName('');
+    setPhone('');
+    setNotes('');
+    setPaymentMethod('zelle');
+    setPaymentConfirmed(false);
+    setAppliedPromo(null);
+    setPromoInput('');
+    setPromoError('');
+    setErrorMsg('');
+    setShowSheet(false);
+    setShowCart(false);
+    setConfirmReset(false);
+    try { window.localStorage.removeItem('fresasOrderDraft'); } catch (e) {}
+    try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (e) {}
+    setFreshToast(true);
+    setTimeout(() => setFreshToast(false), 1800);
+  }
+
   const previewItems = [
     ...cart,
     ...(cupBuilderCounts ? [currentCupItem] : []),
@@ -1551,14 +1609,14 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
         <div className="order-head-top">
           <Link href="/" className="order-home-btn">🏠 {lang === 'es' ? 'Inicio' : 'Home'}</Link>
           <h1>{t.placeAnOrder}</h1>
-          <span className="order-cart" aria-hidden="true">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#F5C451" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <button type="button" className="order-cart" onClick={() => { setConfirmReset(false); setShowCart(true); }} aria-label={t.cartTitle}>
+            <svg width="28" height="28" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="#F5C451" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="9" cy="20" r="1.4" fill="#F5C451" />
               <circle cx="18" cy="20" r="1.4" fill="#F5C451" />
               <path d="M2 3h3l2.6 12.2a1.5 1.5 0 0 0 1.5 1.2h8.6a1.5 1.5 0 0 0 1.5-1.1L21 7H6.2" />
             </svg>
             {cart.length > 0 && <b>{cart.length}</b>}
-          </span>
+          </button>
         </div>
         {LangToggle}
         {pancakesEnabled && (
@@ -2046,6 +2104,50 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
       </div>
 
       <MobileTabBar lang={lang} />
+
+      <div className={`overlay center-modal-high${showCart ? ' open' : ''}`} onClick={(e) => e.target === e.currentTarget && setShowCart(false)}>
+        <div className="sheet center-card cart-peek">
+          {confirmReset ? (
+            <>
+              <h3>{t.startOverQ}</h3>
+              <p className="cart-peek-note">{t.startOverBody}</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <button className="btn-primary" onClick={resetOrder}>{t.startOverYes}</button>
+                <button className="btn-outline" onClick={() => setConfirmReset(false)}>{t.startOverKeep}</button>
+              </div>
+            </>
+          ) : (
+            <>
+              <h3>🛒 {t.cartTitle}</h3>
+              {previewItems.length > 0 ? (
+                <>
+                  {previewItems.map((item, i) => {
+                    const ib = BASES.find((b) => b.id === item.base);
+                    return (
+                      <div className="cart-peek-row" key={i}>
+                        <span>
+                          {isPancakeItem(item)
+                            ? `🥞 ${t.pancakeHeroTitle} × ${item.qty} · ${t.pancakeCount(item.size)}`
+                            : `🍓 ${ib ? ib.name : ''} × ${item.qty} · ${item.cupSize} oz`}
+                        </span>
+                        <strong>${cartItemCost(item).toFixed(2)}</strong>
+                      </div>
+                    );
+                  })}
+                  <div className="cart-peek-row cart-peek-total"><span>{t.cartTotal}</span><strong>${orderTotal.toFixed(2)}</strong></div>
+                </>
+              ) : (
+                <p className="cart-peek-note">{t.cartEmpty}</p>
+              )}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12 }}>
+                <button className="btn-outline" onClick={() => setConfirmReset(true)}>↺ {t.startOver}</button>
+              </div>
+              <button className="cart-peek-close" onClick={() => setShowCart(false)}>{t.cartClose}</button>
+            </>
+          )}
+        </div>
+      </div>
+      {freshToast && <div className="fresh-toast" role="status">{t.freshStart}</div>}
 
       <div className={`overlay center-modal-high${showSheet ? ' open' : ''}`} onClick={(e) => e.target === e.currentTarget && setShowSheet(false)}>
         <div className="sheet sheet-centered">

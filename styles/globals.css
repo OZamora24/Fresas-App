@@ -1232,3 +1232,22 @@ button, a, .chip, .base-card, label, summary { touch-action: manipulation; -webk
 @keyframes routeBerry { from { opacity: 0; transform: scale(0.4); } to { opacity: 1; transform: scale(1.15); } }
 @keyframes routeBerryOut { from { opacity: 1; } to { opacity: 0; } }
 
+/* Order header: Home button | centered title | cart, in three equal-weight columns so the title is truly centered. */
+.order-head-top { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 8px; }
+.order-head-top .order-home-btn { justify-self: start; }
+.order-head-top h1 { flex: none; text-align: center !important; white-space: nowrap; font-size: clamp(1.15rem, 5.6vw, 1.45rem) !important; }
+.order-head-top .order-cart { justify-self: end; background: none; border: 0; padding: 6px 8px; margin: -6px -8px -6px 0; cursor: pointer; color: inherit; }
+
+/* Cart peek (tap the cart on the Order page): items, total, and Start over. */
+.cart-peek { max-width: 360px; width: calc(100% - 40px); border-radius: 22px !important; }
+.cart-peek h3 { margin: 0 0 10px; }
+.cart-peek-note { color: var(--ink-soft); font-size: 0.92rem; margin: 0 0 12px; line-height: 1.45; }
+.cart-peek-row { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px dashed var(--line); font-size: 0.92rem; }
+.cart-peek-row strong { white-space: nowrap; }
+.cart-peek-total { border-bottom: 0; color: var(--maroon); font-weight: 800; font-size: 1.05rem; }
+.cart-peek-close { display: block; margin: 10px auto 0; background: none; border: 0; color: var(--ink-soft); font-weight: 800; text-decoration: underline; cursor: pointer; }
+.fresh-toast {
+  position: fixed; left: 50%; top: 18px; transform: translateX(-50%); z-index: 9500; background: #2e7d4f; color: #fff;
+  border-radius: 999px; padding: 10px 18px; font-weight: 800; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+}
+

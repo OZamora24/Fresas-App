@@ -713,7 +713,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
         if (draft && draft.savedAt && Date.now() - draft.savedAt < 24 * 60 * 60 * 1000) {
           if (draft.cupSize) setCupSize(draft.cupSize);
           if (draft.base) setBase(draft.base);
-          if (Array.isArray(draft.toppings)) setToppings(draft.toppings);
+          if (Array.isArray(draft.toppings)) setToppings(draft.toppings.filter((x) => TOPPINGS.some((tp) => tp.name === x)));
           if (Array.isArray(draft.syrups)) setSyrups(draft.syrups);
           if (draft.qty) setQty(draft.qty);
           if (draft.includeRim !== undefined) setIncludeRim(draft.includeRim);
@@ -923,7 +923,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
     const matchedBase = BASES.find((b) => b.name === order.base);
     if (matchedBase) setBase(matchedBase.id);
     if (order.cup_size) setCupSize(order.cup_size.startsWith('24') ? '24' : '12');
-    setToppings(order.toppings || []);
+    setToppings((order.toppings || []).filter((x) => TOPPINGS.some((tp) => tp.name === x)));
     setSyrups(order.syrups || []);
     if (order.payment_method) setPaymentMethod(order.payment_method);
     setShowRepeatPrompt(false);

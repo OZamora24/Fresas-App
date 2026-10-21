@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react';
 import Head from 'next/head';
+import Seo from '../components/Seo';
 import Link from 'next/link';
 import SiteNav from '../components/SiteNav';
 
 const STR = {
   en: {
     title: 'Reviews — Fresas con Crema',
+    seoTitle: 'Customer Reviews · Lovely Fresitas Fresas con Crema',
+    seoDesc: 'Read what customers say about Lovely Fresitas fresas con crema in Rialto, CA — and leave your own review after you order.',
     heading: 'Reviews',
     sub: 'Tell us what you thought. Your words help other customers and help us get better.',
     loading: 'Loading…',
@@ -33,6 +36,8 @@ const STR = {
   },
   es: {
     title: 'Reseñas — Fresas con Crema',
+    seoTitle: 'Reseñas de clientes · Lovely Fresitas Fresas con Crema',
+    seoDesc: 'Lee lo que dicen nuestros clientes de Lovely Fresitas en Rialto, CA — y deja tu reseña después de ordenar.',
     heading: 'Reseñas',
     sub: 'Cuéntanos qué te pareció. Tus palabras ayudan a otros clientes y a mejorar.',
     loading: 'Cargando…',
@@ -133,7 +138,7 @@ export default function Reviews() {
 
   return (
     <div className="site-shell fresh-look">
-      <Head><title>{t.title}</title></Head>
+      <Seo title={t.seoTitle} description={t.seoDesc} path="/reviews" lang={lang} />
       <SiteNav lang={lang} onLangChange={changeLang} />
       <main className="site-main">
         <div className="content-pad">

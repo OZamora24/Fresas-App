@@ -1,9 +1,10 @@
 import Head from 'next/head';
+import Seo from '../components/Seo';
 
 export default function Terms() {
   return (
     <div className="wrap" style={{ paddingTop: 40, paddingBottom: 60, maxWidth: 720 }}>
-      <Head><title>Terms &amp; Conditions — Fresas con Crema</title></Head>
+      <Seo title="Terms & Conditions · Lovely Fresitas" description="Terms for ordering from Lovely Fresitas (Fresas con Crema, Rialto, CA) online." path="/terms" />
       <h1 style={{ color: 'var(--maroon)' }}>Terms &amp; Conditions</h1>
       <p style={{ color: 'var(--ink-soft)' }}>Fresas con Crema — Rialto, CA</p>
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
+import Head from 'next/head';
 import '../styles/globals.css';
 import SplashScreen from '../components/SplashScreen';
 import RouteTransition from '../components/RouteTransition';
@@ -125,8 +126,16 @@ export default function App({ Component, pageProps }) {
     };
   }, [phase]);
 
+  // Owner-only and per-order pages stay out of Google (robots.txt blocks them too).
+  const privatePage = /^\/(admin|arrived)(\/|$)/.test(router.pathname);
+
   return (
     <>
+      {privatePage && (
+        <Head>
+          <meta key="robots" name="robots" content="noindex, nofollow" />
+        </Head>
+      )}
       {/* Hidden (not unmounted) for as long as phase is 'visible' — see the
           comment on .app-content-hidden in globals.css for why this exists:
           it makes the splash's own height accuracy a non-issue, because

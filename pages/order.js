@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import Head from 'next/head';
+import Seo from '../components/Seo';
 import Link from 'next/link';
 import Script from 'next/script';
 import { BASES, PRICES, TOPPINGS, SYRUPS, toppingsCost, freeCupDeal, FREE_CUP_EVERY, todayDateKey, maxPreorderDateKey, formatDateKey, getAvailablePickupTimes, buildPickupTimes, formatWeekdaysList, MAX_EXTRA_TOPPING_QTY, PANCAKE_BASE_NAME, PANCAKE_SIZES, PANCAKE_TOPPINGS, isPancakeItem, pancakeSizeFor, pancakeItemCost, pancakeExtraCount, PANCAKE_EXTRA_TOPPING_PRICE, PANCAKE_MAX_EXTRA_TOPPINGS } from '../lib/menu';
@@ -209,6 +210,8 @@ function capitalizeFirst(value) {
 const STR = {
   en: {
     title: 'Fresas con Crema — Build Your Cup',
+    seoTitle: 'Order Fresas con Crema Online · Lovely Fresitas, Rialto CA',
+    seoDesc: 'Build your fresas con crema cup online — pick your flavor, size and toppings, choose a pickup time and pay with Zelle or cash. Lovely Fresitas, Rialto, CA.',
     heroTag: 'Build your cup · Rialto, CA',
     cupSize: 'Cup size',
     cupSizeHint: 'Choose 12 oz or 24 oz — prices update automatically',
@@ -372,6 +375,8 @@ const STR = {
   },
   es: {
     title: 'Fresas con Crema — Arma tu Vaso',
+    seoTitle: 'Ordena Fresas con Crema en línea · Lovely Fresitas, Rialto CA',
+    seoDesc: 'Arma tu vaso de fresas con crema en línea — elige sabor, tamaño y toppings, escoge tu hora para recoger y paga con Zelle o efectivo. Lovely Fresitas, Rialto, CA.',
     heroTag: 'Arma tu vaso · Rialto, CA',
     cupSize: 'Tamaño del vaso',
     cupSizeHint: 'Elige 12 oz o 24 oz — los precios se actualizan automáticamente',
@@ -1450,8 +1455,8 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
       : null;
     return (
       <div className="wrap fresh-look" style={{ textAlign: 'center', paddingTop: 80 }}>
+        <Seo title={t.seoTitle} description={t.seoDesc} path="/order" lang={lang} />
         <Head>
-          <title>{t.closedTitle} — Fresas con Crema</title>
           <link rel="manifest" href="/manifest-order.json" />
           <link rel="apple-touch-icon" href="/icon-192.png" />
           <meta name="apple-mobile-web-app-title" content="Fresas Order" />
@@ -1577,8 +1582,8 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
 
   return (
     <div className="fresh-look">
+      <Seo title={t.seoTitle} description={t.seoDesc} path="/order" lang={lang} />
       <Head>
-        <title>{t.title}</title>
         <link rel="manifest" href="/manifest-order.json" />
         <link rel="apple-touch-icon" href="/icon-192.png" />
         <meta name="apple-mobile-web-app-title" content="Fresas Order" />

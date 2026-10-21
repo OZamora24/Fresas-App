@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import Head from 'next/head';
+import Seo from '../components/Seo';
 import Link from 'next/link';
 import SiteNav from '../components/SiteNav';
 import { formatWeekdaysList } from '../lib/menu';
@@ -29,6 +30,8 @@ export async function getServerSideProps() {
 const STR = {
   en: {
     title: 'Catering — Fresas con Crema',
+    seoTitle: 'Fresas con Crema Catering for Parties & Events · Lovely Fresitas',
+    seoDesc: 'Fresas con crema for parties, quinceañeras and events in Rialto and the Inland Empire — made fresh, plus a cart you can rent for the day. Call or text (909) 725-2384 to book.',
     heading: 'Catering',
     sub: 'Fresas con crema for parties, quinceañeras, and events — made fresh, served your way.',
     availableOn: (days) => `🎉 Available for catering on ${days}`,
@@ -43,6 +46,8 @@ const STR = {
   },
   es: {
     title: 'Catering — Fresas con Crema',
+    seoTitle: 'Catering de Fresas con Crema para fiestas y eventos · Lovely Fresitas',
+    seoDesc: 'Fresas con crema para fiestas, quinceañeras y eventos en Rialto y el Inland Empire — hechas al momento, y renta del carrito por el día. Llama o manda texto al (909) 725-2384.',
     heading: 'Catering',
     sub: 'Fresas con crema para fiestas, quinceañeras, y eventos — preparadas frescas, servidas a tu manera.',
     availableOn: (days) => `🎉 Disponible para catering los ${days}`,
@@ -94,7 +99,7 @@ export default function Catering({ initialSettings }) {
 
   return (
     <div className="site-shell fresh-look">
-      <Head><title>{t.title}</title></Head>
+      <Seo title={t.seoTitle} description={t.seoDesc} path="/catering" lang={lang} />
       <SiteNav lang={lang} onLangChange={changeLang} />
       <main className="site-main">
         <div className="content-pad">

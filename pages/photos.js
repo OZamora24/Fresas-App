@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import Head from 'next/head';
+import Seo from '../components/Seo';
 import Image from 'next/image';
 import SiteNav from '../components/SiteNav';
 import { getSupabaseAdmin } from '../lib/supabaseAdmin';
@@ -30,6 +31,8 @@ export async function getServerSideProps() {
 const STR = {
   en: {
     title: 'Photos — Fresas con Crema',
+    seoTitle: 'Photos · Lovely Fresitas Fresas con Crema, Rialto CA',
+    seoDesc: 'See our fresas con crema cups, toppings and specials — made fresh to order in Rialto, CA.',
     heading: 'Photos',
     sub: 'A look at our flavors and past orders.',
     loading: 'Loading…',
@@ -38,6 +41,8 @@ const STR = {
   },
   es: {
     title: 'Fotos — Fresas con Crema',
+    seoTitle: 'Fotos · Lovely Fresitas Fresas con Crema, Rialto CA',
+    seoDesc: 'Mira nuestros vasos de fresas con crema, toppings y especiales — hechos al momento en Rialto, CA.',
     heading: 'Fotos',
     sub: 'Un vistazo a nuestros sabores y órdenes pasadas.',
     loading: 'Cargando…',
@@ -90,7 +95,7 @@ export default function Photos({ initialPhotos = null }) {
 
   return (
     <div className="site-shell fresh-look">
-      <Head><title>{t.title}</title></Head>
+      <Seo title={t.seoTitle} description={t.seoDesc} path="/photos" lang={lang} />
       <SiteNav lang={lang} onLangChange={changeLang} />
       <main className="site-main">
         <div className="content-pad">

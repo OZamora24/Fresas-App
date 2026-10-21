@@ -57,7 +57,7 @@ export default function AdminReviews() {
   if (!authed) {
     return (
       <div className="login-box">
-        <Head><title>Reviews — Fresas con Crema</title></Head>
+        <Head><title>Reviews — Fresas con Crema</title><meta name="robots" content="noindex, nofollow" /></Head>
         <h1>⭐ Reviews</h1>
         <form onSubmit={handleLogin}>
           <div className="field">
@@ -94,7 +94,7 @@ export default function AdminReviews() {
 
   return (
     <div>
-      <Head><title>Reviews — Fresas con Crema</title></Head>
+      <Head><title>Reviews — Fresas con Crema</title><meta name="robots" content="noindex, nofollow" /></Head>
       <div className="hero">
         <h1>Reviews</h1>
         <p>Approve what shows on the site</p>

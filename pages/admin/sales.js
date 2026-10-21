@@ -45,7 +45,7 @@ export default function SalesDashboard() {
   if (!authed) {
     return (
       <div className="login-box">
-        <Head><title>Sales — Fresas con Crema</title></Head>
+        <Head><title>Sales — Fresas con Crema</title><meta name="robots" content="noindex, nofollow" /></Head>
         <h1>📊 Sales</h1>
         <form onSubmit={handleLogin}>
           <div className="field">
@@ -66,7 +66,7 @@ export default function SalesDashboard() {
 
   return (
     <div>
-      <Head><title>Sales — Fresas con Crema</title></Head>
+      <Head><title>Sales — Fresas con Crema</title><meta name="robots" content="noindex, nofollow" /></Head>
       <div className="hero">
         <h1>Sales</h1>
         <p>How the shop's been doing</p>

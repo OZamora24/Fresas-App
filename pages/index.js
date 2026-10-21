@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import Head from 'next/head';
+import Seo, { businessJsonLd } from '../components/Seo';
 import Link from 'next/link';
 import SiteNav from '../components/SiteNav';
 import AddToHomeBanner from '../components/AddToHomeBanner';
@@ -37,6 +38,8 @@ const CLOSING_SOON_MINUTES = 30;
 const STR = {
   en: {
     title: 'Fresas con Crema — Rialto, CA',
+    seoTitle: 'Lovely Fresitas · Fresas con Crema in Rialto, CA',
+    seoDesc: 'Handmade fresas con crema in Rialto, CA. Build your cup with Biscoff, Ferrero Rocher, Raffaello or the classic and order ahead for pickup. English & Español.',
     openNow: 'Open now',
     closingSoon: 'Closing soon',
     closedNow: 'Closed right now',
@@ -61,6 +64,8 @@ const STR = {
   },
   es: {
     title: 'Fresas con Crema — Rialto, CA',
+    seoTitle: 'Lovely Fresitas · Fresas con Crema en Rialto, CA',
+    seoDesc: 'Fresas con crema hechas a mano en Rialto, CA. Arma tu vaso con Biscoff, Ferrero Rocher, Raffaello o el clásico y ordena para recoger. English y Español.',
     openNow: 'Abierto ahora',
     closedNow: 'Cerrado por ahora',
     closingSoon: 'Cerrando pronto',
@@ -181,8 +186,8 @@ export default function Home({ initialSettings }) {
 
   return (
     <div className="site-shell fresh-look">
+      <Seo title={t.seoTitle} description={t.seoDesc} path="/" lang={lang} jsonLd={businessJsonLd(initialSettings)} />
       <Head>
-        <title>{t.title}</title>
         <link rel="manifest" href="/manifest-home.json" />
         <link rel="apple-touch-icon" href="/icon-192.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />

@@ -962,6 +962,7 @@ export default function Admin() {
       <div className="login-box">
         <Head>
           <title>Admin — Fresas con Crema</title>
+          <meta name="robots" content="noindex, nofollow" />
           <link rel="manifest" href="/manifest.json" />
           <link rel="apple-touch-icon" href="/icon-192.png" />
           <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -990,6 +991,7 @@ export default function Admin() {
     <div>
       <Head>
           <title>Admin — Fresas con Crema</title>
+          <meta name="robots" content="noindex, nofollow" />
           <link rel="manifest" href="/manifest.json" />
           <link rel="apple-touch-icon" href="/icon-192.png" />
           <meta name="apple-mobile-web-app-capable" content="yes" />

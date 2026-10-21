@@ -1,9 +1,10 @@
 import Head from 'next/head';
+import Seo from '../components/Seo';
 
 export default function Privacy() {
   return (
     <div className="wrap" style={{ paddingTop: 40, paddingBottom: 60, maxWidth: 720 }}>
-      <Head><title>Privacy Policy — Fresas con Crema</title></Head>
+      <Seo title="Privacy Policy · Lovely Fresitas" description="How Lovely Fresitas (Fresas con Crema, Rialto, CA) handles the information you share when you order online." path="/privacy" />
       <h1 style={{ color: 'var(--maroon)' }}>Privacy Policy</h1>
       <p style={{ color: 'var(--ink-soft)' }}>Fresas con Crema — Rialto, CA</p>
 

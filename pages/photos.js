@@ -1,6 +1,31 @@
 import { useEffect, useState } from 'react';
 import Head from 'next/head';
+import Image from 'next/image';
 import SiteNav from '../components/SiteNav';
+import { getSupabaseAdmin } from '../lib/supabaseAdmin';
+
+// The photo list is fetched on the server and baked into the page, so the
+// grid is there on first paint instead of showing "Loading…" and then fetching.
+export async function getServerSideProps() {
+  let initialPhotos = null;
+  try {
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase.storage.from('site-photos').list('', {
+      sortBy: { column: 'created_at', order: 'desc' },
+    });
+    if (!error) {
+      initialPhotos = (data || [])
+        .filter((f) => f.name && !f.name.startsWith('.'))
+        .map((f) => {
+          const { data: pub } = supabase.storage.from('site-photos').getPublicUrl(f.name);
+          return { path: f.name, url: pub.publicUrl, created_at: f.created_at || null };
+        });
+    }
+  } catch (e) {
+    // Supabase unreachable — the client-side fetch below takes over.
+  }
+  return { props: { initialPhotos } };
+}
 
 const STR = {
   en: {
@@ -21,13 +46,14 @@ const STR = {
   },
 };
 
-export default function Photos() {
-  const [photos, setPhotos] = useState(null);
+export default function Photos({ initialPhotos = null }) {
+  const [photos, setPhotos] = useState(initialPhotos);
   const [lang, setLang] = useState('en');
   const [openPhoto, setOpenPhoto] = useState(null);
   const t = STR[lang];
 
   useEffect(() => {
+    if (initialPhotos) return;
     fetch('/api/photos')
       .then((r) => r.json())
       .then((j) => setPhotos(j.photos || []))
@@ -79,12 +105,16 @@ export default function Photos() {
 
           {photos && photos.length > 0 && (
             <div className="photo-grid">
-              {photos.map((p) => (
-                <img
+              {photos.map((p, i) => (
+                <Image
                   key={p.path}
                   src={p.url}
                   alt="Fresas con Crema"
-                  loading="lazy"
+                  width={600}
+                  height={600}
+                  sizes="(max-width: 760px) 50vw, 33vw"
+                  quality={70}
+                  priority={i < 4}
                   onClick={() => setOpenPhoto(p)}
                   style={{ cursor: 'pointer' }}
                 />

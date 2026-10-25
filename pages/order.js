@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Head from 'next/head';
 import Seo from '../components/Seo';
 import Link from 'next/link';
@@ -1040,6 +1040,20 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
   useEffect(() => {
     if (shopStatus && !kittyEnabled && mode === 'kitty') setMode('cups');
   }, [shopStatus, kittyEnabled, mode]);
+  // Home links here with ?tab=cups|pancakes|kitty so the matching tab opens
+  // first. Applied once, after the saved draft is restored, and only for a
+  // tab that is switched on.
+  const tabApplied = useRef(false);
+  useEffect(() => {
+    if (tabApplied.current || !draftReady || !shopStatus) return;
+    tabApplied.current = true;
+    const want = new URLSearchParams(window.location.search).get('tab');
+    if (!want) return;
+    if (want === 'cups' || (want === 'pancakes' && pancakesEnabled) || (want === 'kitty' && kittyEnabled)) {
+      selectTab(want);
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+  }, [draftReady, shopStatus, pancakesEnabled, kittyEnabled]);
   // A restored draft or repeat order can carry paid extras; trim them if the switch is off.
   useEffect(() => {
     if (!shopStatus || pancakeExtrasEnabled) return;

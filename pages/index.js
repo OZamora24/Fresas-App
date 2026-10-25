@@ -204,6 +204,7 @@ export default function Home({ initialSettings }) {
       <main className="site-main">
         <div className="home-hero">
           <CupArt id="home" className="cupart" />
+          <Link href="/order?tab=cups" className="cup-tap" aria-label={t.orderNow} />
           <span className="cup-sp cup-sp1" aria-hidden="true">✨</span>
           <span className="cup-sp cup-sp2" aria-hidden="true">✨</span>
           <span className="cup-sp cup-sp3" aria-hidden="true">🍓</span>
@@ -222,7 +223,7 @@ export default function Home({ initialSettings }) {
         </div>
 
         {settings?.pancakes_enabled && (
-          <Link href="/order" className="home-promo">
+          <Link href="/order?tab=pancakes" className="home-promo">
             <span className="home-promo-emoji anim-flip">🥞</span>
             <span>
               <span className="home-promo-tag">{t.pancakeNew}</span>
@@ -233,7 +234,7 @@ export default function Home({ initialSettings }) {
         )}
 
         {settings?.kitty_pancakes_enabled && (
-          <Link href="/order" className="home-promo">
+          <Link href="/order?tab=kitty" className="home-promo">
             <img className="home-promo-kitty anim-bounce" src="/hello-kitty.png" alt="" width="44" />
             <span>
               <span className="home-promo-tag">{t.pancakeNew}</span>

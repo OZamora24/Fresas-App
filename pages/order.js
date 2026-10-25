@@ -3,7 +3,7 @@ import Head from 'next/head';
 import Seo from '../components/Seo';
 import Link from 'next/link';
 import Script from 'next/script';
-import { BASES, PRICES, TOPPINGS, SYRUPS, toppingsCost, freeCupDeal, FREE_CUP_EVERY, todayDateKey, maxPreorderDateKey, formatDateKey, getAvailablePickupTimes, buildPickupTimes, formatWeekdaysList, MAX_EXTRA_TOPPING_QTY, PANCAKE_BASE_NAME, PANCAKE_SIZES, PANCAKE_TOPPINGS, isPancakeItem, pancakeSizeFor, pancakeItemCost, pancakeExtraCount, PANCAKE_EXTRA_TOPPING_PRICE, PANCAKE_MAX_EXTRA_TOPPINGS } from '../lib/menu';
+import { BASES, PRICES, TOPPINGS, SYRUPS, toppingsCost, freeCupDeal, FREE_CUP_EVERY, todayDateKey, maxPreorderDateKey, formatDateKey, getAvailablePickupTimes, buildPickupTimes, formatWeekdaysList, MAX_EXTRA_TOPPING_QTY, PANCAKE_BASE_NAME, PANCAKE_SIZES, PANCAKE_TOPPINGS, KITTY_BASE_NAME, KITTY_SIZES, KITTY_COUNT, isKittyItem, isKittySize, isPancakeItem, pancakeSizeFor, pancakeItemCost, pancakeExtraCount, PANCAKE_EXTRA_TOPPING_PRICE, PANCAKE_MAX_EXTRA_TOPPINGS } from '../lib/menu';
 import AddToHomeBanner from '../components/AddToHomeBanner';
 import MobileTabBar from '../components/MobileTabBar';
 import { getSupabaseAdmin } from '../lib/supabaseAdmin';
@@ -297,6 +297,11 @@ const STR = {
     pancakeSizeTitle: 'How many pancakes?',
     pancakeSizeHint: 'Fluffy mini pancakes, made fresh to order',
     pancakeCount: (n) => `${n} mini pancakes`,
+    tabKitty: 'Hello Kitty',
+    kittyHeroTitle: 'Hello Kitty Pancakes',
+    kittySizeTitle: 'Your plate',
+    kittySizeHint: 'Made fresh to order',
+    kittyCount: '4 Hello Kitty minis + 10 mini pancakes around',
     pancakeIncludes: (tp, dr) => `Choose ${tp} toppings + ${dr} ${dr === 1 ? 'drizzle' : 'drizzles'}`,
     pancakeToppingsHint: (n) => `Choose up to ${n} toppings`,
     pancakeToppingsHintExtra: (n, m, p) => `${n} included, then +$${p.toFixed(2)} each (up to ${m} extra)`,
@@ -462,6 +467,11 @@ const STR = {
     pancakeSizeTitle: '¿Cuántos pancakes?',
     pancakeSizeHint: 'Mini pancakes esponjositos, hechos al momento',
     pancakeCount: (n) => `${n} mini pancakes`,
+    tabKitty: 'Hello Kitty',
+    kittyHeroTitle: 'Hello Kitty Pancakes',
+    kittySizeTitle: 'Tu plato',
+    kittySizeHint: 'Hechos al momento',
+    kittyCount: '4 minis de Hello Kitty + 10 mini pancakes alrededor',
     pancakeIncludes: (tp, dr) => `Elige ${tp} toppings + ${dr} ${dr === 1 ? 'salsa' : 'salsas'}`,
     pancakeToppingsHint: (n) => `Elige hasta ${n} toppings`,
     pancakeToppingsHintExtra: (n, m, p) => `${n} incluidos, luego +$${p.toFixed(2)} cada uno (hasta ${m} extra)`,
@@ -722,7 +732,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
           if (Array.isArray(draft.syrups)) setSyrups(draft.syrups);
           if (draft.qty) setQty(draft.qty);
           if (draft.includeRim !== undefined) setIncludeRim(draft.includeRim);
-          if (draft.mode === 'cups' || draft.mode === 'pancakes') setMode(draft.mode);
+          if (draft.mode === 'cups' || draft.mode === 'pancakes' || draft.mode === 'kitty') setMode(draft.mode);
           if (pancakeSizeFor(draft.pSize)) setPSize(draft.pSize);
           if (Array.isArray(draft.pToppings)) setPToppings(draft.pToppings.filter((x) => PANCAKE_TOPPINGS.includes(x)));
           if (Array.isArray(draft.pDrizzles)) setPDrizzles(draft.pDrizzles.filter((x) => SYRUPS.includes(x)));
@@ -914,13 +924,13 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
   function useLastOrder(order) {
     if (!order) return;
     // A past mini pancake order: refill the pancake builder instead.
-    if (order.base === PANCAKE_BASE_NAME) {
+    if (order.base === PANCAKE_BASE_NAME || order.base === KITTY_BASE_NAME) {
       const n = parseInt(order.cup_size, 10);
       if (pancakeSizeFor(n)) setPSize(n);
       setPToppings((order.toppings || []).filter((x) => PANCAKE_TOPPINGS.includes(x)));
       setPDrizzles((order.syrups || []).filter((x) => SYRUPS.includes(x)));
       if (order.payment_method) setPaymentMethod(order.payment_method);
-      setMode('pancakes');
+      setMode(order.base === KITTY_BASE_NAME ? 'kitty' : 'pancakes');
       setShowRepeatPrompt(false);
       return;
     }
@@ -961,10 +971,11 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
   // pancakes, nothing picked) only counts when it's the active tab and the
   // order is otherwise empty. A builder on the other tab that has been
   // customized still counts, so switching tabs never silently drops it.
-  const isPancakeBlank = pSize === 20 && pToppings.length === 0 && pDrizzles.length === 0 && pQty === 1;
+  const isPancakeBlank = (pSize === 20 || isKittySize(pSize)) && pToppings.length === 0 && pDrizzles.length === 0 && pQty === 1;
   const currentPancakeItem = { kind: 'pancakes', size: pSize, toppings: pToppings, syrups: pDrizzles, qty: pQty };
   const cupBuilderCounts = mode === 'cups' ? (cart.length === 0 || !isBuilderBlank) : !isBuilderBlank;
-  const pancakeBuilderCounts = mode === 'pancakes' ? (cart.length === 0 || !isPancakeBlank) : !isPancakeBlank;
+  const isPMode = mode === 'pancakes' || mode === 'kitty'; // either pancake tab (they share one builder)
+  const pancakeBuilderCounts = isPMode ? (cart.length === 0 || !isPancakeBlank) : !isPancakeBlank;
   // "Start over" from the cart peek: puts every field back to how a brand-new
   // visit looks (same list the order-placed reset uses), clears the saved
   // draft, and scrolls to the top.
@@ -1018,11 +1029,15 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
   const dealEnabled = !!shopStatus?.free_cup_deal;
   // Mini pancakes are hidden until the admin switches them on.
   const pancakesEnabled = !!shopStatus?.pancakes_enabled;
-  const pancakeExtrasEnabled = pancakesEnabled && !!shopStatus?.pancake_extras_enabled;
+  const kittyEnabled = !!shopStatus?.kitty_pancakes_enabled;
+  const pancakeExtrasEnabled = (pancakesEnabled || kittyEnabled) && !!shopStatus?.pancake_extras_enabled;
   const pancakeToppingCap = (sz) => sz.toppings + (pancakeExtrasEnabled ? PANCAKE_MAX_EXTRA_TOPPINGS : 0);
   useEffect(() => {
     if (shopStatus && !pancakesEnabled && mode === 'pancakes') setMode('cups');
   }, [shopStatus, pancakesEnabled, mode]);
+  useEffect(() => {
+    if (shopStatus && !kittyEnabled && mode === 'kitty') setMode('cups');
+  }, [shopStatus, kittyEnabled, mode]);
   // A restored draft or repeat order can carry paid extras; trim them if the switch is off.
   useEffect(() => {
     if (!shopStatus || pancakeExtrasEnabled) return;
@@ -1107,10 +1122,28 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
   // the pancake builder.
   function addCurrentPancakesToCart() {
     setCart((prev) => [...prev, { ...currentPancakeItem }]);
-    setPSize(20);
+    setPSize(mode === 'kitty' ? KITTY_COUNT : 20);
     setPToppings([]);
     setPDrizzles([]);
     setPQty(1);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // Switching tabs. Mini Pancakes and Hello Kitty share one builder, so
+  // moving between the two puts anything already picked into the order
+  // first, then starts the other tab fresh.
+  function selectTab(key) {
+    if (key === 'pancakes' || key === 'kitty') {
+      const wantKitty = key === 'kitty';
+      if (isKittySize(pSize) !== wantKitty) {
+        if (!isPancakeBlank) setCart((prev) => [...prev, { ...currentPancakeItem }]);
+        setPSize(wantKitty ? KITTY_COUNT : 20);
+        setPToppings([]);
+        setPDrizzles([]);
+        setPQty(1);
+      }
+    }
+    setMode(key);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -1145,7 +1178,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
   function editCartItem(index) {
     const item = cart[index];
     if (isPancakeItem(item)) {
-      setMode('pancakes');
+      setMode(isKittyItem(item) ? 'kitty' : 'pancakes');
       setPSize(item.size);
       setPToppings(item.toppings);
       setPDrizzles(item.syrups);
@@ -1300,7 +1333,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
           items: finalItems.map((item) => (isPancakeItem(item)
             ? {
                 kind: 'pancakes',
-                base: PANCAKE_BASE_NAME,
+                base: isKittyItem(item) ? KITTY_BASE_NAME : PANCAKE_BASE_NAME,
                 pancake_size: item.size,
                 cup_size: `${item.size} pcs`,
                 toppings: item.toppings,
@@ -1319,7 +1352,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
           // Summary fields kept for backward compatibility with anything
           // that only reads a single cup (admin quick-view, SMS, etc.) —
           // first cup's details, with qty as the total cup count.
-          base: firstIsPancake ? PANCAKE_BASE_NAME : firstItemBase.name,
+          base: firstIsPancake ? (isKittyItem(firstItem) ? KITTY_BASE_NAME : PANCAKE_BASE_NAME) : firstItemBase.name,
           cup_size: firstIsPancake ? `${firstItem.size} pcs` : `${firstItem.cupSize} oz`,
           toppings: firstItem.toppings,
           syrups: firstItem.syrups,
@@ -1624,9 +1657,9 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
           </button>
         </div>
         {LangToggle}
-        {pancakesEnabled && (
+        {(pancakesEnabled || kittyEnabled) && (
           <div className="seg" role="tablist">
-            {[['cups', t.tabCups], ['pancakes', t.tabPancakes]].map(([key, label]) => {
+            {[['cups', t.tabCups], ...(pancakesEnabled ? [['pancakes', t.tabPancakes]] : []), ...(kittyEnabled ? [['kitty', t.tabKitty]] : [])].map(([key, label]) => {
               const [emoji, ...rest] = label.split(' ');
               return (
                 <button
@@ -1635,9 +1668,11 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
                   role="tab"
                   aria-selected={mode === key}
                   className={`seg-btn${mode === key ? ' on' : ''}`}
-                  onClick={() => { setMode(key); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                  onClick={() => selectTab(key)}
                 >
-                  <span className={`tab-ico ${key === 'pancakes' ? 'anim-flip' : 'anim-bounce'}`} aria-hidden="true">{emoji}</span>
+                  {key === 'kitty'
+                    ? <img className="tab-ico tab-ico-kitty anim-bounce" src="/hello-kitty.png" alt="" aria-hidden="true" />
+                    : <span className={`tab-ico ${key === 'pancakes' ? 'anim-flip' : 'anim-bounce'}`} aria-hidden="true">{emoji}</span>}
                   {rest.join(' ')}
                 </button>
               );
@@ -1651,7 +1686,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
       <div className="wrap">
         <div className="steps" aria-hidden="true">
           <i className="on" />
-          <i className={(mode === 'pancakes' ? pToppings.length : toppings.length) > 0 ? 'on' : ''} />
+          <i className={(isPMode ? pToppings.length : toppings.length) > 0 ? 'on' : ''} />
           <i className={name.trim() && pickup ? 'on' : ''} />
         </div>
         {dealEnabled && <div className="section" style={{ paddingBottom: 0 }}>{renderDealBanner()}</div>}
@@ -1672,7 +1707,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
                     >
                       <div style={{ fontSize: '0.85rem' }}>
                         {isPancakeItem(item) ? (
-                          <strong>{item.qty}x 🥞 {t.pancakeCount(item.size)}</strong>
+                          <strong>{item.qty}x {isKittyItem(item) ? `🎀 ${t.kittyHeroTitle}` : `🥞 ${t.pancakeCount(item.size)}`}</strong>
                         ) : (
                           <><strong>{item.qty}x {itemBase.name}</strong> ({item.cupSize} oz)</>
                         )}
@@ -1859,17 +1894,25 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
         </>
         )}
 
-        {mode === 'pancakes' && (
+        {isPMode && (
         <>
+        {mode === 'kitty' && (
+          <div className="kitty-stage" aria-hidden="true">
+            <img className="kitty-hero" src="/hello-kitty.png" alt="" />
+            <span className="kitty-sp kitty-sp1">🎀</span>
+            <span className="kitty-sp kitty-sp2">✨</span>
+            <span className="kitty-sp kitty-sp3">🍓</span>
+          </div>
+        )}
         <div className="section">
-          <h2>{t.pancakeSizeTitle}</h2>
-          <p className="hint">{t.pancakeSizeHint}</p>
-          {PANCAKE_SIZES.map((sz) => (
+          <h2>{mode === 'kitty' ? t.kittySizeTitle : t.pancakeSizeTitle}</h2>
+          <p className="hint">{mode === 'kitty' ? t.kittySizeHint : t.pancakeSizeHint}</p>
+          {(mode === 'kitty' ? KITTY_SIZES : PANCAKE_SIZES).map((sz) => (
             <label key={sz.count} className={`base-card${pSize === sz.count ? ' selected' : ''}`}>
               <input type="radio" name="pancakeSize" checked={pSize === sz.count} onChange={() => changePancakeSize(sz.count)} />
               <div style={{ flex: 1 }}>
                 <div style={{ display: 'flex' }}>
-                  <span className="name">🥞 {t.pancakeCount(sz.count)}</span>
+                  <span className="name">{mode === 'kitty' ? `🎀 ${t.kittyCount}` : `🥞 ${t.pancakeCount(sz.count)}`}</span>
                   <span className="price" style={{ marginLeft: 'auto' }}>
                     {!settingsLoaded ? <span className="skeleton-line skeleton-line--price" /> : `$${sz.price.toFixed(2)}`}
                   </span>
@@ -2099,8 +2142,8 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
           <div className="total-amt">${finalTotal.toFixed(2)}</div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn-outline-dark" onClick={mode === 'pancakes' ? addCurrentPancakesToCart : addCurrentCupToCart} style={{ padding: '13px 16px', fontSize: '0.85rem' }}>
-            {mode === 'pancakes' ? t.addAnotherPancakes : t.addAnotherCup}
+          <button className="btn-outline-dark" onClick={isPMode ? addCurrentPancakesToCart : addCurrentCupToCart} style={{ padding: '13px 16px', fontSize: '0.85rem' }}>
+            {isPMode ? t.addAnotherPancakes : t.addAnotherCup}
           </button>
           <button className="btn-primary" onClick={() => setShowSheet(true)} disabled={!name.trim() || !pickup || (shopStatus?.require_phone && !phone.trim())}>
             {t.reviewOrder}
@@ -2132,7 +2175,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
                       <div className="cart-peek-row" key={i}>
                         <span>
                           {isPancakeItem(item)
-                            ? `🥞 ${t.pancakeHeroTitle} × ${item.qty} · ${t.pancakeCount(item.size)}`
+                            ? (isKittyItem(item) ? `🎀 ${t.kittyHeroTitle} × ${item.qty}` : `🥞 ${t.pancakeHeroTitle} × ${item.qty} · ${t.pancakeCount(item.size)}`)
                             : `🍓 ${ib ? ib.name : ''} × ${item.qty} · ${item.cupSize} oz`}
                         </span>
                         <strong>${cartItemCost(item).toFixed(2)}</strong>
@@ -2179,9 +2222,9 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
               return (
                 <div key={i} className="rev-item">
                   <div className="rev-row">
-                    <em aria-hidden="true">🥞</em>
+                    <em aria-hidden="true">{isKittyItem(item) ? '🎀' : '🥞'}</em>
                     <div>
-                      <b>{t.pancakeHeroTitle} × {item.qty} · {t.pancakeCount(item.size)}</b>
+                      <b>{isKittyItem(item) ? `${t.kittyHeroTitle} × ${item.qty} · ${t.kittyCount}` : `${t.pancakeHeroTitle} × ${item.qty} · ${t.pancakeCount(item.size)}`}</b>
                       <span>{t.toppings}: {item.toppings.length ? summarizeToppings(item.toppings, lang) : t.none}</span>
                     </div>
                   </div>

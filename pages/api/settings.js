@@ -19,12 +19,13 @@ export default async function handler(req, res) {
     if (!isValidSession(req)) {
       return res.status(401).json({ error: 'Not authorized.' });
     }
-    const { is_open, closed_message, slot_limit, sold_out_flavors, sold_out_toppings, sold_out_syrups, reopens_at, catering_days, catering_info, hours_weekday_start, hours_weekday_end, hours_weekend_start, hours_weekend_end, closed_dates, require_phone, free_cup_deal, pancakes_enabled, pancake_extras_enabled, review_push_enabled } = req.body || {};
+    const { is_open, closed_message, slot_limit, sold_out_flavors, sold_out_toppings, sold_out_syrups, reopens_at, catering_days, catering_info, hours_weekday_start, hours_weekday_end, hours_weekend_start, hours_weekend_end, closed_dates, require_phone, free_cup_deal, pancakes_enabled, kitty_pancakes_enabled, pancake_extras_enabled, review_push_enabled } = req.body || {};
     const updates = {};
     if (is_open !== undefined) updates.is_open = is_open;
     if (require_phone !== undefined) updates.require_phone = require_phone;
     if (free_cup_deal !== undefined) updates.free_cup_deal = !!free_cup_deal;
     if (pancakes_enabled !== undefined) updates.pancakes_enabled = !!pancakes_enabled;
+    if (kitty_pancakes_enabled !== undefined) updates.kitty_pancakes_enabled = !!kitty_pancakes_enabled;
     if (pancake_extras_enabled !== undefined) updates.pancake_extras_enabled = !!pancake_extras_enabled;
     if (review_push_enabled !== undefined) updates.review_push_enabled = !!review_push_enabled;
     if (closed_message !== undefined) updates.closed_message = closed_message;

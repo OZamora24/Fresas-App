@@ -55,7 +55,7 @@ const STR = {
     pancakeTitle: 'Mini Pancakes',
     pancakeSub: (p) => `Fluffy, made to order · from $${p}`,
     kittyTitle: 'Hello Kitty Pancakes',
-    kittySub: (p) => `4 Kitty minis + mini pancakes around · $${p}`,
+    kittySub: (p) => `Fluffy, made to order · from $${p}`,
     seeCatering: 'See Catering Info',
     todaysHours: "Today's hours",
     closedToday: 'Closed today',
@@ -83,7 +83,7 @@ const STR = {
     pancakeTitle: 'Mini Pancakes',
     pancakeSub: (p) => `Esponjosos, hechos al momento · desde $${p}`,
     kittyTitle: 'Hello Kitty Pancakes',
-    kittySub: (p) => `4 minis de Kitty + mini pancakes alrededor · $${p}`,
+    kittySub: (p) => `Esponjosos, hechos al momento · desde $${p}`,
     seeCatering: 'Ver Info de Catering',
     todaysHours: 'Horario de hoy',
     closedToday: 'Cerrado hoy',
@@ -238,7 +238,7 @@ export default function Home({ initialSettings }) {
             <span>
               <span className="home-promo-tag">{t.pancakeNew}</span>
               <b>{t.kittyTitle}</b>
-              <small>{t.kittySub(KITTY_SIZES[0].price)}</small>
+              <small>{t.kittySub(Math.min(...KITTY_SIZES.map((s) => s.price)))}</small>
             </span>
           </Link>
         )}

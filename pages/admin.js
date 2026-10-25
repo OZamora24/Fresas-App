@@ -1504,7 +1504,7 @@ export default function Admin() {
                   {settings.kitty_pancakes_enabled ? 'On' : 'Off'}
                 </button>
               </div>
-              <p className="hint-sm">When on, customers see a Hello Kitty Pancakes tab (4 Kitty minis + 10 mini pancakes, $14) on the order page. Toppings, drizzles and the extra-toppings switch work the same as Mini Pancakes. When off, it's hidden and Kitty orders are rejected.</p>
+              <p className="hint-sm">When on, customers see a Hello Kitty Pancakes tab on the order page: the $14 plate (4 Kitty pancakes + 10 mini pancakes) or $8 for just the 4 Kitty pancakes. Toppings, drizzles and the extra-toppings switch work the same as Mini Pancakes. When off, it's hidden and Kitty orders are rejected.</p>
             </div>
           )}
           {settings && (

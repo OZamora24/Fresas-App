@@ -299,9 +299,10 @@ const STR = {
     pancakeCount: (n) => `${n} mini pancakes`,
     tabKitty: 'Hello Kitty',
     kittyHeroTitle: 'Hello Kitty Pancakes',
-    kittySizeTitle: 'Your plate',
-    kittySizeHint: 'Made fresh to order',
-    kittyCount: '4 Hello Kitty minis + 10 mini pancakes around',
+    kittySizeTitle: 'Hello Kitty Pancakes',
+    kittySizeHint: 'Fluffy, made to order',
+    kittyName: (n) => (n === 4 ? 'Just the Kitty pancakes' : 'Plate'),
+    kittyDesc: (n) => (n === 4 ? '4 Hello Kitty pancakes' : ''),
     pancakeIncludes: (tp, dr) => `Choose ${tp} toppings + ${dr} ${dr === 1 ? 'drizzle' : 'drizzles'}`,
     pancakeToppingsHint: (n) => `Choose up to ${n} toppings`,
     pancakeToppingsHintExtra: (n, m, p) => `${n} included, then +$${p.toFixed(2)} each (up to ${m} extra)`,
@@ -469,9 +470,10 @@ const STR = {
     pancakeCount: (n) => `${n} mini pancakes`,
     tabKitty: 'Hello Kitty',
     kittyHeroTitle: 'Hello Kitty Pancakes',
-    kittySizeTitle: 'Tu plato',
-    kittySizeHint: 'Hechos al momento',
-    kittyCount: '4 minis de Hello Kitty + 10 mini pancakes alrededor',
+    kittySizeTitle: 'Hello Kitty Pancakes',
+    kittySizeHint: 'Esponjosos, hechos al momento',
+    kittyName: (n) => (n === 4 ? 'Solo los pancakes de Kitty' : 'Plato'),
+    kittyDesc: (n) => (n === 4 ? '4 pancakes de Hello Kitty' : ''),
     pancakeIncludes: (tp, dr) => `Elige ${tp} toppings + ${dr} ${dr === 1 ? 'salsa' : 'salsas'}`,
     pancakeToppingsHint: (n) => `Elige hasta ${n} toppings`,
     pancakeToppingsHintExtra: (n, m, p) => `${n} incluidos, luego +$${p.toFixed(2)} cada uno (hasta ${m} extra)`,
@@ -971,7 +973,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
   // pancakes, nothing picked) only counts when it's the active tab and the
   // order is otherwise empty. A builder on the other tab that has been
   // customized still counts, so switching tabs never silently drops it.
-  const isPancakeBlank = (pSize === 20 || isKittySize(pSize)) && pToppings.length === 0 && pDrizzles.length === 0 && pQty === 1;
+  const isPancakeBlank = (pSize === 20 || pSize === KITTY_COUNT) && pToppings.length === 0 && pDrizzles.length === 0 && pQty === 1;
   const currentPancakeItem = { kind: 'pancakes', size: pSize, toppings: pToppings, syrups: pDrizzles, qty: pQty };
   const cupBuilderCounts = mode === 'cups' ? (cart.length === 0 || !isBuilderBlank) : !isBuilderBlank;
   const isPMode = mode === 'pancakes' || mode === 'kitty'; // either pancake tab (they share one builder)
@@ -1707,7 +1709,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
                     >
                       <div style={{ fontSize: '0.85rem' }}>
                         {isPancakeItem(item) ? (
-                          <strong>{item.qty}x {isKittyItem(item) ? `🎀 ${t.kittyHeroTitle}` : `🥞 ${t.pancakeCount(item.size)}`}</strong>
+                          <strong>{item.qty}x {isKittyItem(item) ? `🎀 ${t.kittyHeroTitle} · ${t.kittyName(item.size)}` : `🥞 ${t.pancakeCount(item.size)}`}</strong>
                         ) : (
                           <><strong>{item.qty}x {itemBase.name}</strong> ({item.cupSize} oz)</>
                         )}
@@ -1912,12 +1914,12 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
               <input type="radio" name="pancakeSize" checked={pSize === sz.count} onChange={() => changePancakeSize(sz.count)} />
               <div style={{ flex: 1 }}>
                 <div style={{ display: 'flex' }}>
-                  <span className="name">{mode === 'kitty' ? `🎀 ${t.kittyCount}` : `🥞 ${t.pancakeCount(sz.count)}`}</span>
+                  <span className="name">{mode === 'kitty' ? `🎀 ${t.kittyName(sz.count)}` : `🥞 ${t.pancakeCount(sz.count)}`}</span>
                   <span className="price" style={{ marginLeft: 'auto' }}>
                     {!settingsLoaded ? <span className="skeleton-line skeleton-line--price" /> : `$${sz.price.toFixed(2)}`}
                   </span>
                 </div>
-                <div className="desc">{t.pancakeIncludes(sz.toppings, sz.drizzles)}</div>
+                <div className="desc">{mode === 'kitty' && t.kittyDesc(sz.count) ? `${t.kittyDesc(sz.count)} · ` : ''}{t.pancakeIncludes(sz.toppings, sz.drizzles)}</div>
               </div>
             </label>
           ))}
@@ -2175,7 +2177,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
                       <div className="cart-peek-row" key={i}>
                         <span>
                           {isPancakeItem(item)
-                            ? (isKittyItem(item) ? `🎀 ${t.kittyHeroTitle} × ${item.qty}` : `🥞 ${t.pancakeHeroTitle} × ${item.qty} · ${t.pancakeCount(item.size)}`)
+                            ? (isKittyItem(item) ? `🎀 ${t.kittyHeroTitle} × ${item.qty} · ${t.kittyName(item.size)}` : `🥞 ${t.pancakeHeroTitle} × ${item.qty} · ${t.pancakeCount(item.size)}`)
                             : `🍓 ${ib ? ib.name : ''} × ${item.qty} · ${item.cupSize} oz`}
                         </span>
                         <strong>${cartItemCost(item).toFixed(2)}</strong>
@@ -2224,7 +2226,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
                   <div className="rev-row">
                     <em aria-hidden="true">{isKittyItem(item) ? '🎀' : '🥞'}</em>
                     <div>
-                      <b>{isKittyItem(item) ? `${t.kittyHeroTitle} × ${item.qty} · ${t.kittyCount}` : `${t.pancakeHeroTitle} × ${item.qty} · ${t.pancakeCount(item.size)}`}</b>
+                      <b>{isKittyItem(item) ? `${t.kittyHeroTitle} × ${item.qty} · ${t.kittyName(item.size)}` : `${t.pancakeHeroTitle} × ${item.qty} · ${t.pancakeCount(item.size)}`}</b>
                       <span>{t.toppings}: {item.toppings.length ? summarizeToppings(item.toppings, lang) : t.none}</span>
                     </div>
                   </div>

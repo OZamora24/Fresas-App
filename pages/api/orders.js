@@ -1,6 +1,6 @@
 import { getSupabaseAdmin } from '../../lib/supabaseAdmin';
 import { isValidSession } from '../../lib/adminSession';
-import { baseIdFromName, formatDateKey, todayDateKey, getAvailablePickupTimes, PRICES, toppingsCost, freeCupDeal, FREE_CUP_DEAL_CODE, isPancakeItem, pancakeItemCost, validatePancakeItem } from '../../lib/menu';
+import { baseIdFromName, formatDateKey, todayDateKey, getAvailablePickupTimes, PRICES, toppingsCost, freeCupDeal, FREE_CUP_DEAL_CODE, isPancakeItem, isKittyItem, pancakeItemCost, validatePancakeItem } from '../../lib/menu';
 
 const APP_URL = 'https://www.lovelyfresitas.app';
 
@@ -40,7 +40,7 @@ async function sendPushToAdmin(order) {
     ? ` — 🎁 4th cup free (-$${Number(order.discount_amount || 0).toFixed(2)})`
     : order.promo_code ? ` — promo ${order.promo_code} (-$${Number(order.discount_amount || 0).toFixed(2)})` : '';
   const summaryLine = (isMultiCup
-    ? `${order.items.length} ${hasPancakes ? 'different items (incl. 🥞 mini pancakes)' : 'different cups'} — $${order.total.toFixed(2)} — pickup ${order.pickup_time}`
+    ? `${order.items.length} ${hasPancakes ? 'different items (incl. 🥞 pancakes)' : 'different cups'} — $${order.total.toFixed(2)} — pickup ${order.pickup_time}`
     : Array.isArray(order.items) && order.items.length === 1 && hasPancakes
       ? `🥞 ${describeItem(order.items[0])} — $${order.total.toFixed(2)} — pickup ${order.pickup_time}`
       : `${order.qty}x ${order.base} — $${order.total.toFixed(2)} — pickup ${order.pickup_time}`) + promoSuffix;
@@ -221,8 +221,11 @@ export default async function handler(req, res) {
       ? items
       : [{ base, cup_size, toppings: toppings || [], syrups: syrups || [], qty: qty || 1 }];
 
-    if (!settingsRow?.pancakes_enabled && cupsToCheck.some(isPancakeItem)) {
+    if (!settingsRow?.pancakes_enabled && cupsToCheck.some((i) => isPancakeItem(i) && !isKittyItem(i))) {
       return res.status(400).json({ error: 'invalid_item', message: 'Mini pancakes are not available right now — please remove them from your order.' });
+    }
+    if (!settingsRow?.kitty_pancakes_enabled && cupsToCheck.some(isKittyItem)) {
+      return res.status(400).json({ error: 'invalid_item', message: 'Hello Kitty pancakes are not available right now — please remove them from your order.' });
     }
 
     for (const cup of cupsToCheck) {

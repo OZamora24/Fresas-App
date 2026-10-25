@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import Head from 'next/head';
 import Script from 'next/script';
 import Link from 'next/link';
-import { BASES, PRICES, TOPPINGS, SYRUPS, orderTotal, buildPickupTimes, baseIdFromName, formatDateKey, todayDateKey, maxPreorderDateKey, MAX_EXTRA_TOPPING_QTY, FREE_CUP_DEAL_CODE, PANCAKE_TOPPINGS, isPancakeItem } from '../lib/menu';
+import { BASES, PRICES, TOPPINGS, SYRUPS, orderTotal, buildPickupTimes, baseIdFromName, formatDateKey, todayDateKey, maxPreorderDateKey, MAX_EXTRA_TOPPING_QTY, FREE_CUP_DEAL_CODE, PANCAKE_TOPPINGS, isPancakeItem, isKittyItem } from '../lib/menu';
 
 const ONESIGNAL_APP_ID = process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID;
 
@@ -866,12 +866,16 @@ export default function Admin() {
           <>
             {(() => {
               const cupTotal = o.items.filter((i) => !isPancakeItem(i)).reduce((n, i) => n + (i.qty || 1), 0);
-              const pancakePacks = o.items.filter(isPancakeItem).reduce((n, i) => n + (i.qty || 1), 0);
+              const pancakePacks = o.items.filter((i) => isPancakeItem(i) && !isKittyItem(i)).reduce((n, i) => n + (i.qty || 1), 0);
+              const kittyPacks = o.items.filter(isKittyItem).reduce((n, i) => n + (i.qty || 1), 0);
+              const otherPacks = pancakePacks + kittyPacks;
               return (
                 <div className="meta">
                   {cupTotal > 0 && `${cupTotal} cup${cupTotal === 1 ? '' : 's'}`}
-                  {cupTotal > 0 && pancakePacks > 0 && ' + '}
+                  {cupTotal > 0 && otherPacks > 0 && ' + '}
                   {pancakePacks > 0 && `🥞 ${pancakePacks} mini pancake pack${pancakePacks === 1 ? '' : 's'}`}
+                  {pancakePacks > 0 && kittyPacks > 0 && ' + '}
+                  {kittyPacks > 0 && `🎀 ${kittyPacks} Hello Kitty pack${kittyPacks === 1 ? '' : 's'}`}
                   {' '}in this order
                 </div>
               );
@@ -879,7 +883,7 @@ export default function Admin() {
             <div className="order-details-body order-details-body-static">
               {o.items.map((item, i) => (
                 <div key={i} style={{ marginBottom: i < o.items.length - 1 ? 10 : 0, paddingBottom: i < o.items.length - 1 ? 10 : 0, borderBottom: i < o.items.length - 1 ? '1px dashed var(--line)' : 'none' }}>
-                  <div><strong>{isPancakeItem(item) ? '🥞 ' : ''}{item.qty}x {item.base}</strong>{item.cup_size ? ` (${item.cup_size})` : ''}</div>
+                  <div><strong>{isKittyItem(item) ? '🎀 ' : isPancakeItem(item) ? '🥞 ' : ''}{item.qty}x {item.base}</strong>{item.cup_size ? ` (${item.cup_size})` : ''}</div>
                   {(item.base === 'Banana Pudding' || item.base === 'Gansito') && (
                     <div><strong>Rim:</strong> {item.include_rim === false ? '🚫 No rim' : '✅ Yes'}</div>
                   )}
@@ -1469,7 +1473,7 @@ export default function Admin() {
                 </button>
               </div>
               <p className="hint-sm">When on, customers see a Mini Pancakes tab on the order page. When off, it's hidden and pancake orders are rejected.</p>
-              {settings.pancakes_enabled && (
+              {(settings.pancakes_enabled || settings.kitty_pancakes_enabled) && (
                 <>
                   <div className="toggle-inline" style={{ marginTop: 10 }}>
                     <span className="ti-label">➕ Extra pancake toppings (+$1 each)</span>
@@ -1485,6 +1489,22 @@ export default function Admin() {
                   <p className="hint-sm">When on, customers can add up to 3 extra toppings per pack beyond the included ones, $1 each.</p>
                 </>
               )}
+            </div>
+          )}
+          {settings && (
+            <div className={`order-card${settings.kitty_pancakes_enabled ? '' : ' done'}`}>
+              <div className="toggle-inline">
+                <span className="ti-label">🎀 Hello Kitty pancakes</span>
+                <button
+                  type="button"
+                  className={`pill-btn${settings.kitty_pancakes_enabled ? ' primary' : ''}`}
+                  onClick={() => saveSettings({ kitty_pancakes_enabled: !settings.kitty_pancakes_enabled })}
+                  disabled={savingSettings}
+                >
+                  {settings.kitty_pancakes_enabled ? 'On' : 'Off'}
+                </button>
+              </div>
+              <p className="hint-sm">When on, customers see a Hello Kitty Pancakes tab (4 Kitty minis + 10 mini pancakes, $14) on the order page. Toppings, drizzles and the extra-toppings switch work the same as Mini Pancakes. When off, it's hidden and Kitty orders are rejected.</p>
             </div>
           )}
           {settings && (
@@ -1867,7 +1887,7 @@ export default function Admin() {
                 <div className="order-details-body order-details-body-static" style={{ marginTop: 0 }}>
                   {editForm.items.map((item, i) => (
                     <div key={i} style={{ marginBottom: i < editForm.items.length - 1 ? 8 : 0 }}>
-                      <div><strong>{isPancakeItem(item) ? '🥞 ' : ''}{item.qty}x {item.base}</strong>{item.cup_size ? ` (${item.cup_size})` : ''}</div>
+                      <div><strong>{isKittyItem(item) ? '🎀 ' : isPancakeItem(item) ? '🥞 ' : ''}{item.qty}x {item.base}</strong>{item.cup_size ? ` (${item.cup_size})` : ''}</div>
                       <div>Toppings: {item.toppings?.length ? toppingsSummaryText(item.toppings) : 'None'} · {isPancakeItem(item) ? 'Drizzle' : 'Syrup'}: {item.syrups?.length ? item.syrups.join(', ') : 'None'}</div>
                     </div>
                   ))}

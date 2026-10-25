@@ -5,7 +5,7 @@ import Link from 'next/link';
 import SiteNav from '../components/SiteNav';
 import AddToHomeBanner from '../components/AddToHomeBanner';
 import CupArt from '../components/CupArt';
-import { PANCAKE_SIZES, buildPickupTimes, todayDateKey, nowMinutesInShopTz, timeStringToMinutes } from '../lib/menu';
+import { PANCAKE_SIZES, KITTY_SIZES, buildPickupTimes, todayDateKey, nowMinutesInShopTz, timeStringToMinutes } from '../lib/menu';
 import { getSupabaseAdmin } from '../lib/supabaseAdmin';
 
 // Fetches the shop settings on the SERVER, before the page is ever sent to
@@ -54,6 +54,8 @@ const STR = {
     pancakeNew: 'NEW',
     pancakeTitle: 'Mini Pancakes',
     pancakeSub: (p) => `Fluffy, made to order · from $${p}`,
+    kittyTitle: 'Hello Kitty Pancakes',
+    kittySub: (p) => `4 Kitty minis + mini pancakes around · $${p}`,
     seeCatering: 'See Catering Info',
     todaysHours: "Today's hours",
     closedToday: 'Closed today',
@@ -80,6 +82,8 @@ const STR = {
     pancakeNew: 'NUEVO',
     pancakeTitle: 'Mini Pancakes',
     pancakeSub: (p) => `Esponjosos, hechos al momento · desde $${p}`,
+    kittyTitle: 'Hello Kitty Pancakes',
+    kittySub: (p) => `4 minis de Kitty + mini pancakes alrededor · $${p}`,
     seeCatering: 'Ver Info de Catering',
     todaysHours: 'Horario de hoy',
     closedToday: 'Cerrado hoy',
@@ -224,6 +228,17 @@ export default function Home({ initialSettings }) {
               <span className="home-promo-tag">{t.pancakeNew}</span>
               <b>{t.pancakeTitle}</b>
               <small>{t.pancakeSub(PANCAKE_SIZES[0].price)}</small>
+            </span>
+          </Link>
+        )}
+
+        {settings?.kitty_pancakes_enabled && (
+          <Link href="/order" className="home-promo">
+            <img className="home-promo-kitty anim-bounce" src="/hello-kitty.png" alt="" width="44" />
+            <span>
+              <span className="home-promo-tag">{t.pancakeNew}</span>
+              <b>{t.kittyTitle}</b>
+              <small>{t.kittySub(KITTY_SIZES[0].price)}</small>
             </span>
           </Link>
         )}

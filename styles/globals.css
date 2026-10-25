@@ -942,6 +942,7 @@ body.splash-active {
   box-shadow: 0 8px 18px rgba(90, 20, 30, 0.07);
 }
 .fresh-look .home-promo-emoji { font-size: 2rem; }
+.fresh-look .home-promo-kitty { width: 44px; height: auto; flex: none; }
 .fresh-look .home-promo b { display: block; font-family: 'Baloo 2', sans-serif; font-size: 1.05rem; color: var(--maroon); }
 .fresh-look .home-promo small { display: block; color: var(--ink-soft); font-weight: 700; font-size: 0.82rem; }
 .fresh-look .home-promo-tag {
@@ -1039,7 +1040,16 @@ body.splash-active {
   42% { transform: translateY(0) rotateX(360deg) scale(1.1, 0.9); }
   50% { transform: translateY(0) scale(1); }
 }
+/* Hello Kitty tab: animated cut-out icon, plus the hero on the Kitty order tab. */
+.tab-ico-kitty { width: 1.45rem; height: auto; vertical-align: middle; }
+.kitty-stage { position: relative; display: flex; justify-content: center; padding: 14px 0 0; min-height: 112px; }
+.kitty-hero { width: 124px; height: auto; transform-origin: 50% 90%; animation: fx-cupfloat 4.2s ease-in-out infinite; filter: drop-shadow(0 6px 8px rgba(124, 27, 44, 0.22)); }
+.kitty-sp { position: absolute; font-size: 0.95rem; opacity: 0; pointer-events: none; animation: fx-rise 3.6s ease-out infinite; }
+.kitty-sp1 { left: calc(50% + 54px); top: 62px; }
+.kitty-sp2 { left: calc(50% - 74px); top: 76px; animation-delay: 1.2s; }
+.kitty-sp3 { left: calc(50% + 6px); top: 36px; animation-delay: 2.2s; }
 @media (prefers-reduced-motion: reduce) {
+  .kitty-hero, .kitty-sp { animation: none; }
   .anim-bounce, .anim-flip, .fresh-look .home-hero > .cupart, .cup-berry, .cup-topberry, .cup-sheen, .home-hero .cup-sp { animation: none; }
   .cup-sheen { opacity: 0.6; }
 }

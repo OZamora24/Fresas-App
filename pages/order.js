@@ -2052,7 +2052,11 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
               value={pickupDate}
               min={todayDateKey()}
               max={maxPreorderDateKey()}
-              onChange={(e) => setPickupDate(e.target.value)}
+              onChange={(e) => {
+                // A new day starts at that day's earliest time, not the time picked for the old day.
+                setPickupDate(e.target.value);
+                setPickup('');
+              }}
             />
           </div>
         </div>

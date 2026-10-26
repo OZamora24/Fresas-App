@@ -3,7 +3,7 @@ import Head from 'next/head';
 import Seo from '../components/Seo';
 import Link from 'next/link';
 import Script from 'next/script';
-import { BASES, PRICES, TOPPINGS, SYRUPS, toppingsCost, freeCupDeal, FREE_CUP_EVERY, todayDateKey, maxPreorderDateKey, formatDateKey, getAvailablePickupTimes, buildPickupTimes, formatWeekdaysList, MAX_EXTRA_TOPPING_QTY, PANCAKE_BASE_NAME, PANCAKE_SIZES, PANCAKE_TOPPINGS, KITTY_BASE_NAME, KITTY_SIZES, KITTY_COUNT, isKittyItem, isKittySize, isPancakeItem, pancakeSizeFor, pancakeItemCost, pancakeExtraCount, PANCAKE_EXTRA_TOPPING_PRICE, PANCAKE_MAX_EXTRA_TOPPINGS } from '../lib/menu';
+import { BASES, PRICES, TOPPINGS, SYRUPS, toppingsCost, freeCupDeal, FREE_CUP_EVERY, todayDateKey, maxPreorderDateKey, formatDateKey, getAvailablePickupTimes, buildPickupTimes, formatWeekdaysList, MAX_EXTRA_TOPPING_QTY, PANCAKE_BASE_NAME, PANCAKE_SIZES, PANCAKE_TOPPINGS, KITTY_BASE_NAME, KITTY_SIZES, KITTY_COUNT, isKittyItem, isKittySize, isPancakeItem, pancakeSizeFor, pancakeItemCost, pancakeExtraCount, PANCAKE_EXTRA_TOPPING_PRICE, PANCAKE_MAX_EXTRA_TOPPINGS, PANCAKE_ICE_CREAM_PRICE, pancakeHasIceCream } from '../lib/menu';
 import AddToHomeBanner from '../components/AddToHomeBanner';
 import MobileTabBar from '../components/MobileTabBar';
 import { getSupabaseAdmin } from '../lib/supabaseAdmin';
@@ -234,7 +234,7 @@ const STR = {
     freeNote: (used, total) => `${used} of ${total} free toppings used`,
     addOneTopping: (name) => `Add one more ${name}`,
     removeOneTopping: (name) => `Remove one ${name}`,
-    syrup: 'Syrup',
+    syrup: 'Drizzle',
     syrupHint: "Pick as many as you'd like — no extra charge",
     howMany: 'How many cups?',
     pickupTime: 'Pickup time',
@@ -303,6 +303,10 @@ const STR = {
     kittySizeHint: 'Fluffy, made to order',
     kittyName: (n) => (n === 4 ? 'Just the Kitty pancakes' : 'Plate'),
     kittyDesc: (n) => (n === 4 ? '4 Hello Kitty pancakes' : ''),
+    kittyPlateDesc: '5 Hello Kitty pancakes + 10 mini pancakes, 4 toppings of your choice and 2 drizzles',
+    iceCreamTitle: 'Ice cream',
+    iceCreamLabel: (p) => `🍦 Add ice cream (+$${p.toFixed(0)})`,
+    iceCreamLine: (amt) => `Ice cream (+$${amt.toFixed(2)})`,
     pancakeIncludes: (tp, dr) => `Choose ${tp} toppings + ${dr} ${dr === 1 ? 'drizzle' : 'drizzles'}`,
     pancakeToppingsHint: (n) => `Choose up to ${n} toppings`,
     pancakeToppingsHintExtra: (n, m, p) => `${n} included, then +$${p.toFixed(2)} each (up to ${m} extra)`,
@@ -405,7 +409,7 @@ const STR = {
     freeNote: (used, total) => `${used} de ${total} toppings gratis usados`,
     addOneTopping: (name) => `Agregar otro ${name}`,
     removeOneTopping: (name) => `Quitar un ${name}`,
-    syrup: 'Jarabe',
+    syrup: 'Salsa',
     syrupHint: 'Elige los que quieras — sin costo extra',
     howMany: '¿Cuántos vasos?',
     pickupTime: 'Hora de recogida',
@@ -474,6 +478,10 @@ const STR = {
     kittySizeHint: 'Esponjosos, hechos al momento',
     kittyName: (n) => (n === 4 ? 'Solo los pancakes de Kitty' : 'Plato'),
     kittyDesc: (n) => (n === 4 ? '4 pancakes de Hello Kitty' : ''),
+    kittyPlateDesc: '5 pancakes de Hello Kitty + 10 mini pancakes, 4 toppings a tu elección y 2 salsas',
+    iceCreamTitle: 'Helado',
+    iceCreamLabel: (p) => `🍦 Agregar helado (+$${p.toFixed(0)})`,
+    iceCreamLine: (amt) => `Helado (+$${amt.toFixed(2)})`,
     pancakeIncludes: (tp, dr) => `Elige ${tp} toppings + ${dr} ${dr === 1 ? 'salsa' : 'salsas'}`,
     pancakeToppingsHint: (n) => `Elige hasta ${n} toppings`,
     pancakeToppingsHintExtra: (n, m, p) => `${n} incluidos, luego +$${p.toFixed(2)} cada uno (hasta ${m} extra)`,
@@ -584,6 +592,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
   const [pSize, setPSize] = useState(20);
   const [pToppings, setPToppings] = useState([]);
   const [pDrizzles, setPDrizzles] = useState([]);
+  const [pIce, setPIce] = useState(false);
   const [pQty, setPQty] = useState(1);
   const [cart, setCart] = useState([]); // other cups already added to this order
   const [pickupDate, setPickupDate] = useState(todayDateKey());
@@ -739,6 +748,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
           if (Array.isArray(draft.pToppings)) setPToppings(draft.pToppings.filter((x) => PANCAKE_TOPPINGS.includes(x)));
           if (Array.isArray(draft.pDrizzles)) setPDrizzles(draft.pDrizzles.filter((x) => SYRUPS.includes(x)));
           if (draft.pQty) setPQty(draft.pQty);
+          if (draft.pIce) setPIce(true);
           if (Array.isArray(draft.cart)) setCart(draft.cart);
           // A saved draft's pickup date can be yesterday's (or older) by the
           // time someone comes back to it — roll it forward to today rather
@@ -767,13 +777,13 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
     try {
       window.localStorage.setItem('fresasOrderDraft', JSON.stringify({
         cupSize, base, toppings, syrups, qty, includeRim, cart, pickupDate, pickup, name, phone, notes, paymentMethod,
-        mode, pSize, pToppings, pDrizzles, pQty,
+        mode, pSize, pToppings, pDrizzles, pQty, pIce,
         savedAt: Date.now(),
       }));
     } catch (e) {
       // ignore — localStorage may be unavailable
     }
-  }, [draftReady, cupSize, base, toppings, syrups, qty, includeRim, cart, pickupDate, pickup, name, phone, notes, paymentMethod, mode, pSize, pToppings, pDrizzles, pQty]);
+  }, [draftReady, cupSize, base, toppings, syrups, qty, includeRim, cart, pickupDate, pickup, name, phone, notes, paymentMethod, mode, pSize, pToppings, pDrizzles, pQty, pIce]);
 
   // Re-check which pickup times are still bookable once a minute, so a
   // slot that just passed disappears from the list on its own. Browsers
@@ -973,8 +983,8 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
   // pancakes, nothing picked) only counts when it's the active tab and the
   // order is otherwise empty. A builder on the other tab that has been
   // customized still counts, so switching tabs never silently drops it.
-  const isPancakeBlank = (pSize === 20 || pSize === KITTY_COUNT) && pToppings.length === 0 && pDrizzles.length === 0 && pQty === 1;
-  const currentPancakeItem = { kind: 'pancakes', size: pSize, toppings: pToppings, syrups: pDrizzles, qty: pQty };
+  const isPancakeBlank = (pSize === 20 || pSize === KITTY_COUNT) && pToppings.length === 0 && pDrizzles.length === 0 && pQty === 1 && !pIce;
+  const currentPancakeItem = { kind: 'pancakes', size: pSize, toppings: pToppings, syrups: pDrizzles, qty: pQty, iceCream: pIce };
   const cupBuilderCounts = mode === 'cups' ? (cart.length === 0 || !isBuilderBlank) : !isBuilderBlank;
   const isPMode = mode === 'pancakes' || mode === 'kitty'; // either pancake tab (they share one builder)
   const pancakeBuilderCounts = isPMode ? (cart.length === 0 || !isPancakeBlank) : !isPancakeBlank;
@@ -992,6 +1002,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
     setPSize(20);
     setPToppings([]);
     setPDrizzles([]);
+    setPIce(false);
     setPQty(1);
     setIncludeRim(true);
     setPickupDate(todayDateKey());
@@ -1055,6 +1066,11 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
     }
   }, [draftReady, shopStatus, pancakesEnabled, kittyEnabled]);
   // A restored draft or repeat order can carry paid extras; trim them if the switch is off.
+  // A restored draft can also carry more drizzles than the pack now allows.
+  useEffect(() => {
+    const sz = pancakeSizeFor(pSize);
+    if (sz) setPDrizzles((prev) => (prev.length > sz.drizzles ? prev.slice(0, sz.drizzles) : prev));
+  }, [pSize, pDrizzles.length]);
   useEffect(() => {
     if (!shopStatus || pancakeExtrasEnabled) return;
     const sz = pancakeSizeFor(pSize);
@@ -1141,6 +1157,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
     setPSize(mode === 'kitty' ? KITTY_COUNT : 20);
     setPToppings([]);
     setPDrizzles([]);
+    setPIce(false);
     setPQty(1);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
@@ -1156,6 +1173,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
         setPSize(wantKitty ? KITTY_COUNT : 20);
         setPToppings([]);
         setPDrizzles([]);
+        setPIce(false);
         setPQty(1);
       }
     }
@@ -1198,6 +1216,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
       setPSize(item.size);
       setPToppings(item.toppings);
       setPDrizzles(item.syrups);
+      setPIce(!!item.iceCream);
       setPQty(item.qty);
       setCart((prev) => prev.filter((_, i) => i !== index));
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1354,6 +1373,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
                 cup_size: `${item.size} pcs`,
                 toppings: item.toppings,
                 syrups: item.syrups,
+                ice_cream: !!item.iceCream,
                 qty: item.qty,
                 include_rim: true,
               }
@@ -1447,6 +1467,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
       setPSize(20);
       setPToppings([]);
       setPDrizzles([]);
+      setPIce(false);
       setPQty(1);
       setIncludeRim(true);
       setName('');
@@ -1727,7 +1748,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
                         ) : (
                           <><strong>{item.qty}x {itemBase.name}</strong> ({item.cupSize} oz)</>
                         )}
-                        {item.toppings.length ? ` · ${summarizeToppings(item.toppings, lang)}` : ''}
+                        {item.toppings.length ? ` · ${summarizeToppings(item.toppings, lang)}` : ''}{pancakeHasIceCream(item) ? ' · 🍦' : ''}
                       </div>
                       <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                         <button type="button" className="status-btn" style={{ padding: '6px 10px', fontSize: '0.78rem' }} onClick={() => editCartItem(i)}>
@@ -1933,7 +1954,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
                     {!settingsLoaded ? <span className="skeleton-line skeleton-line--price" /> : `$${sz.price.toFixed(2)}`}
                   </span>
                 </div>
-                <div className="desc">{mode === 'kitty' && t.kittyDesc(sz.count) ? `${t.kittyDesc(sz.count)} · ` : ''}{t.pancakeIncludes(sz.toppings, sz.drizzles)}</div>
+                <div className="desc">{mode === 'kitty' && sz.count === KITTY_COUNT ? t.kittyPlateDesc : `${mode === 'kitty' && t.kittyDesc(sz.count) ? `${t.kittyDesc(sz.count)} · ` : ''}${t.pancakeIncludes(sz.toppings, sz.drizzles)}`}</div>
               </div>
             </label>
           ))}
@@ -1992,6 +2013,22 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
             })}
           </div>
           <div className="free-note">{t.pancakeDrizzlesChosen(pDrizzles.length, pancakeSizeFor(pSize).drizzles)}</div>
+        </div>
+
+        <div className="section">
+          <h2>{t.iceCreamTitle}</h2>
+          <div className="chip-grid">
+            {(() => {
+              const iceSoldOut = (shopStatus?.sold_out_toppings || []).includes('Ice Cream');
+              return (
+                <label className={`chip${pIce ? ' checked' : ''}`} style={iceSoldOut ? { opacity: 0.45, cursor: 'not-allowed' } : {}}>
+                  <input type="checkbox" style={{ display: 'none' }} checked={pIce} disabled={iceSoldOut} onChange={() => setPIce((v) => !v)} />
+                  <span>{t.iceCreamLabel(PANCAKE_ICE_CREAM_PRICE)}</span>
+                  {iceSoldOut && <span className="badge">{t.soldOut}</span>}
+                </label>
+              );
+            })()}
+          </div>
         </div>
 
         <div className="section">
@@ -2255,6 +2292,12 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
                     <div className="line" style={{ borderBottom: 'none' }}>
                       <span>{t.pancakeExtraLabel} ({pancakeExtraCount(item)})</span>
                       <strong>+${(pancakeExtraCount(item) * PANCAKE_EXTRA_TOPPING_PRICE * (item.qty || 1)).toFixed(2)}</strong>
+                    </div>
+                  )}
+                  {pancakeHasIceCream(item) && (
+                    <div className="line" style={{ borderBottom: 'none' }}>
+                      <span>🍦 {t.iceCreamTitle}</span>
+                      <strong>+${(PANCAKE_ICE_CREAM_PRICE * (item.qty || 1)).toFixed(2)}</strong>
                     </div>
                   )}
                 </div>

@@ -893,6 +893,7 @@ export default function Admin() {
                         <div key={name}>- {name}{count > 1 ? ` ×${count}` : ''}</div>
                       ))
                     : <div>- None</div>}
+                  {isPancakeItem(item) && item.ice_cream && <div><strong>🍦 Ice cream:</strong> Yes (+$1)</div>}
                   <div><strong>{isPancakeItem(item) ? 'Drizzle:' : 'Syrup:'}</strong></div>
                   {item.syrups?.length
                     ? item.syrups.map((s) => <div key={s}>- {s}</div>)
@@ -1504,7 +1505,7 @@ export default function Admin() {
                   {settings.kitty_pancakes_enabled ? 'On' : 'Off'}
                 </button>
               </div>
-              <p className="hint-sm">When on, customers see a Hello Kitty Pancakes tab on the order page: the $14 plate (4 Kitty pancakes + 10 mini pancakes, 4 toppings + 4 drizzles) or $8 for just the 4 Kitty pancakes (2 toppings + 2 drizzles). Toppings, drizzles and the extra-toppings switch work the same as Mini Pancakes. When off, it's hidden and Kitty orders are rejected.</p>
+              <p className="hint-sm">When on, customers see a Hello Kitty Pancakes tab on the order page: the $14 plate (5 Kitty pancakes + 10 mini pancakes, 4 toppings + 2 drizzles) or $8 for just the 4 Kitty pancakes (2 toppings + 2 drizzles). Toppings, drizzles and the extra-toppings switch work the same as Mini Pancakes. When off, it's hidden and Kitty orders are rejected.</p>
             </div>
           )}
           {settings && (
@@ -1888,7 +1889,7 @@ export default function Admin() {
                   {editForm.items.map((item, i) => (
                     <div key={i} style={{ marginBottom: i < editForm.items.length - 1 ? 8 : 0 }}>
                       <div><strong>{isKittyItem(item) ? '🎀 ' : isPancakeItem(item) ? '🥞 ' : ''}{item.qty}x {item.base}</strong>{item.cup_size ? ` (${item.cup_size})` : ''}</div>
-                      <div>Toppings: {item.toppings?.length ? toppingsSummaryText(item.toppings) : 'None'} · {isPancakeItem(item) ? 'Drizzle' : 'Syrup'}: {item.syrups?.length ? item.syrups.join(', ') : 'None'}</div>
+                      <div>Toppings: {item.toppings?.length ? toppingsSummaryText(item.toppings) : 'None'} · {isPancakeItem(item) ? 'Drizzle' : 'Syrup'}: {item.syrups?.length ? item.syrups.join(', ') : 'None'}{isPancakeItem(item) && item.ice_cream ? ' · 🍦 Ice cream' : ''}</div>
                     </div>
                   ))}
                 </div>

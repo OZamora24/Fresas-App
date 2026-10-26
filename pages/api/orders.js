@@ -248,6 +248,9 @@ export default async function handler(req, res) {
       if (soldOutToppingHit) {
         return res.status(409).json({ error: 'sold_out', message: `${soldOutToppingHit} is sold out right now — please remove it.` });
       }
+      if ((cup.ice_cream || cup.iceCream) && isPancakeItem(cup) && settingsRow?.sold_out_toppings?.includes('Ice Cream')) {
+        return res.status(409).json({ error: 'sold_out', message: 'Ice Cream is sold out right now — please remove it.' });
+      }
       const soldOutSyrupHit = (cup.syrups || []).find((s) => settingsRow?.sold_out_syrups?.includes(s));
       if (soldOutSyrupHit) {
         return res.status(409).json({ error: 'sold_out', message: `${soldOutSyrupHit} syrup is sold out right now — please remove it.` });

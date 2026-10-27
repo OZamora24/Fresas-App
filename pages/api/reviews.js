@@ -1,6 +1,41 @@
 import { getSupabaseAdmin } from '../../lib/supabaseAdmin';
 import { isValidSession } from '../../lib/adminSession';
 
+const APP_URL = 'https://www.lovelyfresitas.app';
+
+// Pop-up on the owner's phone the moment a customer submits a review (same
+// OneSignal "role = admin" devices as the new-order alert). Tapping it opens
+// the review screen so it can be approved or hidden. A failed push never
+// blocks the review itself.
+async function sendReviewPushToAdmin({ stars, name, comment }) {
+  const appId = process.env.ONESIGNAL_APP_ID;
+  const apiKey = process.env.ONESIGNAL_REST_API_KEY;
+  if (!appId || !apiKey) return; // push not configured, review is still saved
+
+  const who = name || 'A customer';
+  const shown = comment.length > 140 ? `${comment.slice(0, 137).trimEnd()}...` : comment;
+  const body = {
+    app_id: appId,
+    target_channel: 'push',
+    filters: [{ field: 'tag', key: 'role', relation: '=', value: 'admin' }],
+    headings: { en: `${'\u2B50'.repeat(stars)} ${who} left a review` },
+    contents: { en: `\u201C${shown}\u201D` },
+    url: `${APP_URL}/admin/reviews`,
+  };
+  try {
+    await fetch('https://api.onesignal.com/notifications', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        Authorization: `Key ${apiKey}`,
+      },
+      body: JSON.stringify(body),
+    });
+  } catch (e) {
+    console.error('OneSignal review alert failed', e);
+  }
+}
+
 // Customer reviews.
 //   GET            public  -> approved reviews + average + count
 //   GET ?all=1     admin   -> every review, newest first (pending included)
@@ -75,6 +110,7 @@ export default async function handler(req, res) {
       console.error(error);
       return res.status(500).json({ error: 'Could not save your review.' });
     }
+    await sendReviewPushToAdmin({ stars, name: who, comment: text });
     return res.status(200).json({ ok: true });
   }
 

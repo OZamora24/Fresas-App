@@ -3,7 +3,7 @@ import Head from 'next/head';
 import Seo from '../components/Seo';
 import Link from 'next/link';
 import Script from 'next/script';
-import { BASES, PRICES, TOPPINGS, SYRUPS, toppingsCost, freeCupDeal, FREE_CUP_EVERY, todayDateKey, maxPreorderDateKey, formatDateKey, getAvailablePickupTimes, buildPickupTimes, formatWeekdaysList, MAX_EXTRA_TOPPING_QTY, PANCAKE_BASE_NAME, PANCAKE_SIZES, PANCAKE_TOPPINGS, KITTY_BASE_NAME, KITTY_SIZES, KITTY_COUNT, isKittyItem, isKittySize, isPancakeItem, pancakeSizeFor, pancakeItemCost, pancakeExtraCount, PANCAKE_EXTRA_TOPPING_PRICE, PANCAKE_MAX_EXTRA_TOPPINGS, PANCAKE_ICE_CREAM_PRICE, pancakeHasIceCream } from '../lib/menu';
+import { BASES, PRICES, TOPPINGS, SYRUPS, toppingsCost, freeCupDeal, FREE_CUP_EVERY, todayDateKey, maxPreorderDateKey, formatDateKey, getAvailablePickupTimes, buildPickupTimes, formatWeekdaysList, MAX_EXTRA_TOPPING_QTY, PANCAKE_BASE_NAME, PANCAKE_SIZES, PANCAKE_TOPPINGS, KITTY_BASE_NAME, KITTY_SIZES, KITTY_COUNT, isKittyItem, isKittySize, isPancakeItem, pancakeSizeFor, pancakePieces, pancakeItemCost, pancakeExtraCount, PANCAKE_EXTRA_TOPPING_PRICE, PANCAKE_MAX_EXTRA_TOPPINGS, PANCAKE_ICE_CREAM_PRICE, pancakeHasIceCream } from '../lib/menu';
 import AddToHomeBanner from '../components/AddToHomeBanner';
 import MobileTabBar from '../components/MobileTabBar';
 import { getSupabaseAdmin } from '../lib/supabaseAdmin';
@@ -1370,7 +1370,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
                 kind: 'pancakes',
                 base: isKittyItem(item) ? KITTY_BASE_NAME : PANCAKE_BASE_NAME,
                 pancake_size: item.size,
-                cup_size: `${item.size} pcs`,
+                cup_size: `${pancakePieces(item.size)} pcs`,
                 toppings: item.toppings,
                 syrups: item.syrups,
                 ice_cream: !!item.iceCream,
@@ -1389,7 +1389,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
           // that only reads a single cup (admin quick-view, SMS, etc.) —
           // first cup's details, with qty as the total cup count.
           base: firstIsPancake ? (isKittyItem(firstItem) ? KITTY_BASE_NAME : PANCAKE_BASE_NAME) : firstItemBase.name,
-          cup_size: firstIsPancake ? `${firstItem.size} pcs` : `${firstItem.cupSize} oz`,
+          cup_size: firstIsPancake ? `${pancakePieces(firstItem.size)} pcs` : `${firstItem.cupSize} oz`,
           toppings: firstItem.toppings,
           syrups: firstItem.syrups,
           qty: totalCups,

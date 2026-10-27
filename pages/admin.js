@@ -869,13 +869,17 @@ export default function Admin() {
               const pancakePacks = o.items.filter((i) => isPancakeItem(i) && !isKittyItem(i)).reduce((n, i) => n + (i.qty || 1), 0);
               const kittyPacks = o.items.filter(isKittyItem).reduce((n, i) => n + (i.qty || 1), 0);
               const otherPacks = pancakePacks + kittyPacks;
+              // Total pieces ("14 pcs" is saved as text in each item's cup_size).
+              const piecesOf = (list) => list.reduce((n, i) => n + (parseInt(i.cup_size, 10) || 0) * (i.qty || 1), 0);
+              const pancakePcs = piecesOf(o.items.filter((i) => isPancakeItem(i) && !isKittyItem(i)));
+              const kittyPcs = piecesOf(o.items.filter(isKittyItem));
               return (
                 <div className="meta">
                   {cupTotal > 0 && `${cupTotal} cup${cupTotal === 1 ? '' : 's'}`}
                   {cupTotal > 0 && otherPacks > 0 && ' + '}
-                  {pancakePacks > 0 && `🥞 ${pancakePacks} mini pancake pack${pancakePacks === 1 ? '' : 's'}`}
+                  {pancakePacks > 0 && `🥞 ${pancakePacks} mini pancake pack${pancakePacks === 1 ? '' : 's'}${pancakePcs ? ` (${pancakePcs} pcs)` : ''}`}
                   {pancakePacks > 0 && kittyPacks > 0 && ' + '}
-                  {kittyPacks > 0 && `🎀 ${kittyPacks} Hello Kitty pack${kittyPacks === 1 ? '' : 's'}`}
+                  {kittyPacks > 0 && `🎀 ${kittyPacks} Hello Kitty pack${kittyPacks === 1 ? '' : 's'}${kittyPcs ? ` (${kittyPcs} pcs)` : ''}`}
                   {' '}in this order
                 </div>
               );

@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import '../styles/globals.css';
 import SplashScreen from '../components/SplashScreen';
+import BuiltByOrlandoTab from '../components/BuiltByOrlandoTab';
 import RouteTransition from '../components/RouteTransition';
 
 // The launch splash always stays up at least this long — long enough for
@@ -146,6 +147,7 @@ export default function App({ Component, pageProps }) {
       <div className={phase === 'visible' ? 'app-content-hidden' : undefined}>
         <Component {...pageProps} />
       </div>
+      <BuiltByOrlandoTab />
       <RouteTransition />
       {phase !== 'gone' && <SplashScreen leaving={phase === 'leaving'} label={splashLabel} />}
     </>

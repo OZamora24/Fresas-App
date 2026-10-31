@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import Head from 'next/head';
 import Script from 'next/script';
 import Link from 'next/link';
-import { BASES, PRICES, TOPPINGS, SYRUPS, orderTotal, buildPickupTimes, baseIdFromName, formatDateKey, todayDateKey, maxPreorderDateKey, MAX_EXTRA_TOPPING_QTY, FREE_CUP_DEAL_CODE, PANCAKE_TOPPINGS, isPancakeItem, isKittyItem } from '../lib/menu';
+import { BASES, PRICES, TOPPINGS, SYRUPS, orderTotal, buildPickupTimes, baseIdFromName, formatDateKey, todayDateKey, maxPreorderDateKey, MAX_EXTRA_TOPPING_QTY, FREE_CUP_DEAL_CODE, PANCAKE_TOPPINGS, isPancakeItem, isKittyItem , addMinutesToTimeLabel, heldUntilLabel } from '../lib/menu';
 
 const ONESIGNAL_APP_ID = process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID;
 
@@ -836,6 +836,15 @@ export default function Admin() {
           </div>
         )}
         {isNewOrder(o) && <div className="new-ago">Came in {timeAgo(o.created_at)}</div>}
+        {o.late_minutes > 0 && !o.arrived_at && o.status !== 'done' && (
+          <div style={{
+            display: 'inline-block', background: '#FFF0C2', border: '2px solid #E5C25A',
+            borderRadius: 10, padding: '4px 10px', fontWeight: 800, color: '#5d4300',
+            fontSize: '0.82rem', marginBottom: 8, marginRight: 6,
+          }}>
+            ⏰ Running {o.late_minutes} min late · new pickup {addMinutesToTimeLabel(o.pickup_time, o.late_minutes)} · holding until {heldUntilLabel(o.pickup_time, o.late_minutes)}
+          </div>
+        )}
         {o.arrived_at && (
           <div style={{
             display: 'inline-block', background: 'var(--pink-pale)', border: '2px solid var(--pink)',

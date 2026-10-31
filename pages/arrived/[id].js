@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import ArrivalPanel from '../../components/ArrivalPanel';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 
@@ -47,6 +48,15 @@ export default function Arrived() {
   const t = STR[lang];
 
   const [status, setStatus] = useState('idle'); // idle | sending | done | already | not_found | error
+  const [info, setInfo] = useState(null); // { pickup_time, late_minutes, arrived } for the Running late box
+
+  useEffect(() => {
+    if (!id) return;
+    fetch(`/api/orders/late?id=${encodeURIComponent(id)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d) setInfo(d); })
+      .catch(() => {});
+  }, [id]);
 
   async function markArrived() {
     if (!id || status === 'sending') return;
@@ -93,6 +103,15 @@ export default function Arrived() {
           </button>
           {status === 'error' && (
             <p style={{ color: 'var(--maroon)', marginTop: 16, fontWeight: 700 }}>{t.errorBody}</p>
+          )}
+          {info && !info.arrived && !info.closed && (
+            <ArrivalPanel
+              orderId={id}
+              pickupTime={info.pickup_time}
+              lang={lang}
+              initialLate={info.late_minutes}
+              onArrive={() => setStatus('done')}
+            />
           )}
         </>
       )}

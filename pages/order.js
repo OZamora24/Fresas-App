@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Script from 'next/script';
 import { BASES, PRICES, TOPPINGS, SYRUPS, toppingsCost, freeCupDeal, FREE_CUP_EVERY, todayDateKey, maxPreorderDateKey, formatDateKey, getAvailablePickupTimes, buildPickupTimes, formatWeekdaysList, MAX_EXTRA_TOPPING_QTY, PANCAKE_BASE_NAME, PANCAKE_SIZES, PANCAKE_TOPPINGS, KITTY_BASE_NAME, KITTY_SIZES, KITTY_COUNT, isKittyItem, isKittySize, isPancakeItem, pancakeSizeFor, pancakePieces, pancakeItemCost, pancakeExtraCount, PANCAKE_EXTRA_TOPPING_PRICE, PANCAKE_MAX_EXTRA_TOPPINGS, PANCAKE_ICE_CREAM_PRICE, pancakeHasIceCream } from '../lib/menu';
 import AddToHomeBanner from '../components/AddToHomeBanner';
+import ArrivalPanel from '../components/ArrivalPanel';
 import MobileTabBar from '../components/MobileTabBar';
 import { getSupabaseAdmin } from '../lib/supabaseAdmin';
 
@@ -1588,6 +1589,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
           {confirmedPaymentMethod === 'zelle' ? keepPhoneTogether(t.zelleFollowUp(confirmedTotal.toFixed(2), ZELLE_PHONE), ZELLE_PHONE) : t.cashFollowUp(confirmedTotal.toFixed(2))}
         </p>
         </div>
+        <ArrivalPanel orderId={confirmedOrderId} pickupTime={pickup} lang={lang} showHere />
         {!contactDone && !contactCardHidden() && (
           <div className="notify-card contact-card">
             <img className="contact-logo" src="/fresas-logo-contact.jpg" alt="Fresas con Crema" width="64" height="64" />

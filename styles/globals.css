@@ -1265,3 +1265,45 @@ button, a, .chip, .base-card, label, summary { touch-action: manipulation; -webk
   border-radius: 999px; padding: 10px 18px; font-weight: 800; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
 }
 
+
+/* ---- Pickup hold + "Running late?" (components/ArrivalPanel.js) ---- */
+.arrival-panel { max-width: 480px; margin: 18px auto 0; text-align: left; }
+.hold-note {
+  display: flex; gap: 9px; align-items: flex-start;
+  background: #FFF0C2; border: 2px solid #E5C25A; border-radius: 14px;
+  padding: 10px 12px; margin-bottom: 12px;
+  font-weight: 700; font-size: 0.86rem; line-height: 1.4; color: #5d4300;
+}
+.hold-note-icon { font-size: 1.1rem; line-height: 1.2; }
+.arrival-card {
+  background: var(--card-bg); border: 2px solid var(--line); border-radius: 18px;
+  padding: 14px 16px; margin-bottom: 12px; text-align: center;
+}
+.arrival-card-ok { border-color: var(--good); }
+.arrival-title { font-family: 'Baloo 2', 'Nunito', sans-serif; font-weight: 800; font-size: 1.05rem; color: var(--maroon); }
+.arrival-body { margin: 2px 0 10px; color: var(--ink-soft); font-weight: 700; font-size: 0.84rem; line-height: 1.4; }
+.arrival-here-btn {
+  border: 0; border-radius: 999px; padding: 11px 30px; cursor: pointer;
+  background: var(--pink); color: #fff; font: 800 1rem 'Nunito', sans-serif;
+  touch-action: manipulation;
+}
+.arrival-here-btn:disabled { opacity: 0.6; cursor: default; }
+.arrival-ok { font-weight: 800; color: var(--good); font-size: 0.92rem; line-height: 1.4; }
+.arrival-err { color: var(--maroon-deep); font-weight: 700; font-size: 0.82rem; margin: 8px 0 0; }
+.late-select {
+  display: block; width: 100%; margin: 6px 0 10px; padding: 12px 14px;
+  border: 2px solid var(--maroon); border-radius: 14px; background: #fff;
+  color: var(--maroon); font: 800 0.95rem 'Nunito', sans-serif;
+  appearance: auto; -webkit-appearance: menulist;
+}
+.late-go {
+  display: block; width: 100%; border: 0; border-radius: 14px; padding: 12px;
+  background: var(--maroon); color: var(--cream-2); cursor: pointer;
+  font: 800 0.95rem 'Baloo 2', 'Nunito', sans-serif; touch-action: manipulation;
+}
+.late-go:disabled { background: #e7d3d8; color: #a58a91; cursor: default; }
+.late-ok {
+  background: var(--good-bg); border: 2px solid var(--good); border-radius: 14px;
+  padding: 10px 12px; font-weight: 800; font-size: 0.86rem; color: #14653a; line-height: 1.4; text-align: left;
+}
+.late-change { background: none; border: 0; padding: 0; color: var(--pink); font: 800 0.84rem 'Nunito', sans-serif; text-decoration: underline; cursor: pointer; }

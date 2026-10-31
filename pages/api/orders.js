@@ -1,6 +1,6 @@
 import { getSupabaseAdmin } from '../../lib/supabaseAdmin';
 import { isValidSession } from '../../lib/adminSession';
-import { baseIdFromName, formatDateKey, todayDateKey, getAvailablePickupTimes, PRICES, toppingsCost, freeCupDeal, FREE_CUP_DEAL_CODE, isPancakeItem, isKittyItem, pancakeItemCost, validatePancakeItem } from '../../lib/menu';
+import { baseIdFromName, formatDateKey, todayDateKey, getAvailablePickupTimes, PRICES, toppingsCost, freeCupDeal, FREE_CUP_DEAL_CODE, isPancakeItem, isKittyItem, pancakeItemCost, validatePancakeItem, HOLD_MINUTES } from '../../lib/menu';
 
 const APP_URL = 'https://www.lovelyfresitas.app';
 
@@ -159,8 +159,8 @@ async function sendConfirmationTextToCustomer(order) {
   const address = '1526 W Bonnie View Dr, Rialto, CA 92376';
   const arrivedLink = `${APP_URL}/arrived/${order.id}?lang=${order.language === 'es' ? 'es' : 'en'}`;
   const body = order.language === 'es'
-    ? `🍓 ¡Recibimos tu orden de Fresas con Crema (#${order.order_number})! Te enviaremos un mensaje cuando esté lista para recoger (${dateLabel}, ${order.pickup_time}). Recoger en: ${address}\n\nCuando llegues, avísanos aquí: ${arrivedLink}`
-    : `🍓 Got your Fresas con Crema order (#${order.order_number})! We'll text you when it's ready for pickup (${dateLabel}, ${order.pickup_time}). Pickup at: ${address}\n\nWhen you arrive, let us know here: ${arrivedLink}`;
+    ? `🍓 ¡Recibimos tu orden de Fresas con Crema (#${order.order_number})! Te enviaremos un mensaje cuando esté lista para recoger (${dateLabel}, ${order.pickup_time}). Recoger en: ${address}\n\nGuardamos las órdenes ${HOLD_MINUTES} min después de la hora de recogida. Usa este enlace cuando llegues o si vas tarde: ${arrivedLink}`
+    : `🍓 Got your Fresas con Crema order (#${order.order_number})! We'll text you when it's ready for pickup (${dateLabel}, ${order.pickup_time}). Pickup at: ${address}\n\nWe hold orders ${HOLD_MINUTES} min after pickup time. Use this link when you arrive or if you're running late: ${arrivedLink}`;
   await sendSms(to, body);
 }
 

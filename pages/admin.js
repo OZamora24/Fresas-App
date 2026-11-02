@@ -9,6 +9,19 @@ const ONESIGNAL_APP_ID = process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID;
 // Dashboard sections Orlando can reorder with the up/down arrows, top to
 // bottom by default. The Orders queue below them is intentionally left out
 // — it always stays last and never gets arrows.
+// Screens reachable from the side menu (see the menu in the page body).
+const VIEW_TITLES = {
+  orders: ['Orders', 'Live orders · refreshes every few seconds'],
+  hours: ['Hours & checkout', 'Slots, store hours, phone and review settings'],
+  closed: ['Closed days', 'Days customers cannot pick for pickup'],
+  soldout: ['Sold out items', 'Turn flavors, toppings and drizzles off for customers'],
+  catering: ['Catering', 'Which days catering is available'],
+  promos: ['Promos & menu', 'Pancake switches, deals and promo codes'],
+  photos: ['Site photos', 'Pictures shown on the Photos page'],
+  sales: ['Sales', 'Totals, best sellers and busiest times'],
+  export: ['Export orders', 'Download your order history'],
+};
+
 const SECTION_KEYS = ['shopStatus', 'salesLink', 'promoCodes', 'sitePhotos', 'exportHistory'];
 const SECTION_ORDER_STORAGE_KEY = 'fresasAdminSectionOrder';
 
@@ -79,6 +92,10 @@ export default function Admin() {
   const [loginError, setLoginError] = useState('');
   const [orders, setOrders] = useState([]);
   const [ordersTab, setOrdersTab] = useState('open'); // 'open' | 'done'
+  // Side-menu navigation: which screen is showing, and whether the menu is open.
+  const [view, setView] = useState('orders');
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [pendingReviews, setPendingReviews] = useState(0);
   const [expandedDoneId, setExpandedDoneId] = useState(null); // which Completed row is tapped open
   const [seenOrderIds, setSeenOrderIds] = useState(null); // null until loaded from localStorage
   const [pushEnabled, setPushEnabled] = useState(false);
@@ -260,7 +277,31 @@ export default function Admin() {
   }
 
   useEffect(() => {
+    if (view === 'sales' && !salesSummary && !salesLoading) fetchSalesSummary();
+  }, [view]);
+
+  // Count of reviews waiting for approval, shown as a badge in the menu.
+  async function fetchPendingReviews() {
+    try {
+      const res = await fetch('/api/reviews?all=1');
+      if (!res.ok) return;
+      const data = await res.json();
+      setPendingReviews((data.reviews || []).filter((r) => !r.approved).length);
+    } catch (e) {
+      // badge is optional
+    }
+  }
+
+  function goTo(next, tab) {
+    setView(next);
+    if (tab) setOrdersTab(tab);
+    setMenuOpen(false);
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0 });
+  }
+
+  useEffect(() => {
     fetchOrders().finally(() => setChecking(false));
+    fetchPendingReviews();
     fetchSettings();
     fetchPhotos();
     fetchPromoCodes();
@@ -1042,12 +1083,55 @@ export default function Admin() {
         />
       )}
 
-      <div className="hero">
-        <h1>Admin</h1>
-        <p>Live orders · refreshes every few seconds</p>
+      <div className="hero e-hero">
+        <button type="button" className="e-burger" onClick={() => setMenuOpen(true)} aria-label="Open menu">
+          ☰
+          {(openOrders.some(isNewOrder) || pendingReviews > 0) && <span className="e-burger-dot" />}
+        </button>
+        {settings && (
+          <button type="button" className={`e-open-pill${settings.is_open ? '' : ' closed'}`} onClick={() => goTo('orders')}>
+            <i /> {settings.is_open ? 'Open' : 'Closed'}
+          </button>
+        )}
+        <h1>{(VIEW_TITLES[view] || VIEW_TITLES.orders)[0]}</h1>
+        <p>{(VIEW_TITLES[view] || VIEW_TITLES.orders)[1]}</p>
       </div>
 
-      <div className="wrap">
+      {menuOpen && (
+        <div className="e-menu-layer" role="dialog" aria-label="Admin menu">
+          <nav className="e-menu">
+            <div className="e-menu-head">
+              <div>
+                <strong>Lovely Fresitas</strong>
+                <small>Admin{settings ? (settings.is_open ? ' · Open' : ' · Closed') : ''}</small>
+              </div>
+              <button type="button" className="e-menu-x" onClick={() => setMenuOpen(false)} aria-label="Close menu">✕</button>
+            </div>
+            <div className="e-menu-group">Orders</div>
+            <button type="button" className={`e-menu-item${view === 'orders' && ordersTab === 'open' ? ' on' : ''}`} onClick={() => goTo('orders', 'open')}>
+              <span>📋 Live orders</span>{openOrders.length > 0 && <em>{openOrders.length}</em>}
+            </button>
+            <button type="button" className={`e-menu-item${view === 'orders' && ordersTab === 'done' ? ' on' : ''}`} onClick={() => goTo('orders', 'done')}>
+              <span>🕘 Past orders</span><small>{orders.length - openOrders.length} done</small>
+            </button>
+            <div className="e-menu-group">Shop</div>
+            <button type="button" className={`e-menu-item${view === 'hours' ? ' on' : ''}`} onClick={() => goTo('hours')}><span>⏰ Hours &amp; checkout</span></button>
+            <button type="button" className={`e-menu-item${view === 'closed' ? ' on' : ''}`} onClick={() => goTo('closed')}><span>📅 Closed days</span></button>
+            <button type="button" className={`e-menu-item${view === 'soldout' ? ' on' : ''}`} onClick={() => goTo('soldout')}><span>🚫 Sold out items</span></button>
+            <button type="button" className={`e-menu-item${view === 'catering' ? ' on' : ''}`} onClick={() => goTo('catering')}><span>🎉 Catering</span></button>
+            <div className="e-menu-group">Menu &amp; marketing</div>
+            <button type="button" className={`e-menu-item${view === 'promos' ? ' on' : ''}`} onClick={() => goTo('promos')}><span>🏷️ Promos &amp; menu switches</span></button>
+            <Link href="/admin/reviews" className="e-menu-item"><span>⭐ Reviews</span>{pendingReviews > 0 && <em>{pendingReviews}</em>}</Link>
+            <button type="button" className={`e-menu-item${view === 'photos' ? ' on' : ''}`} onClick={() => goTo('photos')}><span>📸 Site photos</span></button>
+            <div className="e-menu-group">Reports</div>
+            <button type="button" className={`e-menu-item${view === 'sales' ? ' on' : ''}`} onClick={() => goTo('sales')}><span>📊 Sales summary</span></button>
+            <button type="button" className={`e-menu-item${view === 'export' ? ' on' : ''}`} onClick={() => goTo('export')}><span>⬇️ Export orders</span></button>
+          </nav>
+          <button type="button" className="e-menu-shade" onClick={() => setMenuOpen(false)} aria-label="Close menu" />
+        </div>
+      )}
+
+      <div className={`wrap e-wrap e-view-${view}`}>
         {/* Pinned open/closed toggle — the one thing checked on every visit,
             so it lives outside (above) the Manage shop drawer below and is
             never collapsed. Everything else that used to share this "Shop
@@ -1055,7 +1139,7 @@ export default function Admin() {
             catering, sold-out toggles) now lives in the drawer's "Hours,
             availability & catering" row. */}
         {settings && (
-          <div className="section pinned-status-section">
+          <div className="section pinned-status-section e-orders">
             <div className="order-card">
               <div className="row" style={{ marginBottom: settings.is_open ? 0 : 10 }}>
                 <span className="pickup">{settings.is_open ? '🟢 Open for orders' : '🔴 Closed'}</span>
@@ -1101,20 +1185,16 @@ export default function Admin() {
             (Hours & availability, Sales, Promo codes, Site photos, Export)
             are still reorderable with the same up/down arrows as before —
             SECTION_KEYS, sectionOrder and moveSection are all unchanged. */}
-        <details className="manage-shop-drawer">
-          <summary>
-            <span>⚙️ Manage shop — hours, availability, promos &amp; more</span>
-            <span className="chev">▾</span>
-          </summary>
+        <div className="e-sections">
           <div className="admin-reorder-wrap">
         {settings && (
-          <details className="section drawer-section" style={{ order: sectionOrder.indexOf('shopStatus') }}>
+          <details open className="section drawer-section sec-shopStatus" style={{ order: sectionOrder.indexOf('shopStatus') }}>
             <summary>
               <span>Hours, availability &amp; catering</span>
               <span className="drawer-row-right"><SectionArrows sectionKey="shopStatus" /><span className="chev">▾</span></span>
             </summary>
             <div className="drawer-section-body">
-            <div className="order-card" style={{ marginTop: 0 }}>
+            <div className="order-card" data-s="closed" style={{ marginTop: 0 }}>
               <label style={{ display: 'block', fontWeight: 700, marginBottom: 6 }}>
                 Closed days
               </label>
@@ -1190,7 +1270,7 @@ export default function Admin() {
               )}
             </div>
 
-            <div className="order-card" style={{ marginTop: 10 }}>
+            <div className="order-card" data-s="hours" style={{ marginTop: 10 }}>
               <div className="field-lbl" style={{ marginTop: 0 }}>Max per 20-min slot</div>
               <div className="mini-card-inline">
                 <input
@@ -1286,7 +1366,7 @@ export default function Admin() {
               </p>
             </div>
 
-            <div className="order-card" style={{ marginTop: 10 }}>
+            <div className="order-card" data-s="catering" style={{ marginTop: 10 }}>
               <label style={{ display: 'block', fontWeight: 700, marginBottom: 10 }}>
                 Catering availability
               </label>
@@ -1322,7 +1402,7 @@ export default function Admin() {
               <p className="hint" style={{ marginTop: 10, marginBottom: 0 }}>Tap the days you're available for catering. Leave all off to hide the catering section from customers.</p>
             </div>
 
-            <div className="order-card" style={{ marginTop: 10 }}>
+            <div className="order-card" data-s="soldout" style={{ marginTop: 10 }}>
               <p className="hint-sm" style={{ margin: '0 0 2px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.02em', fontSize: '0.7rem' }}>Mark items sold out</p>
 
               <div className="field-lbl">Flavors</div>
@@ -1419,7 +1499,7 @@ export default function Admin() {
           </details>
         )}
 
-        <details className="section drawer-section" style={{ order: sectionOrder.indexOf('salesLink') }} onToggle={handleSalesToggle}>
+        <details open className="section drawer-section sec-salesLink" style={{ order: sectionOrder.indexOf('salesLink') }}>
           <summary>
             <span>📊 Sales</span>
             <span className="drawer-row-right"><SectionArrows sectionKey="salesLink" /><span className="chev">▾</span></span>
@@ -1460,14 +1540,10 @@ export default function Admin() {
             <Link href="/admin/sales" style={{ color: 'var(--maroon)', fontWeight: 700, textDecoration: 'none', display: 'inline-block', marginTop: 4 }}>
               📊 Open full sales dashboard →
             </Link>
-            <br />
-            <Link href="/admin/reviews" style={{ color: 'var(--maroon)', fontWeight: 700, textDecoration: 'none', display: 'inline-block', marginTop: 8 }}>
-              ⭐ Customer reviews (approve / hide) →
-            </Link>
           </div>
         </details>
 
-        <details className="section drawer-section" style={{ order: sectionOrder.indexOf('promoCodes') }}>
+        <details open className="section drawer-section sec-promoCodes" style={{ order: sectionOrder.indexOf('promoCodes') }}>
           <summary>
             <span>🏷️ Promo codes</span>
             <span className="drawer-row-right"><SectionArrows sectionKey="promoCodes" /><span className="chev">▾</span></span>
@@ -1692,7 +1768,7 @@ export default function Admin() {
           </div>
         </details>
 
-        <details className="section drawer-section" style={{ order: sectionOrder.indexOf('sitePhotos') }}>
+        <details open className="section drawer-section sec-sitePhotos" style={{ order: sectionOrder.indexOf('sitePhotos') }}>
           <summary>
             <span>🖼️ Site photos</span>
             <span className="drawer-row-right"><SectionArrows sectionKey="sitePhotos" /><span className="chev">▾</span></span>
@@ -1728,7 +1804,7 @@ export default function Admin() {
           </div>
         </details>
 
-        <details className="section drawer-section" style={{ order: sectionOrder.indexOf('exportHistory') }}>
+        <details open className="section drawer-section sec-exportHistory" style={{ order: sectionOrder.indexOf('exportHistory') }}>
           <summary>
             <span>📥 Export order history</span>
             <span className="drawer-row-right"><SectionArrows sectionKey="exportHistory" /><span className="chev">▾</span></span>
@@ -1760,10 +1836,10 @@ export default function Admin() {
           </div>
         </details>
           </div>
-        </details>
+        </div>
 
         {!pushEnabled && (
-          <div className="section">
+          <div className="section e-orders">
             {needsHomeScreen ? (
               <div className="order-card">
                 <p style={{ margin: '0 0 8px', fontWeight: 700, color: 'var(--maroon)' }}>
@@ -1803,7 +1879,7 @@ export default function Admin() {
             now lives in the Manage shop drawer below it. Nothing about how
             orders render or the actions on them changed — only where this
             block sits on the page. */}
-        <div className="section" style={selectedIds.length > 0 ? { paddingBottom: 96 } : undefined}>
+        <div className="section e-orders" style={selectedIds.length > 0 ? { paddingBottom: 96 } : undefined}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
             <h2>Orders</h2>
           </div>

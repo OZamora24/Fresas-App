@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import Head from 'next/head';
 import Script from 'next/script';
 import Link from 'next/link';
-import { BASES, PRICES, TOPPINGS, SYRUPS, orderTotal, buildPickupTimes, baseIdFromName, formatDateKey, todayDateKey, maxPreorderDateKey, MAX_EXTRA_TOPPING_QTY, FREE_CUP_DEAL_CODE, PANCAKE_TOPPINGS, isPancakeItem, isKittyItem , addMinutesToTimeLabel, heldUntilLabel } from '../lib/menu';
+import { BASES, PRICES, TOPPINGS, SYRUPS, orderTotal, buildPickupTimes, baseIdFromName, formatDateKey, todayDateKey, maxPreorderDateKey, MAX_EXTRA_TOPPING_QTY, FREE_CUP_DEAL_CODE, PANCAKE_TOPPINGS, isPancakeItem, isKittyItem , addMinutesToTimeLabel, heldUntilLabel , itemDisplayName, kittyPlateName } from '../lib/menu';
 
 const ONESIGNAL_APP_ID = process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID;
 
@@ -79,7 +79,7 @@ function doneRowSummary(o) {
   const what = Array.isArray(o.items) && o.items.length > 1
     ? `${o.items.reduce((n, i) => n + (i.qty || 1), 0)} ${o.items.some(isPancakeItem) ? 'items' : 'cups'}`
     : Array.isArray(o.items) && o.items.length === 1
-      ? `${o.items[0].qty}x ${o.items[0].base}${o.items[0].cup_size ? ` (${o.items[0].cup_size})` : ''}`
+      ? `${o.items[0].qty}x ${itemDisplayName(o.items[0])}${o.items[0].cup_size ? ` (${o.items[0].cup_size})` : ''}`
       : `${o.qty}x ${o.base}${o.cup_size ? ` (${o.cup_size})` : ''}`;
   const cashNote = !o.paid && o.payment_method === 'cash' ? ' · Cash' : '';
   return `${what} · ${o.pickup_time}${cashNote}`;
@@ -923,13 +923,19 @@ export default function Admin() {
               const piecesOf = (list) => list.reduce((n, i) => n + (parseInt(i.cup_size, 10) || 0) * (i.qty || 1), 0);
               const pancakePcs = piecesOf(o.items.filter((i) => isPancakeItem(i) && !isKittyItem(i)));
               const kittyPcs = piecesOf(o.items.filter(isKittyItem));
+              // "1 Hello Kitty Mini plate", "2 Hello Kitty Plates + 1 Hello Kitty Mini plate"
+              const kittyLabel = ['Plate', 'Mini plate']
+                .map((nm) => [nm, o.items.filter((i) => isKittyItem(i) && kittyPlateName(i) === nm).reduce((n, i) => n + (i.qty || 1), 0)])
+                .filter(([, n]) => n > 0)
+                .map(([nm, n]) => `${n} Hello Kitty ${nm}${n === 1 ? '' : 's'}`)
+                .join(' + ');
               return (
                 <div className="meta">
                   {cupTotal > 0 && `${cupTotal} cup${cupTotal === 1 ? '' : 's'}`}
                   {cupTotal > 0 && otherPacks > 0 && ' + '}
                   {pancakePacks > 0 && `🥞 ${pancakePacks} mini pancake pack${pancakePacks === 1 ? '' : 's'}${pancakePcs ? ` (${pancakePcs} pcs)` : ''}`}
                   {pancakePacks > 0 && kittyPacks > 0 && ' + '}
-                  {kittyPacks > 0 && `🎀 ${kittyPacks} Hello Kitty pack${kittyPacks === 1 ? '' : 's'}${kittyPcs ? ` (${kittyPcs} pcs)` : ''}`}
+                  {kittyPacks > 0 && `🎀 ${kittyLabel}${kittyPcs ? ` (${kittyPcs} pcs)` : ''}`}
                   {' '}in this order
                 </div>
               );
@@ -937,7 +943,7 @@ export default function Admin() {
             <div className="order-details-body order-details-body-static">
               {o.items.map((item, i) => (
                 <div key={i} style={{ marginBottom: i < o.items.length - 1 ? 10 : 0, paddingBottom: i < o.items.length - 1 ? 10 : 0, borderBottom: i < o.items.length - 1 ? '1px dashed var(--line)' : 'none' }}>
-                  <div><strong>{isKittyItem(item) ? '🎀 ' : isPancakeItem(item) ? '🥞 ' : ''}{item.qty}x {item.base}</strong>{item.cup_size ? ` (${item.cup_size})` : ''}</div>
+                  <div><strong>{isKittyItem(item) ? '🎀 ' : isPancakeItem(item) ? '🥞 ' : ''}{item.qty}x {itemDisplayName(item)}</strong>{item.cup_size ? ` (${item.cup_size})` : ''}</div>
                   {(item.base === 'Banana Pudding' || item.base === 'Gansito') && (
                     <div><strong>Rim:</strong> {item.include_rim === false ? '🚫 No rim' : '✅ Yes'}</div>
                   )}
@@ -1344,7 +1350,7 @@ export default function Admin() {
 
               <div className="field-lbl">Review request</div>
               <div className="toggle-inline">
-                <span className="ti-label">⭐ Ask for a review 1 min after "done"</span>
+                <span className="ti-label">⭐ Ask for a review 10 min after "done"</span>
                 <button
                   type="button"
                   className={`pill-btn${settings.review_push_enabled ? ' primary' : ''}`}
@@ -1354,7 +1360,7 @@ export default function Admin() {
                   {settings.review_push_enabled ? 'On' : 'Off'}
                 </button>
               </div>
-              <p className="hint-sm">When on, a customer who allowed notifications on their confirmation screen gets a push one minute after you mark their order done, with a button to the Reviews page. Sent once per order.</p>
+              <p className="hint-sm">When on, a customer who allowed notifications on their confirmation screen gets a push ten minutes after you mark their order done, with a button to the Reviews page. Sent once per order.</p>
               <div className="mini-card-inline" style={{ marginTop: 8 }}>
                 <span style={{ fontWeight: 800, color: 'var(--maroon)' }}>
                   📲 {pushStats ? pushStats.devices : '…'} phone{pushStats && pushStats.devices === 1 ? '' : 's'} with notifications on
@@ -1977,7 +1983,7 @@ export default function Admin() {
                 <div className="order-details-body order-details-body-static" style={{ marginTop: 0 }}>
                   {editForm.items.map((item, i) => (
                     <div key={i} style={{ marginBottom: i < editForm.items.length - 1 ? 8 : 0 }}>
-                      <div><strong>{isKittyItem(item) ? '🎀 ' : isPancakeItem(item) ? '🥞 ' : ''}{item.qty}x {item.base}</strong>{item.cup_size ? ` (${item.cup_size})` : ''}</div>
+                      <div><strong>{isKittyItem(item) ? '🎀 ' : isPancakeItem(item) ? '🥞 ' : ''}{item.qty}x {itemDisplayName(item)}</strong>{item.cup_size ? ` (${item.cup_size})` : ''}</div>
                       <div>Toppings: {item.toppings?.length ? toppingsSummaryText(item.toppings) : 'None'} · {isPancakeItem(item) ? 'Drizzle' : 'Syrup'}: {item.syrups?.length ? item.syrups.join(', ') : 'None'}{isPancakeItem(item) && item.ice_cream ? ' · 🍦 Ice cream' : ''}</div>
                     </div>
                   ))}

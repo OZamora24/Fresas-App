@@ -1,6 +1,6 @@
 import { getSupabaseAdmin } from '../../lib/supabaseAdmin';
 import { isValidSession } from '../../lib/adminSession';
-import { baseIdFromName, formatDateKey, todayDateKey, getAvailablePickupTimes, PRICES, toppingsCost, freeCupDeal, FREE_CUP_DEAL_CODE, isPancakeItem, isKittyItem, pancakeItemCost, validatePancakeItem, HOLD_MINUTES } from '../../lib/menu';
+import { baseIdFromName, formatDateKey, todayDateKey, getAvailablePickupTimes, PRICES, toppingsCost, freeCupDeal, FREE_CUP_DEAL_CODE, isPancakeItem, isKittyItem, pancakeItemCost, validatePancakeItem, HOLD_MINUTES, itemDisplayName } from '../../lib/menu';
 
 const APP_URL = 'https://www.lovelyfresitas.app';
 
@@ -26,7 +26,7 @@ function computePancakeSubtotal(items) {
 
 // One short line per saved item, e.g. "2x Mini Pancakes (20 pcs)".
 function describeItem(item) {
-  return `${item.qty || 1}x ${item.base}${item.cup_size ? ` (${item.cup_size})` : ''}`;
+  return `${item.qty || 1}x ${itemDisplayName(item)}${item.cup_size ? ` (${item.cup_size})` : ''}`;
 }
 
 async function sendPushToAdmin(order) {
@@ -74,10 +74,12 @@ async function sendPushToAdmin(order) {
   }
 }
 
-// Asks the customer for a review about a minute after their order is marked
-// done. It finds their phone by the order_id tag set on the confirmation
+// Asks the customer for a review REVIEW_DELAY_MINUTES after their order is
+// marked done. It finds their phone by the order_id tag set on the confirmation
 // screen, so it only reaches customers who allowed notifications. OneSignal
 // holds it and delivers it at send_after.
+const REVIEW_DELAY_MINUTES = 10;
+
 async function sendReviewPush(order) {
   const appId = process.env.ONESIGNAL_APP_ID;
   const apiKey = process.env.ONESIGNAL_REST_API_KEY;
@@ -85,7 +87,7 @@ async function sendReviewPush(order) {
 
   const es = order.language === 'es';
   const url = `${APP_URL}/reviews`;
-  const at = new Date(Date.now() + 60 * 1000).toISOString();
+  const at = new Date(Date.now() + REVIEW_DELAY_MINUTES * 60 * 1000).toISOString();
   const body = {
     app_id: appId,
     target_channel: 'push',

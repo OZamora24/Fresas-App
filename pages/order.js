@@ -16,7 +16,9 @@ import { getSupabaseAdmin } from '../lib/supabaseAdmin';
 // sold-out flags changing) — the lag when tapping Order from Home. Same fix
 // as Home and Catering. Next.js strips this (and the Supabase import) from
 // the browser bundle.
-export async function getServerSideProps() {
+export async function getServerSideProps({ query } = {}) {
+  // ?preview=1 / ?preview=live is the admin's "Order page preview" screen.
+  const previewMode = query?.preview === '1' ? 'form' : query?.preview === 'live' ? 'live' : null;
   let initialSettings = null;
   let initialSlots = null;
   try {
@@ -35,7 +37,7 @@ export async function getServerSideProps() {
   } catch (e) {
     // Supabase unreachable — fall back to the client-side fetches below.
   }
-  return { props: { initialSettings, initialSlots } };
+  return { props: { initialSettings, initialSlots, previewMode } };
 }
 
 const ONESIGNAL_APP_ID = process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID;
@@ -561,7 +563,10 @@ const STR = {
   },
 };
 
-export default function Home({ initialSettings = null, initialSlots = null }) {
+export default function Home({ initialSettings = null, initialSlots = null, previewMode = null }) {
+  // Inside the admin preview frame: nothing can be ordered, the tab bar is
+  // hidden, and 'form' mode shows the order form even while the shop is closed.
+  const isPreview = !!previewMode;
   const [lang, setLang] = useState('en');
 
   // Remember the customer's language choice across pages (Home, Order,
@@ -890,6 +895,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
   // Drop any selected toppings/syrups that get marked sold out mid-session.
   useEffect(() => {
     if (!shopStatus) return;
+    if (shopStatus.sold_out_toppings?.includes('Ice Cream')) setPIce(false);
     if (shopStatus.sold_out_toppings?.length) {
       setToppings((prev) => prev.filter((t) => !shopStatus.sold_out_toppings.includes(t)));
       setPToppings((prev) => prev.filter((t) => !shopStatus.sold_out_toppings.includes(t)));
@@ -1349,6 +1355,10 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
   }
 
   async function placeOrder() {
+    if (isPreview) {
+      setErrorMsg('Preview only — orders can\'t be placed from here.');
+      return;
+    }
     playOrderChime();
     setSubmitting(true);
     setErrorMsg('');
@@ -1517,7 +1527,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
     </div>
   );
 
-  if (shopStatus && shopStatus.is_open === false) {
+  if (shopStatus && shopStatus.is_open === false && previewMode !== 'form') {
     const reopensDate = shopStatus.reopens_at ? new Date(shopStatus.reopens_at) : null;
     const reopensLabel = reopensDate
       ? reopensDate.toLocaleString(lang === 'es' ? 'es-US' : 'en-US', {
@@ -1540,7 +1550,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
         {reopensLabel && (
           <p style={{ color: 'var(--maroon)', fontWeight: 700 }}>{t.closedReopensAt(reopensLabel)}</p>
         )}
-        <MobileTabBar lang={lang} />
+        {!isPreview && <MobileTabBar lang={lang} />}
       </div>
     );
   }
@@ -1720,7 +1730,11 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
         )}
       </div>
 
-      <AddToHomeBanner lang={lang} storageKey="fresasA2HSSeen" />
+      {!isPreview && <AddToHomeBanner lang={lang} storageKey="fresasA2HSSeen" />}
+
+      {previewMode === 'form' && shopStatus && shopStatus.is_open === false && (
+        <div className="preview-note">👁 Preview: your shop is closed, so customers see the closed screen, not this form.</div>
+      )}
 
       <div className="wrap">
         <div className="steps" aria-hidden="true">
@@ -1783,7 +1797,8 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
         <div className="section">
           <h2>{t.pickBase}</h2>
           <p className="hint">{t.pickBaseHint}</p>
-          {BASES.map((b) => {
+          {BASES.filter((b) => !(shopStatus?.sold_out_flavors || []).includes(b.id)).map((b) => {
+            // Sold-out flavors are left off the list entirely (not greyed out).
             // Until shopStatus has loaded, we don't actually know yet
             // whether this flavor is sold out — showing a price here that
             // then flips to "Sold out today" a moment later (once the
@@ -1823,7 +1838,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
           <h2>{t.toppings}</h2>
           <p className="hint">{t.toppingsHint}</p>
           <div className="chip-grid">
-            {TOPPINGS.map((tp) => {
+            {TOPPINGS.filter((tp) => !(shopStatus?.sold_out_toppings || []).includes(tp.name)).map((tp) => {
               const isSoldOut = (shopStatus?.sold_out_toppings || []).includes(tp.name);
               const label = TOPPING_LABELS[tp.name][lang];
 
@@ -1901,11 +1916,12 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
           )}
         </div>
 
+        {SYRUPS.some((x) => !(shopStatus?.sold_out_syrups || []).includes(x)) && (
         <div className="section">
           <h2>{t.syrup}</h2>
           <p className="hint">{t.syrupHint}</p>
           <div className="chip-grid">
-            {SYRUPS.map((s) => {
+            {SYRUPS.filter((s) => !(shopStatus?.sold_out_syrups || []).includes(s)).map((s) => {
               const isSoldOut = (shopStatus?.sold_out_syrups || []).includes(s);
               return (
                 <label
@@ -1921,6 +1937,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
             })}
           </div>
         </div>
+        )}
 
         <div className="section">
           <h2>{t.howMany}</h2>
@@ -1966,7 +1983,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
           <h2>{t.toppings}</h2>
           <p className="hint">{pancakeExtrasEnabled ? t.pancakeToppingsHintExtra(pancakeSizeFor(pSize).toppings, PANCAKE_MAX_EXTRA_TOPPINGS, PANCAKE_EXTRA_TOPPING_PRICE) : t.pancakeToppingsHint(pancakeSizeFor(pSize).toppings)}</p>
           <div className="chip-grid">
-            {PANCAKE_TOPPINGS.map((name) => {
+            {PANCAKE_TOPPINGS.filter((name) => !(shopStatus?.sold_out_toppings || []).includes(name)).map((name) => {
               const isSoldOut = (shopStatus?.sold_out_toppings || []).includes(name);
               const selected = pToppings.includes(name);
               const atLimit = !selected && pToppings.length >= pancakeToppingCap(pancakeSizeFor(pSize));
@@ -1992,11 +2009,12 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
           )}
         </div>
 
+        {SYRUPS.some((x) => !(shopStatus?.sold_out_syrups || []).includes(x)) && (
         <div className="section">
           <h2>{t.pancakeDrizzleTitle}</h2>
           <p className="hint">{t.pancakeDrizzleHint(pancakeSizeFor(pSize).drizzles)}</p>
           <div className="chip-grid">
-            {SYRUPS.map((name) => {
+            {SYRUPS.filter((name) => !(shopStatus?.sold_out_syrups || []).includes(name)).map((name) => {
               const isSoldOut = (shopStatus?.sold_out_syrups || []).includes(name);
               const selected = pDrizzles.includes(name);
               const atLimit = !selected && pDrizzles.length >= pancakeSizeFor(pSize).drizzles;
@@ -2016,12 +2034,14 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
           </div>
           <div className="free-note">{t.pancakeDrizzlesChosen(pDrizzles.length, pancakeSizeFor(pSize).drizzles)}</div>
         </div>
+        )}
 
+        {!(shopStatus?.sold_out_toppings || []).includes('Ice Cream') && (
         <div className="section">
           <h2>{t.iceCreamTitle}</h2>
           <div className="chip-grid">
             {(() => {
-              const iceSoldOut = (shopStatus?.sold_out_toppings || []).includes('Ice Cream');
+              const iceSoldOut = false;
               return (
                 <label className={`chip${pIce ? ' checked' : ''}`} style={iceSoldOut ? { opacity: 0.45, cursor: 'not-allowed' } : {}}>
                   <input type="checkbox" style={{ display: 'none' }} checked={pIce} disabled={iceSoldOut} onChange={() => setPIce((v) => !v)} />
@@ -2032,6 +2052,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
             })()}
           </div>
         </div>
+        )}
 
         <div className="section">
           <h2>{t.howManyPacks}</h2>
@@ -2210,7 +2231,7 @@ export default function Home({ initialSettings = null, initialSlots = null }) {
         </div>
       </div>
 
-      <MobileTabBar lang={lang} />
+      {!isPreview && <MobileTabBar lang={lang} />}
 
       <div className={`overlay center-modal-high${showCart ? ' open' : ''}`} onClick={(e) => e.target === e.currentTarget && setShowCart(false)}>
         <div className="sheet center-card cart-peek">

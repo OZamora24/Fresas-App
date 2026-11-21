@@ -1365,10 +1365,24 @@ button, a, .chip, .base-card, label, summary { touch-action: manipulation; -webk
 .e-view-hours .sec-shopStatus,
 .e-view-closed .sec-shopStatus,
 .e-view-soldout .sec-shopStatus,
-.e-view-catering .sec-shopStatus { display: block; }
+.e-view-catering .sec-shopStatus,
+.e-view-preview .sec-shopStatus { display: block; }
 .e-sections .sec-shopStatus [data-s] { display: none; }
 .e-view-hours .sec-shopStatus [data-s="hours"],
 .e-view-closed .sec-shopStatus [data-s="closed"],
 .e-view-soldout .sec-shopStatus [data-s="soldout"],
-.e-view-catering .sec-shopStatus [data-s="catering"] { display: block; }
+.e-view-catering .sec-shopStatus [data-s="catering"],
+.e-view-preview .sec-shopStatus [data-s="soldout"] { display: block; }
 .e-sections .drawer-section-body { padding-top: 14px; }
+
+/* Admin: order page preview screen */
+.e-preview { max-width: 460px; margin: 0 auto 18px; }
+.e-preview-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+.e-preview-tabs { display: inline-flex; background: #fff; border: 1.5px solid var(--pink-soft, #f5c6d0); border-radius: 999px; padding: 3px; }
+.e-preview-tabs button { border: 0; background: transparent; border-radius: 999px; padding: 7px 14px; font: inherit; font-weight: 800; font-size: 0.82rem; color: var(--maroon); cursor: pointer; }
+.e-preview-tabs button.on { background: var(--maroon); color: #fff; }
+.e-preview-refresh { border: 1.5px solid var(--maroon); background: #fff; color: var(--maroon); border-radius: 999px; padding: 7px 14px; font: inherit; font-weight: 800; font-size: 0.82rem; cursor: pointer; }
+.e-phone { border: 8px solid var(--maroon); border-radius: 30px; overflow: hidden; background: #fff; height: 68vh; min-height: 480px; box-shadow: 0 8px 24px rgba(124, 27, 44, 0.18); }
+.e-phone iframe { width: 100%; height: 100%; border: 0; display: block; }
+.e-view-preview .e-sections { max-width: 460px; margin: 16px auto 0; }
+.preview-note { background: #fff3cd; color: #6b4e00; font-weight: 800; font-size: 0.8rem; text-align: center; padding: 8px 12px; }

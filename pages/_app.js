@@ -27,7 +27,10 @@ export default function App({ Component, pageProps }) {
   // 'visible' means this only ever plays on a real page load: client-side
   // navigation between pages (via next/link) doesn't remount _app, so the
   // splash never reappears just from clicking around the site.
-  const [phase, setPhase] = useState('visible');
+  // The admin's order-page preview frame (?preview=…) skips the splash so
+  // it reloads instantly when a setting is saved.
+  const isPreview = !!pageProps?.previewMode;
+  const [phase, setPhase] = useState(isPreview ? 'gone' : 'visible');
   const router = useRouter();
   // The splash's caption should match what's actually loading — "LOADING
   // THE MENU" is only true on the order-builder page. router.pathname is
@@ -42,6 +45,7 @@ export default function App({ Component, pageProps }) {
     : 'LOADING...';
 
   useEffect(() => {
+    if (isPreview) return undefined;
     let minDone = false;
     let pageLoaded = document.readyState === 'complete';
     // Guards against the splash reappearing a second time. Without this,
@@ -147,7 +151,7 @@ export default function App({ Component, pageProps }) {
       <div className={phase === 'visible' ? 'app-content-hidden' : undefined}>
         <Component {...pageProps} />
       </div>
-      <BuiltByOrlandoTab />
+      {!isPreview && <BuiltByOrlandoTab />}
       <RouteTransition />
       {phase !== 'gone' && <SplashScreen leaving={phase === 'leaving'} label={splashLabel} />}
     </>

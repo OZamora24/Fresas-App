@@ -14,6 +14,7 @@ const VIEW_TITLES = {
   orders: ['Orders', 'Live orders · refreshes every few seconds'],
   hours: ['Hours & checkout', 'Slots, store hours, phone and review settings'],
   closed: ['Closed days', 'Days customers cannot pick for pickup'],
+  preview: ['Order page preview', 'What customers see, updated as you save'],
   soldout: ['Sold out items', 'Turn flavors, toppings and drizzles off for customers'],
   catering: ['Catering', 'Which days catering is available'],
   promos: ['Promos & menu', 'Pancake switches, deals and promo codes'],
@@ -95,6 +96,10 @@ export default function Admin() {
   // Side-menu navigation: which screen is showing, and whether the menu is open.
   const [view, setView] = useState('orders');
   const [menuOpen, setMenuOpen] = useState(false);
+  // Order page preview screen: which version is showing, and a counter that
+  // reloads the preview frame (bumped after every saved settings change).
+  const [previewTab, setPreviewTab] = useState('form'); // 'form' | 'live'
+  const [previewKey, setPreviewKey] = useState(0);
   const [pendingReviews, setPendingReviews] = useState(0);
   const [expandedDoneId, setExpandedDoneId] = useState(null); // which Completed row is tapped open
   const [seenOrderIds, setSeenOrderIds] = useState(null); // null until loaded from localStorage
@@ -458,6 +463,7 @@ export default function Admin() {
     if (res.ok) {
       const json = await res.json();
       setSettings(json.settings);
+      setPreviewKey((k) => k + 1);
     }
     setSavingSettings(false);
   }
@@ -1121,6 +1127,7 @@ export default function Admin() {
               <span>🕘 Past orders</span><small>{orders.length - openOrders.length} done</small>
             </button>
             <div className="e-menu-group">Shop</div>
+            <button type="button" className={`e-menu-item${view === 'preview' ? ' on' : ''}`} onClick={() => goTo('preview')}><span>👁 Order page preview</span></button>
             <button type="button" className={`e-menu-item${view === 'hours' ? ' on' : ''}`} onClick={() => goTo('hours')}><span>⏰ Hours &amp; checkout</span></button>
             <button type="button" className={`e-menu-item${view === 'closed' ? ' on' : ''}`} onClick={() => goTo('closed')}><span>📅 Closed days</span></button>
             <button type="button" className={`e-menu-item${view === 'soldout' ? ' on' : ''}`} onClick={() => goTo('soldout')}><span>🚫 Sold out items</span></button>
@@ -1191,6 +1198,37 @@ export default function Admin() {
             (Hours & availability, Sales, Promo codes, Site photos, Export)
             are still reorderable with the same up/down arrows as before —
             SECTION_KEYS, sectionOrder and moveSection are all unchanged. */}
+        {view === 'preview' && settings && (
+          <div className="e-preview">
+            <div className="e-preview-bar">
+              <div className="e-preview-tabs">
+                <button type="button" className={previewTab === 'form' ? 'on' : ''} onClick={() => setPreviewTab('form')}>Order form</button>
+                <button type="button" className={previewTab === 'live' ? 'on' : ''} onClick={() => setPreviewTab('live')}>What customers see</button>
+              </div>
+              <button type="button" className="e-preview-refresh" onClick={() => setPreviewKey((k) => k + 1)}>↻ Refresh</button>
+            </div>
+            <div className="e-preview-bar">
+              <span className="pickup">{settings.is_open ? '🟢 Open for orders' : '🔴 Closed'}</span>
+              <button
+                type="button"
+                className="status-btn"
+                onClick={() => saveSettings({ is_open: !settings.is_open, ...(settings.is_open ? {} : { reopens_at: null }) })}
+                disabled={savingSettings}
+              >
+                {settings.is_open ? 'Close shop' : 'Reopen shop'}
+              </button>
+            </div>
+            <p className="hint-sm" style={{ margin: '0 0 10px' }}>
+              {previewTab === 'form'
+                ? 'The order form as customers see it, even while the shop is closed. It reloads when you save a change below. Orders can\'t be placed from here.'
+                : 'Exactly what customers see right now, including the closed screen when the shop is closed.'}
+            </p>
+            <div className="e-phone">
+              <iframe key={`${previewTab}-${previewKey}`} src={`/order?preview=${previewTab === 'live' ? 'live' : '1'}`} title="Order page preview" />
+            </div>
+          </div>
+        )}
+
         <div className="e-sections">
           <div className="admin-reorder-wrap">
         {settings && (

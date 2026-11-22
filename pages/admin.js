@@ -1073,11 +1073,17 @@ export default function Admin() {
         <Script
           src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js"
           strategy="afterInteractive"
-          onLoad={() => {
+          // onReady (not onLoad): onLoad only fires the first time the script
+          // is added to the page, so coming back to this page by tapping a link
+          // (Admin -> Reviews -> back) never marked notifications ready and the
+          // "Enable push notifications" button reappeared. onReady fires on
+          // every visit; the init-once guard keeps OneSignal from being set up twice.
+          onReady={() => {
             window.OneSignalDeferred = window.OneSignalDeferred || [];
             window.OneSignalDeferred.push(async (OneSignal) => {
               try {
-                await OneSignal.init({ appId: ONESIGNAL_APP_ID });
+                if (!window.__fresasOneSignalInit) window.__fresasOneSignalInit = OneSignal.init({ appId: ONESIGNAL_APP_ID });
+                await window.__fresasOneSignalInit;
                 window.OneSignal = OneSignal;
                 setOneSignalReady(true);
                 // If notifications were already granted in an earlier visit,
